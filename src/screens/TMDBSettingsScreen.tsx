@@ -1175,8 +1175,12 @@ const TMDBSettingsScreen = () => {
                           { code: 'uk', label: 'Українська', native: 'Ukrainian' },
                           { code: 'vi', label: 'Tiếng Việt', native: 'Vietnamese' },
                           { code: 'th', label: 'ไทย', native: 'Thai' },
-                          { code: 'hr', 
-label: 'Hrvatski', native: 'Croatian' },
+                          { code: 'hr', label: 'Hrvatski', native: 'Croatian' },
+                          { code: 'sr', label: 'Српски', native: 'Serbian' }, 
+                          { code: 'bg', label: 'български', native: 'Bulgarian' }, 
+                          { code: 'sl', label: 'Slovenščina', native: 'Slovenian' },
+                          { code: 'mk', label: 'Македонски', native: 'Macedonian' },
+                          { code: 'fil', label: 'Filipino', native: 'Filipino' }, 
                         ];
 
                         const filteredLanguages = languages.filter(({ label, code, native }) =>

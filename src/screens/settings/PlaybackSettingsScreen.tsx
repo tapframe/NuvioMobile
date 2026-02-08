@@ -54,6 +54,12 @@ const AVAILABLE_LANGUAGES = [
     { code: 'uk', name: 'Ukrainian' },
     { code: 'he', name: 'Hebrew' },
     { code: 'fa', name: 'Persian' },
+    { code: 'hr', name: 'Croatian' }, 
+    { code: 'sr', name: 'Serbian' }, 
+    { code: 'bg', name: 'Bulgarian' }, 
+    { code: 'sl', name: 'Slovenian' }, 
+    { code: 'mk', name: 'Macedonian' }, 
+    { code: 'fil', name: 'Filipino' }, 
 ];
 
 const SUBTITLE_SOURCE_OPTIONS = [
