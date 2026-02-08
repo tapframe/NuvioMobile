@@ -45,6 +45,7 @@ interface PlayerControlsProps {
   isSubtitleModalOpen?: boolean;
   setShowSourcesModal?: (show: boolean) => void;
   setShowEpisodesModal?: (show: boolean) => void;
+  setShowEnhancementModal?: (show: boolean) => void;
   // Slider-specific props
   onSliderValueChange: (value: number) => void;
   onSlidingStart: () => void;
@@ -95,6 +96,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
   isSubtitleModalOpen,
   setShowSourcesModal,
   setShowEpisodesModal,
+  setShowEnhancementModal,
   onSliderValueChange,
   onSlidingStart,
   onSlidingComplete,
@@ -391,6 +393,21 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                   />
                 </TouchableOpacity>
               )}
+
+              {/* Video Enhancement Button (Top Access) */}
+              {playerBackend === 'MPV' && setShowEnhancementModal && settings.enableShaders && (
+                <TouchableOpacity
+                  style={{ padding: 8 }}
+                  onPress={() => setShowEnhancementModal(true)}
+                >
+                  <Ionicons 
+                    name="sparkles-outline" 
+                    size={closeIconSize} 
+                    color="white" 
+                  />
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
                 <Ionicons name="close" size={closeIconSize} color="white" />
               </TouchableOpacity>
@@ -592,7 +609,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
           <View style={styles.bottomControls} pointerEvents="box-none">
             {/* Center Buttons Container with rounded background - wraps all buttons */}
             <View style={styles.centerControlsContainer} pointerEvents="box-none">
-              {/* Left Side: Aspect Ratio Button */}
+              {/* Aspect Ratio Button */}
               <TouchableOpacity style={styles.iconButton} onPress={cycleAspectRatio}>
                 <Ionicons name="expand-outline" size={24} color="white" />
               </TouchableOpacity>
@@ -604,16 +621,6 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
               >
                 <Ionicons name="text" size={24} color="white" />
               </TouchableOpacity>
-
-              {/* Change Source Button */}
-              {setShowSourcesModal && (
-                <TouchableOpacity
-                  style={styles.iconButton}
-                  onPress={() => setShowSourcesModal(true)}
-                >
-                  <Ionicons name="cloud-outline" size={24} color="white" />
-                </TouchableOpacity>
-              )}
 
               {/* Playback Speed Button */}
               <TouchableOpacity style={styles.iconButton} onPress={() => setShowSpeedModal(true)}>
@@ -633,6 +640,16 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                 />
               </TouchableOpacity>
 
+              {/* Change Source Button */}
+              {setShowSourcesModal && (
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={() => setShowSourcesModal(true)}
+                >
+                  <Ionicons name="cloud-outline" size={24} color="white" />
+                </TouchableOpacity>
+              )}
+
               {/* Submit Intro Button */}
               {season !== undefined && episode !== undefined && settings.introSubmitEnabled && settings.introDbApiKey && (
                 <TouchableOpacity
@@ -647,7 +664,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                 </TouchableOpacity>
               )}
 
-              {/* Right Side: Episodes Button */}
+              {/* Episodes Button */}
               {setShowEpisodesModal && (
                 <TouchableOpacity
                   style={styles.iconButton}
@@ -659,6 +676,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
             </View>
           </View>
         </LinearGradient>
+
       </View>
     </Animated.View>
   );

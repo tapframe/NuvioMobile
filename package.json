@@ -69,6 +69,7 @@
     "expo-web-browser": "~15.0.8",
     "i18next": "^25.7.3",
     "intl-pluralrules": "^2.0.1",
+    "jszip": "^3.10.1",
     "lodash": "^4.17.21",
     "lottie-react-native": "~7.3.1",
     "posthog-react-native": "^4.4.0",

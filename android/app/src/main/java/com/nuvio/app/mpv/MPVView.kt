@@ -33,8 +33,18 @@ class MPVView @JvmOverloads constructor(
     // GPU mode setting: 'gpu', 'gpu-next' (default: gpu)
     var gpuMode: String = "gpu"
     
+    // GLSL shaders setting (for upscalers)
+    private var glslShadersVal: String? = null
+
     // Flag to track if onLoad has been fired (prevents multiple fires for HLS streams)
     private var hasLoadEventFired: Boolean = false
+
+    // Video Equalizer state
+    private var brightnessVal: Int = 0
+    private var contrastVal: Int = 0
+    private var saturationVal: Int = 0
+    private var gammaVal: Int = 0
+    private var hueVal: Int = 0
 
     // Event listener for React Native
     var onLoadCallback: ((duration: Double, width: Int, height: Int) -> Unit)? = null
@@ -78,6 +88,7 @@ class MPVView @JvmOverloads constructor(
             MPVLib.addObserver(this)
             MPVLib.setPropertyString("android-surface-size", "${width}x${height}")
             observeProperties()
+            applyPostInitSettings()
             isMpvInitialized = true
             
             // If a data source was set before surface was ready, load it now
@@ -474,6 +485,69 @@ class MPVView @JvmOverloads constructor(
         if (isMpvInitialized) {
             Log.d(TAG, "Setting subtitle italic: $italic")
             MPVLib.setPropertyString("sub-italic", if (italic) "yes" else "no")
+        }
+    }
+
+    // Video Equalizer Methods
+
+    fun setBrightness(value: Int) {
+        brightnessVal = value
+        if (isMpvInitialized) {
+            Log.d(TAG, "Setting brightness: $value")
+            MPVLib.setPropertyDouble("brightness", value.toDouble())
+        }
+    }
+
+    fun setContrast(value: Int) {
+        contrastVal = value
+        if (isMpvInitialized) {
+            Log.d(TAG, "Setting contrast: $value")
+            MPVLib.setPropertyDouble("contrast", value.toDouble())
+        }
+    }
+
+    fun setSaturation(value: Int) {
+        saturationVal = value
+        if (isMpvInitialized) {
+            Log.d(TAG, "Setting saturation: $value")
+            MPVLib.setPropertyDouble("saturation", value.toDouble())
+        }
+    }
+
+    fun setGamma(value: Int) {
+        gammaVal = value
+        if (isMpvInitialized) {
+            Log.d(TAG, "Setting gamma: $value")
+            MPVLib.setPropertyDouble("gamma", value.toDouble())
+        }
+    }
+
+    fun setHue(value: Int) {
+        hueVal = value
+        if (isMpvInitialized) {
+            Log.d(TAG, "Setting hue: $value")
+            MPVLib.setPropertyDouble("hue", value.toDouble())
+        }
+    }
+
+    fun setGlslShaders(shaders: String?) {
+        glslShadersVal = shaders
+        if (isMpvInitialized) {
+            Log.d(TAG, "Setting glsl-shaders: $shaders")
+            MPVLib.setPropertyString("glsl-shaders", shaders ?: "")
+        }
+    }
+
+    private fun applyPostInitSettings() {
+        Log.d(TAG, "Applying post-init settings: B=$brightnessVal, C=$contrastVal, S=$saturationVal, G=$gammaVal, H=$hueVal, Shaders=$glslShadersVal")
+        MPVLib.setPropertyDouble("brightness", brightnessVal.toDouble())
+        MPVLib.setPropertyDouble("contrast", contrastVal.toDouble())
+        MPVLib.setPropertyDouble("saturation", saturationVal.toDouble())
+        MPVLib.setPropertyDouble("gamma", gammaVal.toDouble())
+        MPVLib.setPropertyDouble("hue", hueVal.toDouble())
+        
+        glslShadersVal?.let {
+            MPVLib.setPropertyString("glsl-shaders", it)
         }
     }
 

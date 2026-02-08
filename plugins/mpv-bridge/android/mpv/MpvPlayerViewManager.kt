@@ -180,4 +180,35 @@ class MpvPlayerViewManager(
             view.setHeaders(null)
         }
     }
+
+    // Video EQ Props
+    @ReactProp(name = "brightness", defaultInt = 0)
+    fun setBrightness(view: MPVView, value: Int) {
+        view.setBrightness(value)
+    }
+
+    @ReactProp(name = "contrast", defaultInt = 0)
+    fun setContrast(view: MPVView, value: Int) {
+        view.setContrast(value)
+    }
+
+    @ReactProp(name = "saturation", defaultInt = 0)
+    fun setSaturation(view: MPVView, value: Int) {
+        view.setSaturation(value)
+    }
+
+    @ReactProp(name = "gamma", defaultInt = 0)
+    fun setGamma(view: MPVView, value: Int) {
+        view.setGamma(value)
+    }
+
+    @ReactProp(name = "hue", defaultInt = 0)
+    fun setHue(view: MPVView, value: Int) {
+        view.setHue(value)
+    }
+
+    @ReactProp(name = "glslShaders")
+    fun setGlslShaders(view: MPVView, paths: String?) {
+        view.setGlslShaders(paths ?: "")
+    }
 }

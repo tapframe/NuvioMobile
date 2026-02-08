@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { SvgXml } from 'react-native-svg';
 import { toastService } from '../../services/toastService';
 import { introService } from '../../services/introService';
+import { shaderService } from '../../services/shaderService';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -69,7 +71,6 @@ interface PlaybackSettingsContentProps {
 
 /**
  * Reusable PlaybackSettingsContent component
- * Can be used inline (tablets) or wrapped in a screen (mobile)
  */
 export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = ({ isTablet = false }) => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -82,7 +83,38 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
     const [apiKeyInput, setApiKeyInput] = useState(settings?.introDbApiKey || '');
     const [isVerifyingKey, setIsVerifyingKey] = useState(false);
 
+    // Video Enhancement Assets state
+    const [isEnhancementDownloaded, setIsEnhancementDownloaded] = useState(false);
+    const [isDownloadingEnhancement, setIsDownloadingEnhancement] = useState(false);
+    const [enhancementProgress, setEnhancementProgress] = useState(0);
+
     const isMounted = useRef(true);
+
+    const checkEnhancementStatus = useCallback(async () => {
+        const available = await shaderService.checkAvailability();
+        setIsEnhancementDownloaded(available);
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            checkEnhancementStatus();
+        }, [checkEnhancementStatus])
+    );
+
+    const handleDownloadEnhancements = async () => {
+        setIsDownloadingEnhancement(true);
+        const success = await shaderService.downloadShaders((p) => setEnhancementProgress(p));
+        if (isMounted.current) {
+            setIsDownloadingEnhancement(false);
+            if (success) {
+                shaderService.setInitialized(true); // Force update service state
+                setIsEnhancementDownloaded(true);
+                toastService.success(t('settings.enhancement_download_success', { defaultValue: 'Enhancement assets installed!' }));
+            } else {
+                toastService.error(t('settings.enhancement_download_failed', { defaultValue: 'Failed to install assets' }));
+            }
+        }
+    };
 
     useEffect(() => {
         isMounted.current = true;
@@ -122,13 +154,10 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
             try {
                 const res = await fetch(INTRODB_LOGO_URI);
                 let xml = await res.text();
-                // Inline CSS class-based styles because react-native-svg doesn't support <style> class selectors
-                // Map known classes from the IntroDB logo to equivalent inline attributes
                 xml = xml.replace(/class="cls-4"/g, 'fill="url(#linear-gradient)"');
                 xml = xml.replace(/class="cls-3"/g, 'fill="#141414" opacity=".38"');
                 xml = xml.replace(/class="cls-1"/g, 'fill="url(#linear-gradient-2)" opacity=".53"');
                 xml = xml.replace(/class="cls-2"/g, 'fill="url(#linear-gradient-3)" opacity=".53"');
-                // Remove the <style> block to avoid unsupported CSS
                 xml = xml.replace(/<style>[\s\S]*?<\/style>/, '');
                 if (!cancelled) setIntroDbLogoXml(xml);
             } catch {
@@ -156,7 +185,7 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
     const languageSnapPoints = useMemo(() => ['70%'], []);
     const sourceSnapPoints = useMemo(() => ['45%'], []);
 
-    // Handlers to present sheets - ensure only one is open at a time
+    // Handlers
     const openAudioLanguageSheet = useCallback(() => {
         subtitleLanguageSheetRef.current?.dismiss();
         subtitleSourceSheetRef.current?.dismiss();
@@ -198,7 +227,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
         return t('settings.options.internal_first');
     };
 
-    // Render backdrop for bottom sheets
     const renderBackdrop = useCallback(
         (props: any) => (
             <BottomSheetBackdrop
@@ -311,6 +339,143 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                 )}
             </SettingsCard>
 
+            {/* Shaders Section */}
+            <SettingsCard title="Shaders" isTablet={isTablet}>
+                
+                {/* Enable Shaders Toggle */}
+                <SettingItem
+                    title={t('settings.items.enable_shaders', { defaultValue: 'Enable Shaders' })}
+                    description={t('settings.items.enable_shaders_desc', { defaultValue: 'Apply real-time shaders (Anime4K/FSR) to the player.' })}
+                    icon="eye"
+                    renderControl={() => (
+                        <CustomSwitch
+                            value={settings?.enableShaders ?? false}
+                            onValueChange={(value) => updateSetting('enableShaders', value)}
+                        />
+                    )}
+                    isTablet={isTablet}
+                />
+
+                {settings?.enableShaders && (
+                    <>
+                        {/* Profile Selection */}
+                        <SettingItem
+                            title={t('settings.items.shader_profile', { defaultValue: 'Shader Profile' })}
+                            description={t('settings.items.shader_profile_desc', { defaultValue: 'Choose based on your device performance.' })}
+                            icon="activity"
+                            renderControl={() => (
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={{ color: currentTheme.colors.primary, marginRight: 8, fontWeight: '700' }}>
+                                        {settings?.shaderProfile || 'MID-END'}
+                                    </Text>
+                                    <ChevronRight />
+                                </View>
+                            )}
+                            onPress={() => {
+                                const newProfile = settings?.shaderProfile === 'HIGH-END' ? 'MID-END' : 'HIGH-END';
+                                updateSetting('shaderProfile', newProfile);
+                                toastService.success(`Profile switched to ${newProfile}`);
+                            }}
+                            isTablet={isTablet}
+                        />
+
+                        {/* Warning Box */}
+                        <View style={{
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            borderWidth: 1,
+                            borderColor: 'rgba(220, 38, 38, 0.3)',
+                            borderRadius: 12,
+                            padding: 16,
+                            marginHorizontal: 16,
+                            marginTop: 12,
+                            marginBottom: 12,
+                            flexDirection: 'row'
+                        }}>
+                            <Ionicons name="alert-circle" size={24} color="#EF5350" style={{ marginRight: 12 }} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: '#EF5350', fontWeight: '700', fontSize: 15, marginBottom: 4 }}>Warning</Text>
+                                <Text style={{ color: 'rgba(239, 83, 80, 0.8)', fontSize: 13, lineHeight: 18 }}>
+                                    Using high-end shaders on older devices may cause lag, overheating, or black screens. Use 'MID-END' for better compatibility.
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Install Assets / Status */}
+                        <View style={{
+                            backgroundColor: isEnhancementDownloaded ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                            borderWidth: 1,
+                            borderColor: isEnhancementDownloaded ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: 12,
+                            padding: 16,
+                            marginHorizontal: 16,
+                            marginBottom: 16,
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                <Ionicons 
+                                    name={isEnhancementDownloaded ? "checkmark-circle" : "cloud-download"} 
+                                    size={20} 
+                                    color={isEnhancementDownloaded ? "#4CAF50" : currentTheme.colors.primary} 
+                                    style={{ marginRight: 10 }}
+                                />
+                                <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>
+                                    {isEnhancementDownloaded ? 'Shader Assets Ready' : 'Install Shader Pack'}
+                                </Text>
+                            </View>
+                            
+                            {!isEnhancementDownloaded && (
+                                <TouchableOpacity
+                                    style={{
+                                        backgroundColor: currentTheme.colors.primary,
+                                        borderRadius: 8,
+                                        paddingVertical: 12,
+                                        alignItems: 'center',
+                                        marginTop: 8
+                                    }}
+                                    onPress={handleDownloadEnhancements}
+                                    disabled={isDownloadingEnhancement}
+                                >
+                                    {isDownloadingEnhancement ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <ActivityIndicator size="small" color="black" style={{ marginRight: 8 }} />
+                                            <Text style={{ color: 'black', fontWeight: '700' }}>
+                                                Extracting {Math.round(enhancementProgress * 100)}%
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <Text style={{ color: 'black', fontWeight: '700' }}>Initialize Assets</Text>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                            
+                            {isEnhancementDownloaded && (
+                                <View style={{ marginTop: 8 }}>
+                                    <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 12 }}>
+                                        All required shader files are ready. You can switch profiles in the video player menu.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            borderRadius: 8,
+                                            paddingVertical: 10,
+                                            alignItems: 'center',
+                                            borderWidth: 1,
+                                            borderColor: 'rgba(255, 255, 255, 0.1)'
+                                        }}
+                                        onPress={async () => {
+                                            await shaderService.clearShaders();
+                                            setIsEnhancementDownloaded(false);
+                                            toastService.success('Shader assets cleared');
+                                        }}
+                                    >
+                                        <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600', fontSize: 13 }}>Reset Assets</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    </>
+                )}
+            </SettingsCard>
+
             {/* Audio & Subtitle Preferences */}
             <SettingsCard title={t('settings.sections.audio_subtitles')} isTablet={isTablet}>
                 <SettingItem
@@ -402,7 +567,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                 </SettingsCard>
             )}
 
-            {/* Audio Language Bottom Sheet */}
             <BottomSheetModal
                 ref={audioLanguageSheetRef}
                 index={0}
@@ -443,7 +607,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                 </BottomSheetScrollView>
             </BottomSheetModal>
 
-            {/* Subtitle Language Bottom Sheet */}
             <BottomSheetModal
                 ref={subtitleLanguageSheetRef}
                 index={0}
@@ -484,7 +647,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                 </BottomSheetScrollView>
             </BottomSheetModal>
 
-            {/* Subtitle Source Priority Bottom Sheet */}
             <BottomSheetModal
                 ref={subtitleSourceSheetRef}
                 index={0}
@@ -534,7 +696,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
 
 /**
  * PlaybackSettingsScreen - Wrapper for mobile navigation
- * Uses PlaybackSettingsContent internally
  */
 const PlaybackSettingsScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();

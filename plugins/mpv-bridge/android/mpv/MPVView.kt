@@ -247,6 +247,27 @@ class MPVView @JvmOverloads constructor(
         }
     }
 
+    // Video EQ Properties
+    fun setBrightness(value: Int) {
+        if (isMpvInitialized) MPVLib.setPropertyInt("brightness", value)
+    }
+
+    fun setContrast(value: Int) {
+        if (isMpvInitialized) MPVLib.setPropertyInt("contrast", value)
+    }
+
+    fun setSaturation(value: Int) {
+        if (isMpvInitialized) MPVLib.setPropertyInt("saturation", value)
+    }
+
+    fun setGamma(value: Int) {
+        if (isMpvInitialized) MPVLib.setPropertyInt("gamma", value)
+    }
+
+    fun setHue(value: Int) {
+        if (isMpvInitialized) MPVLib.setPropertyInt("hue", value)
+    }
+
     fun setSubtitleTrack(trackId: Int) {
         Log.d(TAG, "setSubtitleTrack called: trackId=$trackId, isMpvInitialized=$isMpvInitialized")
         if (isMpvInitialized) {
@@ -266,6 +287,21 @@ class MPVView @JvmOverloads constructor(
                 val subDelay = MPVLib.getPropertyDouble("sub-delay")
                 val subScale = MPVLib.getPropertyDouble("sub-scale")
                 Log.d(TAG, "After setting - sid=$currentSid, sub-visibility=$subVisibility, sub-delay=$subDelay, sub-scale=$subScale")
+            }
+        }
+    }
+
+    fun setGlslShaders(paths: String) {
+        Log.d(TAG, "setGlslShaders called with paths: $paths")
+        if (isMpvInitialized) {
+            if (paths.isEmpty()) {
+                Log.d(TAG, "Clearing GLSL shaders")
+                MPVLib.setPropertyString("glsl-shaders", "")
+            } else {
+                Log.d(TAG, "Setting GLSL shaders")
+                // MPV expects a list of paths string like "path1,path2" or specialized list commands
+                // Using setPropertyString on "glsl-shaders" usually overwrites the list
+                MPVLib.setPropertyString("glsl-shaders", paths)
             }
         }
     }

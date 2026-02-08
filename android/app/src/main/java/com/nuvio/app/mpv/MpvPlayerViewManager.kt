@@ -191,6 +191,11 @@ class MpvPlayerViewManager(
         view.gpuMode = gpuMode ?: "gpu"
     }
 
+    @ReactProp(name = "glslShaders")
+    fun setGlslShaders(view: MPVView, glslShaders: String?) {
+        view.setGlslShaders(glslShaders)
+    }
+
     // Subtitle Styling Props
 
     @ReactProp(name = "subtitleSize", defaultInt = 48)
@@ -237,5 +242,32 @@ class MpvPlayerViewManager(
     @ReactProp(name = "subtitleAlignment")
     fun setSubtitleAlignment(view: MPVView, align: String?) {
         view.setSubtitleAlignment(align ?: "center")
+    }
+
+    // Video Equalizer Props
+
+    @ReactProp(name = "brightness", defaultInt = 0)
+    fun setBrightness(view: MPVView, brightness: Int) {
+        view.setBrightness(brightness)
+    }
+
+    @ReactProp(name = "contrast", defaultInt = 0)
+    fun setContrast(view: MPVView, contrast: Int) {
+        view.setContrast(contrast)
+    }
+
+    @ReactProp(name = "saturation", defaultInt = 0)
+    fun setSaturation(view: MPVView, saturation: Int) {
+        view.setSaturation(saturation)
+    }
+
+    @ReactProp(name = "gamma", defaultInt = 0)
+    fun setGamma(view: MPVView, gamma: Int) {
+        view.setGamma(gamma)
+    }
+
+    @ReactProp(name = "hue", defaultInt = 0)
+    fun setHue(view: MPVView, hue: Int) {
+        view.setHue(hue)
     }
 }

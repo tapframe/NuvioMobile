@@ -28,6 +28,13 @@ export interface MpvPlayerProps {
     onTracksChanged?: (data: { audioTracks: any[]; subtitleTracks: any[] }) => void;
     decoderMode?: 'auto' | 'sw' | 'hw' | 'hw+';
     gpuMode?: 'gpu' | 'gpu-next';
+    glslShaders?: string;
+    // Video EQ Props
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+    gamma?: number;
+    hue?: number;
     // Subtitle Styling
     subtitleSize?: number;
     subtitleColor?: string;
@@ -121,6 +128,12 @@ const MpvPlayer = forwardRef<MpvPlayerRef, MpvPlayerProps>((props, ref) => {
             onTracksChanged={handleTracksChanged}
             decoderMode={props.decoderMode ?? 'auto'}
             gpuMode={props.gpuMode ?? 'gpu'}
+            glslShaders={props.glslShaders}
+            brightness={props.brightness ?? 0}
+            contrast={props.contrast ?? 0}
+            saturation={props.saturation ?? 0}
+            gamma={props.gamma ?? 0}
+            hue={props.hue ?? 0}
             // Subtitle Styling
             subtitleSize={props.subtitleSize ?? 48}
             subtitleColor={props.subtitleColor ?? '#FFFFFF'}
