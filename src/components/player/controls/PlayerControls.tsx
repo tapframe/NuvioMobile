@@ -297,35 +297,59 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
     >
       {/* Progress slider with native iOS slider */}
       <View style={styles.sliderContainer}>
-        <Slider
+        <View
           style={{
-            width: '100%',
             height: 40,
-            marginHorizontal: 0,
-          }}
-          minimumValue={0}
-          maximumValue={duration || 1}
+            justifyContent: 'center',
+          }}>
+          {/* Non-interactive slider to only show the buffer track */}
+          <Slider
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: 40,
+            }}
+            step={1}
+            minimumValue={0}
+            maximumValue={duration || 1}
+            value={Math.min(buffered, duration || 1)}
+            minimumTrackTintColor={currentTheme.colors.highEmphasis}
+            maximumTrackTintColor={currentTheme.colors.mediumEmphasis}
+            thumbTintColor="transparent"
+            pointerEvents='none'
+          />
+          {/* Video seek & progress slider */}
+          <Slider
+            style={{
+              width: '100%',
+              height: 40,
+              marginHorizontal: 0,
+            }}
+            step={1}
+            minimumValue={0}
+            maximumValue={duration || 1}
 
-          value={previewTime}
+            value={previewTime}
 
-          onValueChange={(v) => setPreviewTime(v)}
+            onValueChange={(v) => setPreviewTime(v)}
 
-          onSlidingStart={() => {
-            isSlidingRef.current = true;
-            onSlidingStart();
-          }}
+            onSlidingStart={() => {
+              isSlidingRef.current = true;
+              onSlidingStart();
+            }}
 
-          onSlidingComplete={(v) => {
-            isSlidingRef.current = false;
-            setPreviewTime(v);
-            onSlidingComplete(v);
-          }}
+            onSlidingComplete={(v) => {
+              isSlidingRef.current = false;
+              setPreviewTime(v);
+              onSlidingComplete(v);
+            }}
 
-          minimumTrackTintColor={currentTheme.colors.primary}
-          maximumTrackTintColor={currentTheme.colors.mediumEmphasis}
-          thumbTintColor={Platform.OS === 'android' ? currentTheme.colors.white : undefined}
-          tapToSeek={Platform.OS === 'ios'}
-        />
+            minimumTrackTintColor={currentTheme.colors.primary}
+            maximumTrackTintColor='transparent'
+            thumbTintColor={Platform.OS === 'android' ? currentTheme.colors.white : undefined}
+            tapToSeek={Platform.OS === 'ios'}
+          />
+        </View>
         <View style={[styles.timeDisplay, { paddingHorizontal: 14 }]}>
           <View style={styles.timeContainer}>
             <Text style={styles.duration}>{formatTime(previewTime)}</Text>
