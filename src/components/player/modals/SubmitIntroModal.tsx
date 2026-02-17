@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, useWindowDimensions, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, useWindowDimensions, StyleSheet, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import Animated, {
@@ -9,7 +9,7 @@ import Animated, {
   SlideOutDown,
 } from 'react-native-reanimated';
 import { useSettings } from '../../../hooks/useSettings';
-import { introService } from '../../../services/introService';
+import { introService, SkipType } from '../../../services/introService';
 import { toastService } from '../../../services/toastService';
 
 interface SubmitIntroModalProps {
@@ -67,6 +67,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
   
   const [startTimeStr, setStartTimeStr] = useState('00:00');
   const [endTimeStr, setEndTimeStr] = useState(formatSecondsToMMSS(currentTime));
+  const [segmentType, setSegmentType] = useState<SkipType>('intro');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -107,14 +108,15 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
         season,
         episode,
         startSec,
-        endSec
+        endSec,
+        segmentType
       );
 
       if (success) {
-        toastService.success(t('player_ui.intro_submitted', { defaultValue: 'Intro submitted successfully' }));
+        toastService.success(t('player_ui.intro_submitted', { defaultValue: 'Segment submitted successfully' }));
         onClose();
       } else {
-        toastService.error(t('player_ui.intro_submit_failed', { defaultValue: 'Failed to submit intro' }));
+        toastService.error(t('player_ui.intro_submit_failed', { defaultValue: 'Failed to submit segment' }));
       }
     } catch (error) {
       toastService.error('Error', 'An unexpected error occurred');
@@ -123,9 +125,11 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
     }
   };
 
-  const startVal = parseTimeToSeconds(startTimeStr);
-  const endVal = parseTimeToSeconds(endTimeStr);
-  const durationSec = (startVal !== null && endVal !== null) ? endVal - startVal : 0;
+  const segmentTypes: { label: string; value: SkipType; icon: any }[] = [
+    { label: 'Intro', value: 'intro', icon: 'play-circle-outline' },
+    { label: 'Recap', value: 'recap', icon: 'replay' },
+    { label: 'Outro', value: 'outro', icon: 'stop-circle' },
+  ];
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 10000 }]}>
@@ -144,13 +148,42 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
           style={[localStyles.modalContainer, { width: Math.min(width * 0.85, 380) }]}
         >
           <View style={localStyles.header}>
-            <Text style={localStyles.title}>Submit Intro Timestamp</Text>
+            <Text style={localStyles.title}>Submit Timestamps</Text>
             <TouchableOpacity onPress={onClose} style={localStyles.closeButton}>
               <Ionicons name="close" size={24} color="rgba(255,255,255,0.5)" />
             </TouchableOpacity>
           </View>
 
-          <View style={localStyles.content}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={localStyles.content}>
+            {/* Segment Type Selector */}
+            <View>
+              <Text style={localStyles.label}>Segment Type</Text>
+              <View style={localStyles.typeRow}>
+                {segmentTypes.map((type) => (
+                  <TouchableOpacity
+                    key={type.value}
+                    onPress={() => setSegmentType(type.value)}
+                    style={[
+                      localStyles.typeButton,
+                      segmentType === type.value && localStyles.typeButtonActive
+                    ]}
+                  >
+                    <MaterialIcons 
+                      name={type.icon} 
+                      size={18} 
+                      color={segmentType === type.value ? 'black' : 'rgba(255,255,255,0.6)'} 
+                    />
+                    <Text style={[
+                      localStyles.typeButtonText,
+                      segmentType === type.value && localStyles.typeButtonTextActive
+                    ]}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             {/* Start Time Input */}
             <View style={localStyles.inputRow}>
               <View style={{ flex: 1 }}>
@@ -214,7 +247,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </Animated.View>
       </View>
     </View>
@@ -239,6 +272,7 @@ const localStyles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 15,
     elevation: 20,
+    maxHeight: '80%',
   },
   header: {
     flexDirection: 'row',
@@ -256,6 +290,34 @@ const localStyles = StyleSheet.create({
   },
   content: {
     gap: 20,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  typeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  typeButtonActive: {
+    backgroundColor: 'white',
+    borderColor: 'white',
+  },
+  typeButtonText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  typeButtonTextActive: {
+    color: 'black',
   },
   inputRow: {
     flexDirection: 'row',
@@ -295,22 +357,6 @@ const localStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  summaryBox: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-  },
-  summaryText: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  hintText: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
@@ -345,3 +391,4 @@ const localStyles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

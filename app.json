@@ -35,7 +35,7 @@
         "LSSupportsOpeningDocumentsInPlace": true,
         "UIFileSharingEnabled": true
       },
-      "bundleIdentifier": "com.nuvio.app",
+      "bundleIdentifier": "com.nuvio.hub",
       "associatedDomains": [],
       "jsEngine": "hermes",
       "appleTeamId": "8QBDZ766S3"

@@ -689,7 +689,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.nuvio.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nuvio.hub;
 				PRODUCT_NAME = Nuvio;
 				SUPPORTS_MACCATALYST = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Nuvio/Nuvio-Bridging-Header.h";

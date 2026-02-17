@@ -635,7 +635,7 @@
         "croatian": "Hrvatski",
         "chinese": "Kineski (pojednostavljeni)",
         "hindi": "Hindski",
-        "serbian": "Srpski", 
+        "serbian": "Srpski",
         "account": "Račun",
         "content_discovery": "Sadržaj i otkrivanje",
         "appearance": "Izgled",
@@ -896,8 +896,8 @@
     },
     "debrid": {
         "title": "Debrid integracija",
-        "description_torbox": "Otključajte 4K streamove visoke kvalitete i munjevite brzine integracijom Torboxa. Unesite API ključ ispod za trenutnu nadogradnju iskustva gledanja.",
-        "description_torrentio": "Konfigurirajte Torrentio za torrent streamove filmova i serija. Debrid usluga je potrebna za gledanje sadržaja.",
+        "description_torbox": "Connect Torbox to use your account-based source preferences. Enter your API key below to configure the integration.",
+        "description_torrentio": "Configure Torrentio as an external source integration. A compatible debrid account may be required depending on your setup.",
         "tab_torbox": "TorBox",
         "tab_torrentio": "Torrentio",
         "status_connected": "Povezano",
@@ -924,15 +924,15 @@
         "enter_api_key": "Unesite API ključ",
         "connect_button": "Poveži i instaliraj",
         "connecting": "Povezivanje...",
-        "unlock_speeds_title": "Otključaj premium brzine",
-        "unlock_speeds_desc": "Pretplatite se na Torbox za pristup predmemoriranim 4K streamovima bez učitavanja.",
+        "unlock_speeds_title": "Optional Torbox Subscription",
+        "unlock_speeds_desc": "Torbox offers account tiers with enhanced performance and availability features.",
         "get_subscription": "Pretplati se",
         "powered_by": "Pokreće",
         "disclaimer_torbox": "Nuvio nije povezan s Torboxom ni na koji način.",
         "disclaimer_torrentio": "Nuvio nije povezan s Torrentio dodatakom ni na koji način.",
         "installed_badge": "✓ INSTALIRANO",
         "promo_title": "⚡ Trebate Debrid uslugu?",
-        "promo_desc": "Nabavite TorBox za munjeviti 4K streaming bez trzanja. Premium torrenti i trenutna preuzimanja.",
+        "promo_desc": "Use TorBox if you want account-managed performance features for supported integrations.",
         "promo_button": "Nabavi TorBox pretplatu",
         "service_label": "Debrid usluga *",
         "api_key_label": "API ključ *",
@@ -1324,7 +1324,7 @@
         "user_resp_title": "Odgovornost korisnika",
         "user_resp_text": "Korisnici su isključivo odgovorni za priključke koje instaliraju. Korištenjem aplikacije pristajete osigurati da imate zakonsko pravo na pristup sadržaju koji gledate. Autori Nuvia ne potiču kršenje autorskih prava.",
         "dmca_title": "Autorska prava i DMCA",
-        "dmca_text": "Nuvio ne ugošćuje sadržaj pa ga ne može ukloniti s interneta. Ako smatrate da samo sučelje krši vaša prava, kontaktirajte nas.",
+        "dmca_text": "We respect the intellectual property rights of others. Nuvio does not host media content. If you believe this project's code, assets, or interface infringes your rights, submit a notice through the official project contact channels listed on the website and repository.",
         "warranty_title": "Bez jamstva",
         "warranty_text": "Softver se isporučuje \"kakav jest\", bez ikakvih jamstava. Autori nisu odgovorni za bilo kakvu štetu nastalu korištenjem ovog softvera."
     },
@@ -1410,5 +1410,4 @@
             "no_logs_captured": "Nema zapisa."
         }
     }
-
 }

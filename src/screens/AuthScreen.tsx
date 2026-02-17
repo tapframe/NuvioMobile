@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, TextInput, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform, Dimensions, Animated, Easing, Keyboard } from 'react-native';
+import { View, TextInput, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform, Animated, Easing, Keyboard, StatusBar, useWindowDimensions } from 'react-native';
 import { mmkvStorage } from '../services/mmkvStorage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -10,15 +10,46 @@ import * as Haptics from 'expo-haptics';
 import { useToast } from '../contexts/ToastContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width, height } = Dimensions.get('window');
+const EMAIL_CONFIRMATION_REQUIRED_PREFIX = '__EMAIL_CONFIRMATION__';
+const AUTH_BG_GRADIENT = ['#07090F', '#0D1020', '#140B24'];
+
+const normalizeAuthErrorMessage = (input: string): string => {
+  const raw = (input || '').trim();
+  if (!raw) return 'Authentication failed';
+
+  let parsed: any = null;
+  if (raw.startsWith('{') && raw.endsWith('}')) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+  }
+
+  const code = (parsed?.error_code || parsed?.code || '').toString().toLowerCase();
+  const message = (parsed?.msg || parsed?.message || raw).toString();
+
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(message)) {
+    return 'Invalid email or password';
+  }
+  if (code === 'email_not_confirmed' || /email not confirmed/i.test(message)) {
+    return 'Email not confirmed. Check your inbox or Spam/Junk folder, verify your account, then sign in.';
+  }
+
+  return message;
+};
 
 const AuthScreen: React.FC = () => {
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 768;
   const { currentTheme } = useTheme();
   const { signIn, signUp } = useAccount();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const fromOnboarding = !!route?.params?.fromOnboarding;
   const insets = useSafeAreaInsets();
+  const safeTopInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0);
+  const backButtonTop = safeTopInset + 8;
   const { showError, showSuccess } = useToast();
 
   const [email, setEmail] = useState('');
@@ -27,11 +58,8 @@ const AuthScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const signupDisabled = true; // Signup disabled due to upcoming system replacement
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showWarningDetails, setShowWarningDetails] = useState(false);
-  const authCardOpacity = useRef(new Animated.Value(1)).current;
 
   // Subtle, performant animations
   const introOpacity = useRef(new Animated.Value(0)).current;
@@ -46,8 +74,6 @@ const AuthScreen: React.FC = () => {
   const modeAnim = useRef(new Animated.Value(0)).current; // 0 = signin, 1 = signup
   const [switchWidth, setSwitchWidth] = useState(0);
   // Legacy local toast state removed in favor of global toast
-  const [headerHeight, setHeaderHeight] = useState(0);
-  const headerHideAnim = useRef(new Animated.Value(0)).current; // 0 visible, 1 hidden
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
@@ -113,21 +139,9 @@ const AuthScreen: React.FC = () => {
     const onShow = (e: any) => {
       const kh = e?.endCoordinates?.height ?? 0;
       setKeyboardHeight(kh);
-      Animated.timing(headerHideAnim, {
-        toValue: 1,
-        duration: 180,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
     };
     const onHide = () => {
       setKeyboardHeight(0);
-      Animated.timing(headerHideAnim, {
-        toValue: 0,
-        duration: 180,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
     };
     const subShow = Keyboard.addListener(showEvt, onShow as any);
     const subHide = Keyboard.addListener(hideEvt, onHide as any);
@@ -135,7 +149,7 @@ const AuthScreen: React.FC = () => {
       subShow.remove();
       subHide.remove();
     };
-  }, [headerHideAnim]);
+  }, []);
 
   const isEmailValid = useMemo(() => /\S+@\S+\.\S+/.test(email.trim()), [email]);
   const isPasswordValid = useMemo(() => password.length >= 6, [password]);
@@ -145,16 +159,7 @@ const AuthScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (loading) return;
-    
-    // Prevent signup if disabled
-    if (mode === 'signup' && signupDisabled) {
-      const msg = 'Sign up is currently disabled due to upcoming system changes';
-      setError(msg);
-      showError('Sign Up Disabled', 'Sign up is currently disabled due to upcoming system changes');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      return;
-    }
-    
+
     if (!isEmailValid) {
       const msg = 'Enter a valid email address';
       setError(msg);
@@ -180,8 +185,19 @@ const AuthScreen: React.FC = () => {
     setError(null);
     const err = mode === 'signin' ? await signIn(email.trim(), password) : await signUp(email.trim(), password);
     if (err) {
-      setError(err);
-      showError('Authentication Failed', err);
+      if (mode === 'signup' && err.startsWith(EMAIL_CONFIRMATION_REQUIRED_PREFIX)) {
+        setError(null);
+        setMode('signin');
+        setPassword('');
+        setConfirmPassword('');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        setLoading(false);
+        return;
+      }
+
+      const cleanError = normalizeAuthErrorMessage(err);
+      setError(cleanError);
+      showError('Authentication Failed', cleanError);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
     } else {
       const msg = mode === 'signin' ? 'Logged in successfully' : 'Sign up successful';
@@ -201,39 +217,14 @@ const AuthScreen: React.FC = () => {
     navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] } as any);
   };
 
-  const toggleWarningDetails = () => {
-    if (showWarningDetails) {
-      // Fade in auth card
-      Animated.timing(authCardOpacity, {
-        toValue: 1,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    } else {
-      // Fade out auth card
-      Animated.timing(authCardOpacity, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    }
-    setShowWarningDetails(!showWarningDetails);
-  };
-
   // showToast helper replaced with direct calls to toast.* API
 
   return (
     <View style={{ flex: 1 }}>
-      {Platform.OS !== 'android' ? (
-        <LinearGradient
-          colors={['#0D1117', '#161B22', '#21262D']}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0D1117' }]} />
-      )}
+      <LinearGradient
+        colors={AUTH_BG_GRADIENT}
+        style={StyleSheet.absoluteFill}
+      />
 
       {/* Background Pattern (iOS only) */}
       {Platform.OS !== 'android' && (
@@ -255,107 +246,55 @@ const AuthScreen: React.FC = () => {
       )}
 
       <SafeAreaView style={{ flex: 1 }}>
-        {/* Header outside KeyboardAvoidingView to avoid being overlapped */}
-        <Animated.View
-          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
-          style={[
-            styles.header,
-            {
-              opacity: Animated.multiply(
-                introOpacity,
-                headerHideAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] })
-              ),
-              transform: [
-                {
-                  translateY: Animated.add(
-                    introTranslateY,
-                    headerHideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -12] })
-                  ),
-                },
-              ],
-            },
-          ]}
-        >
-          {navigation.canGoBack() && (
-            <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, Platform.OS === 'android' ? { top: Math.max(insets.top + 6, 18) } : null]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="arrow-back" size={22} color={currentTheme.colors.white} />
-            </TouchableOpacity>
-          )}
-          <Animated.Text style={[styles.heading, { color: currentTheme.colors.white, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }]}>
-            {mode === 'signin' ? 'Welcome back' : 'Create your account'}
-          </Animated.Text>
-          <Text style={[styles.subheading, { color: currentTheme.colors.textMuted }] }>
-            Sync your addons, progress and settings across devices
-          </Text>
-        </Animated.View>
-
-        {/* Important Warning Message */}
-        <Animated.View
-          style={[
-            styles.warningContainer,
-            {
-              opacity: introOpacity,
-              transform: [{ translateY: introTranslateY }],
-            },
-          ]}
-        >
+        {navigation.canGoBack() && (
           <TouchableOpacity
-            style={[styles.warningCard, { backgroundColor: 'rgba(255, 193, 7, 0.1)', borderColor: 'rgba(255, 193, 7, 0.3)' }]}
-            onPress={toggleWarningDetails}
-            activeOpacity={0.8}
+            onPress={() => navigation.goBack()}
+            style={[styles.backButton, { top: backButtonTop }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MaterialIcons name="warning" size={20} color="#FFC107" style={styles.warningIcon} />
-            <View style={styles.warningContent}>
-              <Text style={[styles.warningTitle, { color: '#FFC107' }]}>
-                Important Notice
-              </Text>
-              <Text style={[styles.warningText, { color: currentTheme.colors.white }]}>
-                This authentication system will be completely replaced by local backup/restore functionality by October 8th. Please create backup files as your cloud data will be permanently destroyed.
-              </Text>
-              <Text style={[styles.readMoreText, { color: '#FFC107' }]}>
-                Read more {showWarningDetails ? '▼' : '▶'}
-              </Text>
-            </View>
+            <MaterialIcons name="arrow-back" size={22} color={currentTheme.colors.white} />
           </TouchableOpacity>
-          
-          {/* Expanded Details */}
-          {showWarningDetails && (
-            <Animated.View style={[styles.warningDetails, { backgroundColor: 'rgba(255, 193, 7, 0.05)', borderColor: 'rgba(255, 193, 7, 0.2)' }]}>
-              <View style={styles.detailsContent}>
-                <Text style={[styles.detailsTitle, { color: '#FFC107' }]}>
-                  Why is this system being discontinued?
-                </Text>
-                <Text style={[styles.detailsText, { color: currentTheme.colors.white }]}>
-                  • Lack of real-time support for addon synchronization{'\n'}
-                  • Database synchronization issues with addons and settings{'\n'}
-                  • Unreliable cloud data management{'\n'}
-                  • Performance problems with remote data access
-                </Text>
-                
-                <Text style={[styles.detailsTitle, { color: '#FFC107', marginTop: 16 }]}>
-                  Benefits of Local Backup System:
-                </Text>
-                <Text style={[styles.detailsText, { color: currentTheme.colors.white }]}>
-                  • Instant addon synchronization across devices{'\n'}
-                  • Reliable offline access to all your data{'\n'}
-                  • Complete control over your backup files{'\n'}
-                  • Faster performance with local data storage{'\n'}
-                  • No dependency on external servers{'\n'}
-                  • Easy migration between devices
-                </Text>
-              </View>
-            </Animated.View>
-          )}
-        </Animated.View>
+        )}
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+          keyboardVerticalOffset={0}
         >
-          {/* Main Card - Hide when warning details are expanded */}
-          <Animated.View style={[styles.centerContainer, { opacity: authCardOpacity }]}>
-            <Animated.View style={[styles.card, { 
+          <Animated.View
+            style={[
+              styles.centerContainer,
+              isTablet ? styles.centerContainerTablet : null,
+              keyboardHeight > 0
+                ? {
+                    justifyContent: 'flex-start',
+                    paddingTop: Platform.OS === 'ios' ? 12 : safeTopInset + 8,
+                  }
+                : null,
+            ]}
+          >
+            <Animated.View
+              style={[
+                styles.centerHeader,
+                isTablet ? styles.centerHeaderTablet : null,
+                keyboardHeight > 0 ? styles.centerHeaderCompact : null,
+                {
+                  opacity: introOpacity,
+                  transform: [{ translateY: introTranslateY }],
+                },
+              ]}
+            >
+              <Animated.Text style={[styles.heading, { color: currentTheme.colors.white, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }]}>
+                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+              </Animated.Text>
+              {keyboardHeight === 0 && (
+                <Text style={[styles.subheading, { color: currentTheme.colors.textMuted }]}>
+                  Sync your addons, progress and settings across devices
+                </Text>
+              )}
+            </Animated.View>
+
+            <Animated.View style={[styles.card, isTablet ? styles.cardTablet : null, keyboardHeight > 0 ? styles.cardCompact : null, { 
               backgroundColor: Platform.OS === 'android' ? '#121212' : 'rgba(255,255,255,0.02)',
               borderColor: Platform.OS === 'android' ? '#1f1f1f' : 'rgba(255,255,255,0.06)',
               ...(Platform.OS !== 'android' ? {
@@ -404,21 +343,17 @@ const AuthScreen: React.FC = () => {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[
-                    styles.switchButton,
-                    signupDisabled && styles.disabledButton,
-                  ]}
-                  onPress={() => !signupDisabled && setMode('signup')}
-                  activeOpacity={signupDisabled ? 1 : 0.8}
-                  disabled={signupDisabled}
+                  style={styles.switchButton}
+                  onPress={() => setMode('signup')}
+                  activeOpacity={0.8}
                 >
                   <Text style={[
                     styles.switchText, 
                     { 
-                      color: mode === 'signup' ? '#fff' : (signupDisabled ? 'rgba(255,255,255,0.3)' : currentTheme.colors.textMuted)
+                      color: mode === 'signup' ? '#fff' : currentTheme.colors.textMuted
                     }
                   ]}>
-                    Sign Up {signupDisabled && '(Disabled)'}
+                    Sign Up
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -583,29 +518,18 @@ const AuthScreen: React.FC = () => {
               </Animated.View>
 
               {/* Switch Mode */}
-              {!signupDisabled && (
-                <TouchableOpacity 
-                  onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')} 
-                  activeOpacity={0.7}
-                  style={{ marginTop: 16 }}
-                >
-                  <Text style={[styles.switchModeText, { color: currentTheme.colors.textMuted }]}>
-                    {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-                    <Text style={{ color: currentTheme.colors.primary, fontWeight: '600' }}>
-                      {mode === 'signin' ? 'Sign up' : 'Sign in'}
-                    </Text>
+              <TouchableOpacity
+                onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                activeOpacity={0.7}
+                style={{ marginTop: 16 }}
+              >
+                <Text style={[styles.switchModeText, { color: currentTheme.colors.textMuted }]}>
+                  {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+                  <Text style={{ color: currentTheme.colors.primary, fontWeight: '600' }}>
+                    {mode === 'signin' ? 'Sign up' : 'Sign in'}
                   </Text>
-                </TouchableOpacity>
-              )}
-              
-              {/* Signup disabled message */}
-              {signupDisabled && mode === 'signin' && (
-                <View style={{ marginTop: 16, alignItems: 'center' }}>
-                  <Text style={[styles.switchModeText, { color: 'rgba(255,255,255,0.5)', fontSize: 13 }]}>
-                    New account creation is temporarily disabled
-                  </Text>
-                </View>
-              )}
+                </Text>
+              </TouchableOpacity>
 
               {/* Skip sign in - more prominent when coming from onboarding */}
               <TouchableOpacity
@@ -654,8 +578,19 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: 64,
     paddingBottom: 8,
+  },
+  centerHeader: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 18,
+    paddingHorizontal: 20,
+  },
+  centerHeaderTablet: {
+    maxWidth: 620,
+  },
+  centerHeaderCompact: {
+    marginBottom: 10,
   },
   logoContainer: {
     position: 'relative',
@@ -692,10 +627,13 @@ const styles = StyleSheet.create({
   centerContainer: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 0,
     paddingBottom: 28,
+  },
+  centerContainerTablet: {
+    paddingHorizontal: 36,
   },
   card: {
     width: '100%',
@@ -704,6 +642,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     elevation: 20,
+  },
+  cardTablet: {
+    maxWidth: 560,
+  },
+  cardCompact: {
+    padding: 18,
+    borderRadius: 16,
   },
   switchRow: {
     flexDirection: 'row',
@@ -792,71 +737,13 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 16,
-    top: 8,
+    zIndex: 20,
   },
   switchModeText: {
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '500',
   },
-  warningContainer: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  warningCard: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'flex-start',
-  },
-  warningIcon: {
-    marginRight: 12,
-    marginTop: 2,
-  },
-  warningContent: {
-    flex: 1,
-  },
-  warningTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  warningText: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '500',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  readMoreText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  warningDetails: {
-    marginTop: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  detailsContent: {
-    padding: 16,
-  },
-  detailsTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  detailsText: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
 });
 
 export default AuthScreen;
-

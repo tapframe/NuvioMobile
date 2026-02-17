@@ -10,5 +10,17 @@ export const LOCALES = [
     { code: 'hr', key: 'croatian' },
     { code: 'zh-CN', key: 'chinese' },
     { code: 'hi', key: 'hindi' },
-    { code: 'sr', key: 'serbian' } 
+    { code: 'sr', key: 'serbian' },
+    { code: 'he', key: 'hebrew' },
+    { code: 'bg', key: 'bulgarian' },
+    { code: 'pl', key: 'polish' },
+    { code: 'cs', key: 'czech' },
+    { code: 'tr', key: 'turkish' },
+    { code: 'sl', key: 'slovenian' },
+    { code: 'mk', key: 'macedonian' },
+    { code: 'ru', key: 'russian' },
+    { code: 'fil', key: 'filipino' },
+    { code: 'nl-NL', key: 'dutch_nl' },
+    { code: 'ro', key: 'romanian' },
+    { code: 'sq', key: 'albanian' },
 ];

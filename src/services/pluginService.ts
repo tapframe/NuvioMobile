@@ -6,6 +6,7 @@ import { Stream } from '../types/streams';
 import { cacheService } from './cacheService';
 import CryptoJS from 'crypto-js';
 import { safeAxiosConfig, createSafeAxiosConfig } from '../utils/axiosConfig';
+import EventEmitter from 'eventemitter3';
 
 const MAX_CONCURRENT_SCRAPERS = 5;
 const MAX_INFLIGHT_KEYS = 30;
@@ -23,6 +24,12 @@ const VIDEO_CONTENT_TYPES = [
 ];
 
 const MAX_PREFLIGHT_SIZE = 50 * 1024 * 1024;
+
+export const PLUGIN_SYNC_EVENTS = {
+  CHANGED: 'changed',
+} as const;
+
+const pluginSyncEmitter = new EventEmitter();
 
 // Types for local scrapers
 export interface ScraperManifest {
@@ -174,6 +181,10 @@ class LocalScraperService {
       LocalScraperService.instance = new LocalScraperService();
     }
     return LocalScraperService.instance;
+  }
+
+  public getPluginSyncEventEmitter(): EventEmitter {
+    return pluginSyncEmitter;
   }
 
   private async initialize(): Promise<void> {
@@ -367,6 +378,7 @@ class LocalScraperService {
     };
     this.repositories.set(id, newRepo);
     await this.saveRepositories();
+    pluginSyncEmitter.emit(PLUGIN_SYNC_EVENTS.CHANGED, { action: 'add_repository', id: newRepo.id });
     logger.log('[LocalScraperService] Added repository:', newRepo.name);
     return id;
   }
@@ -386,6 +398,7 @@ class LocalScraperService {
       this.repositoryUrl = updatedRepo.url;
       this.repositoryName = updatedRepo.name;
     }
+    pluginSyncEmitter.emit(PLUGIN_SYNC_EVENTS.CHANGED, { action: 'update_repository', id });
     logger.log('[LocalScraperService] Updated repository:', updatedRepo.name);
   }
 
@@ -424,6 +437,7 @@ class LocalScraperService {
     this.repositories.delete(id);
     await this.saveRepositories();
     await this.saveInstalledScrapers();
+    pluginSyncEmitter.emit(PLUGIN_SYNC_EVENTS.CHANGED, { action: 'remove_repository', id });
     logger.log('[LocalScraperService] Removed repository:', id);
   }
 
@@ -450,6 +464,7 @@ class LocalScraperService {
     }
 
     logger.log('[LocalScraperService] Switched to repository:', repo.name);
+    pluginSyncEmitter.emit(PLUGIN_SYNC_EVENTS.CHANGED, { action: 'set_current_repository', id });
   }
 
   getCurrentRepositoryId(): string {
@@ -553,6 +568,7 @@ class LocalScraperService {
     this.repositories.set(id, repo);
     await this.saveRepositories();
 
+    pluginSyncEmitter.emit(PLUGIN_SYNC_EVENTS.CHANGED, { action: 'toggle_repository_enabled', id, enabled });
     logger.log('[LocalScraperService] Toggled repository', repo.name, 'to', enabled ? 'enabled' : 'disabled');
   }
 

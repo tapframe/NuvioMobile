@@ -38,11 +38,17 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
     user,
     loading,
     signIn: async (email: string, password: string) => {
-      const { error } = await accountService.signInWithEmail(email, password);
+      const { user: signedInUser, error } = await accountService.signInWithEmail(email, password);
+      if (!error && signedInUser) {
+        setUser(signedInUser);
+      }
       return error || null;
     },
     signUp: async (email: string, password: string) => {
-      const { error } = await accountService.signUpWithEmail(email, password);
+      const { user: signedUpUser, error } = await accountService.signUpWithEmail(email, password);
+      if (!error && signedUpUser) {
+        setUser(signedUpUser);
+      }
       return error || null;
     },
     signOut: async () => {
@@ -107,4 +113,3 @@ export const useAccount = (): AccountContextValue => {
 };
 
 export default AccountContext;
-
