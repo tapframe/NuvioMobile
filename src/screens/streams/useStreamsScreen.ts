@@ -252,6 +252,8 @@ export const useStreamsScreen = () => {
       const preferredLanguage = settings.autoplayPreferredLanguage;
 
       // 1. Try to find streams matching preferred language
+      // Uses a robust set of variations (e.g. 'spa' for Spanish) to match against 
+      // various stream metadata fields (lang, title, description).
       let languageMatchedStreams = allStreams;
       if (preferredLanguage && preferredLanguage !== 'Any') {
         languageMatchedStreams = allStreams.filter(item => {
@@ -272,7 +274,8 @@ export const useStreamsScreen = () => {
         });
       }
 
-      // 2. If no language match (and language wasn't 'Any'), just play the "first" stream
+      // 2. Fallback: If no language match (and language wasn't 'Any'), just play the "first" prioritized stream.
+      // Priority is determined by provider order then stream's original position.
       if (languageMatchedStreams.length === 0 && allStreams.length > 0) {
         // Sort by provider priority and original index to find the "first" one
         const sortedByPriority = [...allStreams].sort((a, b) => {
@@ -285,9 +288,9 @@ export const useStreamsScreen = () => {
 
       if (languageMatchedStreams.length === 0) return null;
 
-      // 3. Among language-matched streams, find the one closest to target quality
-      // Sort primarily by how close the stream quality is to the preferred quality
-      // If quality is identical, sort by provider priority and then addon's internal order
+      // 3. Among language-matched streams, find the one closest to target quality.
+      // Sort primarily by how close the stream quality is to the preferred quality.
+      // If quality is identical, sort by provider priority and then addon's internal order.
       languageMatchedStreams.sort((a, b) => {
         // Calculate absolute difference from target quality
         // Note: 0 quality (unknown/auto) is treated as being far from any specific target

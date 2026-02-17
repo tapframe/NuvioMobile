@@ -70,6 +70,10 @@ const SUBTITLE_SOURCE_OPTIONS = [
     { value: 'any', label: 'Any Available', description: 'Use first available subtitle track' },
 ];
 
+/**
+ * Quality options for the "Auto-play First Stream" feature.
+ * These are used in the bottom sheet selection to allow users to target specific resolutions.
+ */
 const AUTOPLAY_QUALITY_OPTIONS = [
     { id: '4320p', label: '8K' },
     { id: '4K', label: '4K' },

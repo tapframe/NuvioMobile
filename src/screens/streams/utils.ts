@@ -89,27 +89,36 @@ export const filterStreamsByLanguage = (
 
 /**
  * Extract numeric quality from stream title
+ * Maps common quality labels (4K, 8K) to their vertical resolution (2160p, 4320p)
+ * and extracts numeric values from patterns like "1080p".
  */
 export const getQualityNumeric = (title: string | undefined): number => {
   if (!title) return 0;
 
   // Check for 4K first (treat as 2160p)
-  if (/\b4k\b/i.test(title)) {
+  if (/\b(4k|uhd)\b/i.test(title)) {
     return 2160;
   }
+  
+  // Check for 8K (treat as 4320p)
+  if (/\b8k\b/i.test(title)) {
+    return 4320;
+  }
 
+  // General pattern for numbers followed by 'p' (e.g., 1080p, 3660p)
   const matchWithP = title.match(/(\d+)p/i);
   if (matchWithP) return parseInt(matchWithP[1], 10);
 
-  const qualityPatterns = [/\b(240|360|480|720|1080|1440|2160|4320|8000)\b/i];
-
-  for (const pattern of qualityPatterns) {
+  // Standalone common resolutions if 'p' suffix is missing (e.g., "UHD 2160")
+  const commonResolutions = [/\b(140|240|360|480|720|1080|1440|2160|3660|4320|8000)\b/];
+  for (const pattern of commonResolutions) {
     const match = title.match(pattern);
     if (match) {
       const quality = parseInt(match[1], 10);
-      if (quality >= 240 && quality <= 8000) return quality;
+      if (quality >= 140 && quality <= 8000) return quality;
     }
   }
+  
   return 0;
 };
 
