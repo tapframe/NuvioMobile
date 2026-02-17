@@ -246,20 +246,67 @@ export const useStreamsScreen = () => {
 
       if (allStreams.length === 0) return null;
 
-      // Sort primarily by provider priority, then respect the addon's internal order (originalIndex)
-      // This ensures if an addon lists 1080p before 4K, we pick 1080p
-      allStreams.sort((a, b) => {
+      // Map preferred quality to numeric value
+      const targetQuality = settings.autoplayPreferredQuality === '4K' ? 2160 : parseInt(settings.autoplayPreferredQuality, 10) || 1080;
+      const preferredLanguage = settings.autoplayPreferredLanguage;
+
+      // 1. Try to find streams matching preferred language
+      let languageMatchedStreams = allStreams;
+      if (preferredLanguage && preferredLanguage !== 'Any') {
+        languageMatchedStreams = allStreams.filter(item => {
+          const streamLang = (item.stream.lang || '').toLowerCase();
+          const prefLang = preferredLanguage.toLowerCase();
+          // Match by name if lang is not set, or match by lang property
+          return streamLang === prefLang || 
+                 (item.stream.name || '').toLowerCase().includes(prefLang) ||
+                 (item.stream.title || '').toLowerCase().includes(prefLang) ||
+                 (item.stream.description || '').toLowerCase().includes(prefLang);
+        });
+      }
+
+      // 2. If no language match (and language wasn't 'Any'), just play the "first" stream
+      if (languageMatchedStreams.length === 0 && allStreams.length > 0) {
+        // Sort by provider priority and original index to find the "first" one
+        const sortedByPriority = [...allStreams].sort((a, b) => {
+          if (a.providerPriority !== b.providerPriority) return b.providerPriority - a.providerPriority;
+          return a.originalIndex - b.originalIndex;
+        });
+        logger.log(`🎯 Autoplay: No language match for ${preferredLanguage}, playing first available stream.`);
+        return sortedByPriority[0].stream;
+      }
+
+      if (languageMatchedStreams.length === 0) return null;
+
+      // 3. Among language-matched streams, find the one closest to target quality
+      // Sort primarily by how close the stream quality is to the preferred quality
+      // If quality is identical, sort by provider priority and then addon's internal order
+      languageMatchedStreams.sort((a, b) => {
+        // Calculate absolute difference from target quality
+        // Note: 0 quality (unknown/auto) is treated as being far from any specific target
+        const qualityA = a.quality === 0 ? 0 : a.quality;
+        const qualityB = b.quality === 0 ? 0 : b.quality;
+
+        const diffA = Math.abs(qualityA - targetQuality);
+        const diffB = Math.abs(qualityB - targetQuality);
+
+        if (diffA !== diffB) return diffA - diffB;
+
+        // Tie-break: if both are equally close (e.g. 720p and 1440p to 1080p)
+        // prefer the higher quality one
+        if (qualityA !== qualityB) return qualityB - qualityA;
+
         if (a.providerPriority !== b.providerPriority) return b.providerPriority - a.providerPriority;
         return a.originalIndex - b.originalIndex;
       });
 
+      const selected = languageMatchedStreams[0];
       logger.log(
-        `🎯 Best stream selected: ${allStreams[0].stream.name || allStreams[0].stream.title} (Quality: ${allStreams[0].quality}p)`
+        `🎯 Best stream selected: ${selected.stream.name || selected.stream.title} (Lang: ${selected.stream.lang || 'unknown'}, Quality: ${selected.quality}p, Target: ${targetQuality}p)`
       );
 
-      return allStreams[0].stream;
+      return selected.stream;
     },
-    [filterByQuality, filterByLanguage]
+    [filterByQuality, filterByLanguage, settings.autoplayPreferredQuality, settings.autoplayPreferredLanguage]
   );
 
   // Current episode

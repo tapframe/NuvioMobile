@@ -45,6 +45,8 @@ export interface AppSettings {
   tmdbLanguagePreference: string; // Preferred language for TMDB logos (ISO 639-1 code)
   episodeLayoutStyle: 'vertical' | 'horizontal'; // Layout style for episode cards
   autoplayBestStream: boolean; // Automatically play the best available stream
+  autoplayPreferredQuality: string; // Preferred quality for autoplay (e.g., '4K', '1080p', '720p', '480p')
+  autoplayPreferredLanguage: string; // Preferred language for autoplay (e.g., 'English', 'Spanish', 'Any')
   // Local scraper settings
   scraperRepositoryUrl: string; // URL to the scraper repository
   enableLocalScrapers: boolean; // Enable/disable local scraper functionality
@@ -135,6 +137,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tmdbLanguagePreference: 'en', // Default to English
   episodeLayoutStyle: 'vertical', // Default to vertical layout for new installs
   autoplayBestStream: false, // Disabled by default for user choice
+  autoplayPreferredQuality: '1080p', // Default to 1080p
+  autoplayPreferredLanguage: 'Any', // Default to Any language
   // Local scraper defaults
   scraperRepositoryUrl: '',
   enableLocalScrapers: true,

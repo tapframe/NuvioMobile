@@ -291,19 +291,150 @@ const PlayerSettingsScreen: React.FC = () => {
                     {t('player.autoplay_desc')}
                   </Text>
                 </View>
-                <Switch
-                  value={settings.autoplayBestStream}
-                  onValueChange={(value) => updateSetting('autoplayBestStream', value)}
-                  trackColor={{ false: '#767577', true: currentTheme.colors.primary }}
-                  thumbColor={settings.autoplayBestStream ? '#ffffff' : '#f4f3f4'}
-                  ios_backgroundColor="#3e3e3e"
-                />
-              </View>
-            </View>
+                                <Switch
+                                  value={settings.autoplayBestStream}
+                                  onValueChange={(value) => updateSetting('autoplayBestStream', value)}
+                                  trackColor={{ false: '#767577', true: currentTheme.colors.primary }}
+                                  thumbColor={settings.autoplayBestStream ? '#ffffff' : '#f4f3f4'}
+                                  ios_backgroundColor="#3e3e3e"
+                                />
+                              </View>
+                            </View>
+                
+                            {/* Preferred Quality for Autoplay */}
+                            <View style={[styles.settingItem, styles.settingItemBorder, { borderTopColor: 'rgba(255,255,255,0.08)', borderTopWidth: 1 }]}>
+                              <View style={styles.settingContent}>
+                                <View style={[
+                                  styles.settingIconContainer,
+                                  { backgroundColor: 'rgba(255,255,255,0.1)' }
+                                ]}>
+                                  <MaterialIcons
+                                    name="high-quality"
+                                    size={20}
+                                    color={currentTheme.colors.primary}
+                                  />
+                                </View>
+                                <View style={styles.settingText}>
+                                  <Text
+                                    style={[
+                                      styles.settingTitle,
+                                      { color: currentTheme.colors.text },
+                                    ]}
+                                  >
+                                    {t('player.preferred_quality_title') || 'Preferred Quality'}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.settingDescription,
+                                      { color: currentTheme.colors.textMuted },
+                                    ]}
+                                  >
+                                    {t('player.preferred_quality_desc') || 'Select preferred quality for autoplay'}
+                                  </Text>
+                                </View>
+                              </View>
+                              <View style={styles.optionButtonsRow}>
+                                {([
+                                  { id: '4K', label: '4K' },
+                                  { id: '1080p', label: '1080p' },
+                                  { id: '720p', label: '720p' },
+                                  { id: '480p', label: '480p' },
+                                ] as const).map((option) => (
+                                  <TouchableOpacity
+                                    key={option.id}
+                                    onPress={() => updateSetting('autoplayPreferredQuality', option.id)}
+                                    style={[
+                                      styles.optionButton,
+                                      settings.autoplayPreferredQuality === option.id && { backgroundColor: currentTheme.colors.primary },
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.optionButtonText,
+                                        { color: settings.autoplayPreferredQuality === option.id ? '#fff' : currentTheme.colors.text },
+                                      ]}
+                                    >
+                                      {option.label}
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                            </View>
 
-
-
-            {/* Video Player Engine for Android */}
+                            {/* Preferred Language for Autoplay */}
+                            <View style={[styles.settingItem, styles.settingItemBorder, { borderTopColor: 'rgba(255,255,255,0.08)', borderTopWidth: 1 }]}>
+                              <View style={styles.settingContent}>
+                                <View style={[
+                                  styles.settingIconContainer,
+                                  { backgroundColor: 'rgba(255,255,255,0.1)' }
+                                ]}>
+                                  <MaterialIcons
+                                    name="language"
+                                    size={20}
+                                    color={currentTheme.colors.primary}
+                                  />
+                                </View>
+                                <View style={styles.settingText}>
+                                  <Text
+                                    style={[
+                                      styles.settingTitle,
+                                      { color: currentTheme.colors.text },
+                                    ]}
+                                  >
+                                    {t('player.preferred_language_title') || 'Preferred Language'}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.settingDescription,
+                                      { color: currentTheme.colors.textMuted },
+                                    ]}
+                                  >
+                                    {t('player.preferred_language_desc') || 'Select preferred language for autoplay'}
+                                  </Text>
+                                </View>
+                              </View>
+                              <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.optionButtonsRowScroll}
+                              >
+                                {([
+                                  { id: 'Any', label: t('common.any') || 'Any' },
+                                  { id: 'English', label: t('settings.english') || 'English' },
+                                  { id: 'Spanish', label: t('settings.spanish') || 'Spanish' },
+                                  { id: 'French', label: t('settings.french') || 'French' },
+                                  { id: 'German', label: t('settings.german') || 'German' },
+                                  { id: 'Italian', label: t('settings.italian') || 'Italian' },
+                                  { id: 'Portuguese', label: t('settings.portuguese') || 'Portuguese' },
+                                  { id: 'Russian', label: t('settings.russian') || 'Russian' },
+                                  { id: 'Hindi', label: t('settings.hindi') || 'Hindi' },
+                                  { id: 'Chinese', label: t('settings.chinese') || 'Chinese' },
+                                  { id: 'Japanese', label: t('settings.japanese') || 'Japanese' },
+                                  { id: 'Korean', label: t('settings.korean') || 'Korean' },
+                                ] as const).map((option) => (
+                                  <TouchableOpacity
+                                    key={option.id}
+                                    onPress={() => updateSetting('autoplayPreferredLanguage', option.id)}
+                                    style={[
+                                      styles.optionButton,
+                                      styles.optionButtonLanguage,
+                                      settings.autoplayPreferredLanguage === option.id && { backgroundColor: currentTheme.colors.primary },
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.optionButtonText,
+                                        { color: settings.autoplayPreferredLanguage === option.id ? '#fff' : currentTheme.colors.text },
+                                      ]}
+                                    >
+                                      {option.label}
+                                    </Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </ScrollView>
+                            </View>
+                
+                            {/* Video Player Engine for Android */}
             {Platform.OS === 'android' && !settings.useExternalPlayer && (
               <>
                 <View style={[styles.settingItem, styles.settingItemBorder, { borderTopColor: 'rgba(255,255,255,0.08)', borderTopWidth: 1 }]}>
@@ -653,6 +784,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 52,
     gap: 8,
   },
+  optionButtonsRowScroll: {
+    paddingHorizontal: 52,
+    gap: 8,
+    marginTop: 12,
+    paddingBottom: 4,
+  },
   optionButton: {
     flex: 1,
     paddingVertical: 10,
@@ -661,6 +798,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  optionButtonLanguage: {
+    minWidth: 90,
+    flex: 0,
   },
   optionButtonWide: {
     flex: 1.5,
