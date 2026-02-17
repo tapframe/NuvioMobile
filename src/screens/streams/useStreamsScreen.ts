@@ -22,6 +22,7 @@ import { TABLET_BREAKPOINT } from './constants';
 import {
   filterStreamsByQuality,
   filterStreamsByLanguage,
+  getLanguageVariations,
   getQualityNumeric,
   inferVideoTypeFromUrl,
   sortStreamsByQuality,
@@ -254,13 +255,20 @@ export const useStreamsScreen = () => {
       let languageMatchedStreams = allStreams;
       if (preferredLanguage && preferredLanguage !== 'Any') {
         languageMatchedStreams = allStreams.filter(item => {
+          const streamName = (item.stream.name || '').toLowerCase();
+          const streamTitle = (item.stream.title || '').toLowerCase();
+          const streamDesc = (item.stream.description || '').toLowerCase();
           const streamLang = (item.stream.lang || '').toLowerCase();
-          const prefLang = preferredLanguage.toLowerCase();
-          // Match by name if lang is not set, or match by lang property
-          return streamLang === prefLang || 
-                 (item.stream.name || '').toLowerCase().includes(prefLang) ||
-                 (item.stream.title || '').toLowerCase().includes(prefLang) ||
-                 (item.stream.description || '').toLowerCase().includes(prefLang);
+          
+          const variations = getLanguageVariations(preferredLanguage);
+          
+          return variations.some(variant => {
+            const variantLower = variant.toLowerCase();
+            return streamLang === variantLower || 
+                   streamName.includes(variantLower) ||
+                   streamTitle.includes(variantLower) ||
+                   streamDesc.includes(variantLower);
+          });
         });
       }
 
