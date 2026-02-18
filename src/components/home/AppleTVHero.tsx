@@ -30,6 +30,7 @@ import Animated, {
   Extrapolation,
   useAnimatedScrollHandler,
   SharedValue,
+  useAnimatedReaction,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { StreamingContent } from '../../services/catalogService';
@@ -163,9 +164,24 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
   const [shouldResume, setShouldResume] = useState(false);
   const [type, setType] = useState<'movie' | 'series'>('movie');
 
-  // Create internal scrollY if not provided externally
+  // Shared value for scroll position (for parallax effects)
   const internalScrollY = useSharedValue(0);
   const scrollY = externalScrollY || internalScrollY;
+
+  const [isOutOfView, setIsOutOfView] = useState(false);
+
+  // Track if hero is in view
+  useAnimatedReaction(
+    () => scrollY.value,
+    (currentScrollY) => {
+      // If hero is more than 80% scrolled out of view, consider it out of view
+      const outOfView = currentScrollY > HERO_HEIGHT * 0.8;
+      if (outOfView !== isOutOfView) {
+        runOnJS(setIsOutOfView)(outOfView);
+      }
+    },
+    [isOutOfView]
+  );
 
   // Determine items to display
   const items = useMemo(() => {
@@ -354,9 +370,9 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
     }
   }, [currentItem, loading, heroOpacity]);
 
-  // Stop trailer when screen loses focus
+  // Stop trailer when screen loses focus or scrolled out of view
   useEffect(() => {
-    if (!isFocused) {
+    if (!isFocused || isOutOfView) {
       // Pause this screen's trailer
       setTrailerShouldBePaused(true);
       setTrailerPlaying(false);
@@ -365,20 +381,24 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
       trailerOpacity.value = withTiming(0, { duration: 300 });
       thumbnailOpacity.value = withTiming(1, { duration: 300 });
 
-      logger.info('[AppleTVHero] Screen lost focus - pausing trailer');
+      if (!isFocused) {
+        logger.info('[AppleTVHero] Screen lost focus - pausing trailer');
+      } else {
+        logger.info('[AppleTVHero] Scrolled out of view - pausing trailer');
+      }
     } else {
-      // Screen gained focus - allow trailer to resume if it was ready
+      // Screen gained focus and is in view - allow trailer to resume if it was ready
       setTrailerShouldBePaused(false);
 
       // If trailer was ready and loaded, restore the video opacity
       if (trailerReady && trailerUrl) {
-        logger.info('[AppleTVHero] Screen gained focus - restoring trailer');
+        logger.info('[AppleTVHero] Screen in focus and in view - restoring trailer');
         thumbnailOpacity.value = withTiming(0, { duration: 800 });
         trailerOpacity.value = withTiming(1, { duration: 800 });
         setTrailerPlaying(true);
       }
     }
-  }, [isFocused, setTrailerPlaying, trailerOpacity, thumbnailOpacity, trailerReady, trailerUrl]);
+  }, [isFocused, isOutOfView, setTrailerPlaying, trailerOpacity, thumbnailOpacity, trailerReady, trailerUrl]);
 
   // Listen to navigation events to stop trailer when navigating to other screens
   useEffect(() => {
@@ -714,7 +734,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
     updateSetting('trailerMuted', !trailerMuted);
   }, [trailerMuted, updateSetting]);
 
-  // Auto-advance timer - PAUSE when trailer is playing
+  // Auto-advance timer - PAUSE when trailer is playing or out of view
   const startAutoPlay = useCallback(() => {
     if (autoPlayTimerRef.current) {
       clearTimeout(autoPlayTimerRef.current);
@@ -722,16 +742,20 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
 
     if (items.length <= 1) return;
 
-    // Don't auto-advance if trailer is playing
-    if (globalTrailerPlaying && trailerReady) {
-      logger.info('[AppleTVHero] Auto-rotation paused - trailer is playing');
+    // Don't auto-advance if trailer is playing or out of view
+    if ((globalTrailerPlaying && trailerReady) || isOutOfView) {
+      if (isOutOfView) {
+        logger.info('[AppleTVHero] Auto-rotation paused - out of view');
+      } else {
+        logger.info('[AppleTVHero] Auto-rotation paused - trailer is playing');
+      }
       return;
     }
 
     autoPlayTimerRef.current = setTimeout(() => {
       const timeSinceInteraction = Date.now() - lastInteractionRef.current;
       // Only auto-advance if user hasn't interacted recently (5 seconds) and no trailer playing
-      if (timeSinceInteraction >= 5000 && (!globalTrailerPlaying || !trailerReady)) {
+      if (timeSinceInteraction >= 5000 && (!globalTrailerPlaying || !trailerReady) && !isOutOfView) {
         // Set next index preview for crossfade
         const nextIdx = (currentIndex + 1) % items.length;
         setNextIndex(nextIdx);
@@ -757,7 +781,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
         startAutoPlay();
       }
     }, 25000); // Auto-advance every 25 seconds
-  }, [items.length, globalTrailerPlaying, trailerReady, currentIndex, dragDirection, dragProgress]);
+  }, [items.length, globalTrailerPlaying, trailerReady, currentIndex, dragDirection, dragProgress, isOutOfView]);
 
   useEffect(() => {
     startAutoPlay();

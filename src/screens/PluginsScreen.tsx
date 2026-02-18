@@ -1085,7 +1085,7 @@ const PluginsScreen: React.FC = () => {
     if (!url.startsWith('https://raw.githubusercontent.com/') && !url.startsWith('http://')) {
       openAlert(
         t('plugins.alert_invalid_url'),
-        'Please use a valid GitHub raw URL format:\n\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch\n\nor include manifest.json:\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch/manifest.json\n\nExample:\nhttps://raw.githubusercontent.com/tapframe/nuvio-providers/refs/heads/master'
+        'Please use a valid GitHub raw URL format:\n\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch\n\nor include manifest.json:\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch/manifest.json\n\nExample:\nhttps://raw.githubusercontent.com/your-username/your-repo/refs/heads/main'
       );
       return;
     }
@@ -1291,7 +1291,7 @@ const PluginsScreen: React.FC = () => {
     if (!url.startsWith('https://raw.githubusercontent.com/') && !url.startsWith('http://')) {
       openAlert(
         'Invalid URL Format',
-        'Please use a valid GitHub raw URL format:\n\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch\n\nExample:\nhttps://raw.githubusercontent.com/tapframe/nuvio-providers/refs/heads/master'
+        'Please use a valid GitHub raw URL format:\n\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch\n\nExample:\nhttps://raw.githubusercontent.com/your-username/your-repo/refs/heads/main'
       );
       return;
     }
@@ -1411,11 +1411,6 @@ const PluginsScreen: React.FC = () => {
         },
       ]
     );
-  };
-
-  const handleUseDefaultRepo = () => {
-    const defaultUrl = 'https://raw.githubusercontent.com/tapframe/nuvio-providers/refs/heads/main';
-    setRepositoryUrl(defaultUrl);
   };
 
   const handleToggleLocalScrapers = async (enabled: boolean) => {

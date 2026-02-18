@@ -26,11 +26,21 @@ export interface IntroTimestamps {
     imdb_id: string;
     season: number;
     episode: number;
-    start_sec: number;
-    end_sec: number;
-    start_ms: number;
-    end_ms: number;
-    confidence: number;
+    intro?: {
+        start_sec: number;
+        end_sec: number;
+        confidence: number;
+    };
+    recap?: {
+        start_sec: number;
+        end_sec: number;
+        confidence: number;
+    };
+    outro?: {
+        start_sec: number;
+        end_sec: number;
+        confidence: number;
+    };
 }
 
 async function getMalIdFromArm(imdbId: string): Promise<string | null> {
@@ -154,7 +164,7 @@ async function fetchFromAniSkip(malId: string, episode: number): Promise<SkipInt
 
 async function fetchFromIntroDb(imdbId: string, season: number, episode: number): Promise<SkipInterval[]> {
     try {
-        const response = await axios.get<IntroTimestamps>(`${INTRODB_API_URL}/intro`, {
+        const response = await axios.get<IntroTimestamps>(`${INTRODB_API_URL}/segments`, {
             params: {
                 imdb_id: imdbId,
                 season,
@@ -163,26 +173,48 @@ async function fetchFromIntroDb(imdbId: string, season: number, episode: number)
             timeout: 5000,
         });
 
-        logger.log(`[IntroService] Found intro for ${imdbId} S${season}E${episode}:`, {
-            start: response.data.start_sec,
-            end: response.data.end_sec,
-            confidence: response.data.confidence,
-        });
+        const intervals: SkipInterval[] = [];
 
-        return [{
-            startTime: response.data.start_sec,
-            endTime: response.data.end_sec,
-            type: 'intro',
-            provider: 'introdb'
-        }];
+        if (response.data.intro) {
+            intervals.push({
+                startTime: response.data.intro.start_sec,
+                endTime: response.data.intro.end_sec,
+                type: 'intro',
+                provider: 'introdb'
+            });
+        }
+
+        if (response.data.recap) {
+            intervals.push({
+                startTime: response.data.recap.start_sec,
+                endTime: response.data.recap.end_sec,
+                type: 'recap',
+                provider: 'introdb'
+            });
+        }
+
+        if (response.data.outro) {
+            intervals.push({
+                startTime: response.data.outro.start_sec,
+                endTime: response.data.outro.end_sec,
+                type: 'outro',
+                provider: 'introdb'
+            });
+        }
+
+        if (intervals.length > 0) {
+            logger.log(`[IntroService] Found ${intervals.length} segments for ${imdbId} S${season}E${episode}`);
+        }
+
+        return intervals;
     } catch (error: any) {
         if (axios.isAxiosError(error) && error.response?.status === 404) {
             // No intro data available for this episode - this is expected
-            logger.log(`[IntroService] No intro data for ${imdbId} S${season}E${episode}`);
+            logger.log(`[IntroService] No segment data for ${imdbId} S${season}E${episode}`);
             return [];
         }
 
-        logger.error('[IntroService] Error fetching intro timestamps:', error?.message || error);
+        logger.error('[IntroService] Error fetching segments from IntroDB:', error?.message || error);
         return [];
     }
 }
@@ -230,7 +262,8 @@ export async function submitIntro(
     season: number,
     episode: number,
     startTime: number, // in seconds
-    endTime: number    // in seconds
+    endTime: number,   // in seconds
+    segmentType: SkipType = 'intro'
 ): Promise<boolean> {
     try {
         if (!apiKey) {
@@ -240,8 +273,12 @@ export async function submitIntro(
 
         const response = await axios.post(`${INTRODB_API_URL}/submit`, {
             imdb_id: imdbId,
+            segment_type: segmentType === 'op' ? 'intro' : (segmentType === 'ed' ? 'outro' : segmentType),
             season,
             episode,
+            start_sec: startTime,
+            end_sec: endTime,
+            // Keep start_ms/end_ms for backward compatibility if the server still expects it
             start_ms: Math.round(startTime * 1000),
             end_ms: Math.round(endTime * 1000),
         }, {
@@ -319,18 +356,24 @@ export async function getIntroTimestamps(
     imdbId: string,
     season: number,
     episode: number
-): Promise<IntroTimestamps | null> {
+): Promise<any | null> {
     const intervals = await fetchFromIntroDb(imdbId, season, episode);
-    if (intervals.length > 0) {
+    const intro = intervals.find(i => i.type === 'intro');
+    if (intro) {
         return {
             imdb_id: imdbId,
             season,
             episode,
-            start_sec: intervals[0].startTime,
-            end_sec: intervals[0].endTime,
-            start_ms: intervals[0].startTime * 1000,
-            end_ms: intervals[0].endTime * 1000,
-            confidence: 1.0
+            start_sec: intro.startTime,
+            end_sec: intro.endTime,
+            start_ms: intro.startTime * 1000,
+            end_ms: intro.endTime * 1000,
+            confidence: 1.0,
+            intro: {
+                start_sec: intro.startTime,
+                end_sec: intro.endTime,
+                confidence: 1.0
+            }
         };
     }
     return null;

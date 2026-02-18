@@ -50,6 +50,7 @@ import { mmkvStorage } from './src/services/mmkvStorage';
 import { CampaignManager } from './src/components/promotions/CampaignManager';
 import { isErrorReportingEnabledSync } from './src/services/telemetryService';
 import { networkPrivacyService } from './src/services/networkPrivacyService';
+import { supabaseSyncService } from './src/services/supabaseSyncService';
 
 // Initialize Sentry with privacy-first defaults
 // Settings are loaded from telemetryService and can be controlled by user
@@ -182,6 +183,15 @@ const ThemedApp = () => {
         // Check onboarding status
         const onboardingCompleted = await mmkvStorage.getItem('hasCompletedOnboarding');
         setHasCompletedOnboarding(onboardingCompleted === 'true');
+
+        // Initialize Supabase auth/session and start background sync.
+        // This is intentionally non-blocking for app startup UX.
+        supabaseSyncService
+          .initialize()
+          .then(() => supabaseSyncService.startupSync())
+          .catch((error) => {
+            console.warn('[App] Supabase sync bootstrap failed:', error);
+          });
 
         // Initialize update service
         await UpdateService.initialize();

@@ -1250,6 +1250,49 @@ class StremioService {
 
     const addons = this.getInstalledAddons();
 
+    // Some addons use non-standard meta types (e.g. "anime") but expect streams under the "series" endpoint.
+    // We'll try the requested type first, then (if no addons match) fall back to "series".
+    const pickStreamAddons = (requestType: string) =>
+      addons.filter(addon => {
+        if (!addon.resources || !Array.isArray(addon.resources)) {
+          logger.log(`⚠️ [getStreams] Addon ${addon.id} has no valid resources array`);
+          return false;
+        }
+
+        let hasStreamResource = false;
+        let supportsIdPrefix = false;
+
+        for (const resource of addon.resources) {
+          if (typeof resource === 'object' && resource !== null && 'name' in resource) {
+            const typedResource = resource as ResourceObject;
+            if (typedResource.name === 'stream' &&
+              Array.isArray(typedResource.types) &&
+              typedResource.types.includes(requestType)) {
+              hasStreamResource = true;
+
+              if (Array.isArray(typedResource.idPrefixes) && typedResource.idPrefixes.length > 0) {
+                supportsIdPrefix = typedResource.idPrefixes.some(p => id.startsWith(p));
+              } else {
+                supportsIdPrefix = true;
+              }
+              break;
+            }
+          } else if (typeof resource === 'string' && resource === 'stream' && addon.types) {
+            if (Array.isArray(addon.types) && addon.types.includes(requestType)) {
+              hasStreamResource = true;
+              if (addon.idPrefixes && Array.isArray(addon.idPrefixes) && addon.idPrefixes.length > 0) {
+                supportsIdPrefix = addon.idPrefixes.some(p => id.startsWith(p));
+              } else {
+                supportsIdPrefix = true;
+              }
+              break;
+            }
+          }
+        }
+
+        return hasStreamResource && supportsIdPrefix;
+      });
+
     // Check if local scrapers are enabled and execute them first
     try {
       // Load settings from AsyncStorage directly (scoped with fallback)
@@ -1396,64 +1439,109 @@ class StremioService {
       // TMDB Embed addon not found
     }
 
-    // Find addons that provide streams and sort them by installation order
-    const streamAddons = addons
-      .filter(addon => {
-        if (!addon.resources || !Array.isArray(addon.resources)) {
-          logger.log(`⚠️ [getStreams] Addon ${addon.id} has no valid resources array`);
-          return false;
+    let effectiveType = type;
+    let streamAddons = pickStreamAddons(type);
+
+    logger.log(`🧭 [getStreams] Resolving stream addons for type='${type}' id='${id}' (matched=${streamAddons.length})`);
+
+    if (streamAddons.length === 0) {
+      const fallbackTypes = ['series', 'movie', 'tv', 'channel'].filter(t => t !== type);
+      for (const fallbackType of fallbackTypes) {
+        const fallbackAddons = pickStreamAddons(fallbackType);
+        if (fallbackAddons.length > 0) {
+          effectiveType = fallbackType;
+          streamAddons = fallbackAddons;
+          logger.log(`🔁 [getStreams] No stream addons for type '${type}', falling back to '${effectiveType}' for id '${id}'`);
+          break;
         }
+      }
+    }
 
-        let hasStreamResource = false;
-        let supportsIdPrefix = false;
-
-        // Iterate through the resources array, checking each element
-        for (const resource of addon.resources) {
-          // Check if the current element is a ResourceObject
-          if (typeof resource === 'object' && resource !== null && 'name' in resource) {
-            const typedResource = resource as ResourceObject;
-            if (typedResource.name === 'stream' &&
-              Array.isArray(typedResource.types) &&
-              typedResource.types.includes(type)) {
-              hasStreamResource = true;
-
-              // Check if this addon supports the ID prefix (generic: any prefix that matches start of id)
-              if (Array.isArray(typedResource.idPrefixes) && typedResource.idPrefixes.length > 0) {
-                supportsIdPrefix = typedResource.idPrefixes.some(p => id.startsWith(p));
-              } else {
-                // If no idPrefixes specified, assume it supports all prefixes
-                supportsIdPrefix = true;
-              }
-              break; // Found the stream resource object, no need to check further
-            }
-          }
-          // Check if the element is the simple string "stream" AND the addon has a top-level types array
-          else if (typeof resource === 'string' && resource === 'stream' && addon.types) {
-            if (Array.isArray(addon.types) && addon.types.includes(type)) {
-              hasStreamResource = true;
-              // For simple string resources, check addon-level idPrefixes (generic)
-              if (addon.idPrefixes && Array.isArray(addon.idPrefixes) && addon.idPrefixes.length > 0) {
-                supportsIdPrefix = addon.idPrefixes.some(p => id.startsWith(p));
-              } else {
-                // If no idPrefixes specified, assume it supports all prefixes
-                supportsIdPrefix = true;
-              }
-              break; // Found the simple stream resource string and type support
-            }
-          }
-        }
-
-        const canHandleRequest = hasStreamResource && supportsIdPrefix;
-
-        return canHandleRequest;
-      });
-
-
+    if (effectiveType !== type) {
+      logger.log(`🧭 [getStreams] Using effectiveType='${effectiveType}' (requested='${type}') for id='${id}'`);
+    }
 
     if (streamAddons.length === 0) {
       logger.warn('⚠️ [getStreams] No addons found that can provide streams');
-      // Optionally call callback with an empty result or specific status?
-      // For now, just return if no addons.
+      
+      // Log what the URL would have been for debugging
+      const encodedId = encodeURIComponent(id);
+      const exampleUrl = `/stream/${effectiveType}/${encodedId}.json`;
+      logger.log(`🚫 [getStreams] No stream addons matched. Would have requested: ${exampleUrl}`);
+      logger.log(`🚫 [getStreams] Details: requestedType='${type}' effectiveType='${effectiveType}' id='${id}'`);
+      
+      // Show which addons have stream capability but didn't match
+      const streamCapableAddons = addons.filter(addon => {
+        if (!addon.resources || !Array.isArray(addon.resources)) return false;
+        return addon.resources.some(resource => {
+          if (typeof resource === 'object' && resource !== null && 'name' in resource) {
+            return (resource as ResourceObject).name === 'stream';
+          }
+          return typeof resource === 'string' && resource === 'stream';
+        });
+      });
+      
+      if (streamCapableAddons.length > 0) {
+        logger.log(`🚫 [getStreams] Found ${streamCapableAddons.length} stream-capable addon(s) that didn't match:`);
+        
+        for (const addon of streamCapableAddons) {
+          const streamResources = addon.resources!.filter(resource => {
+            if (typeof resource === 'object' && resource !== null && 'name' in resource) {
+              return (resource as ResourceObject).name === 'stream';
+            }
+            return typeof resource === 'string' && resource === 'stream';
+          });
+          
+          for (const resource of streamResources) {
+            if (typeof resource === 'object' && resource !== null) {
+              const typedResource = resource as ResourceObject;
+              const types = typedResource.types || [];
+              const prefixes = typedResource.idPrefixes || [];
+              const typeMatch = types.includes(effectiveType);
+              const prefixMatch = prefixes.length === 0 || prefixes.some(p => id.startsWith(p));
+              
+              if (addon.url) {
+                const { baseUrl, queryParams } = this.getAddonBaseURL(addon.url);
+                const wouldBeUrl = queryParams
+                  ? `${baseUrl}/stream/${effectiveType}/${encodedId}.json?${queryParams}`
+                  : `${baseUrl}/stream/${effectiveType}/${encodedId}.json`;
+                
+                console.log(
+                  `  ❌ ${addon.name} (${addon.id}):\n` +
+                  `     types=[${types.join(',')}] typeMatch=${typeMatch}\n` +
+                  `     prefixes=[${prefixes.join(',')}] prefixMatch=${prefixMatch}\n` +
+                  `     url=${wouldBeUrl}`
+                );
+              } else {
+                console.log(`  ❌ ${addon.name} (${addon.id}): no URL configured`);
+              }
+            } else if (typeof resource === 'string' && resource === 'stream') {
+              // String resource - check addon-level types and prefixes
+              const addonTypes = addon.types || [];
+              const addonPrefixes = addon.idPrefixes || [];
+              const typeMatch = addonTypes.includes(effectiveType);
+              const prefixMatch = addonPrefixes.length === 0 || addonPrefixes.some(p => id.startsWith(p));
+              
+              if (addon.url) {
+                const { baseUrl, queryParams } = this.getAddonBaseURL(addon.url);
+                const wouldBeUrl = queryParams
+                  ? `${baseUrl}/stream/${effectiveType}/${encodedId}.json?${queryParams}`
+                  : `${baseUrl}/stream/${effectiveType}/${encodedId}.json`;
+                
+                console.log(
+                  `  ❌ ${addon.name} (${addon.id}) [addon-level]:\n` +
+                  `     types=[${addonTypes.join(',')}] typeMatch=${typeMatch}\n` +
+                  `     prefixes=[${addonPrefixes.join(',')}] prefixMatch=${prefixMatch}\n` +
+                  `     url=${wouldBeUrl}`
+                );
+              }
+            }
+          }
+        }
+      } else {
+        logger.log(`🚫 [getStreams] No stream-capable addons installed`);
+      }
+      
       return;
     }
 
@@ -1470,9 +1558,11 @@ class StremioService {
 
           const { baseUrl, queryParams } = this.getAddonBaseURL(addon.url);
           const encodedId = encodeURIComponent(id);
-          const url = queryParams ? `${baseUrl}/stream/${type}/${encodedId}.json?${queryParams}` : `${baseUrl}/stream/${type}/${encodedId}.json`;
+          const url = queryParams ? `${baseUrl}/stream/${effectiveType}/${encodedId}.json?${queryParams}` : `${baseUrl}/stream/${effectiveType}/${encodedId}.json`;
 
-          logger.log(`🔗 [getStreams] Requesting streams from ${addon.name} (${addon.id}) [${addon.installationId}]: ${url}`);
+          logger.log(
+            `🔗 [getStreams] GET ${url} (addon='${addon.name}' id='${addon.id}' install='${addon.installationId}' requestedType='${type}' effectiveType='${effectiveType}' rawId='${id}')`
+          );
 
           const response = await this.retryRequest(async () => {
             return await axios.get(url, safeAxiosConfig);
@@ -1517,14 +1607,16 @@ class StremioService {
     const streamPath = `/stream/${type}/${encodedId}.json`;
     const url = queryParams ? `${baseUrl}${streamPath}?${queryParams}` : `${baseUrl}${streamPath}`;
 
-    logger.log(`Fetching streams from URL: ${url}`);
+    logger.log(
+      `🔗 [fetchStreamsFromAddon] GET ${url} (addon='${addon.name}' id='${addon.id}' install='${addon.installationId}' type='${type}' rawId='${id}')`
+    );
 
     try {
       // Increase timeout for debrid services
       const timeout = addon.id.toLowerCase().includes('torrentio') ? 60000 : 10000;
 
       const response = await this.retryRequest(async () => {
-        logger.log(`Making request to ${url} with timeout ${timeout}ms`);
+        logger.log(`🌐 [fetchStreamsFromAddon] Requesting ${url} (timeout=${timeout}ms)`);
         return await axios.get(url, createSafeAxiosConfig(timeout, {
           headers: {
             'Accept': 'application/json',
@@ -1893,6 +1985,65 @@ class StremioService {
       return true;
     }
     return false;
+  }
+
+  // Reconcile local addon order to match a remote ordered list of addon manifest URLs.
+  // Any local addons not present in the remote list are appended in their current order.
+  async applyAddonOrderFromManifestUrls(manifestUrls: string[]): Promise<boolean> {
+    await this.ensureInitialized();
+    if (!Array.isArray(manifestUrls) || manifestUrls.length === 0) return false;
+
+    const normalizeManifestUrl = (raw: string): string => {
+      const value = (raw || '').trim();
+      if (!value) return '';
+      const withManifest = value.includes('manifest.json')
+        ? value
+        : `${value.replace(/\/$/, '')}/manifest.json`;
+      return withManifest.toLowerCase();
+    };
+
+    const localByNormalizedUrl = new Map<string, string[]>();
+    for (const installationId of this.addonOrder) {
+      const addon = this.installedAddons.get(installationId);
+      if (!addon) continue;
+      const normalized = normalizeManifestUrl(addon.originalUrl || addon.url || '');
+      if (!normalized) continue;
+      const list = localByNormalizedUrl.get(normalized) || [];
+      list.push(installationId);
+      localByNormalizedUrl.set(normalized, list);
+    }
+
+    const nextOrder: string[] = [];
+    const seenInstallations = new Set<string>();
+
+    for (const remoteUrl of manifestUrls) {
+      const normalizedRemote = normalizeManifestUrl(remoteUrl);
+      if (!normalizedRemote) continue;
+      const candidates = localByNormalizedUrl.get(normalizedRemote);
+      if (!candidates || candidates.length === 0) continue;
+      const installationId = candidates.shift();
+      if (!installationId || seenInstallations.has(installationId)) continue;
+      nextOrder.push(installationId);
+      seenInstallations.add(installationId);
+    }
+
+    for (const installationId of this.addonOrder) {
+      if (!this.installedAddons.has(installationId)) continue;
+      if (seenInstallations.has(installationId)) continue;
+      nextOrder.push(installationId);
+      seenInstallations.add(installationId);
+    }
+
+    const changed =
+      nextOrder.length !== this.addonOrder.length ||
+      nextOrder.some((id, index) => id !== this.addonOrder[index]);
+
+    if (!changed) return false;
+
+    this.addonOrder = nextOrder;
+    await this.saveAddonOrder();
+    addonEmitter.emit(ADDON_EVENTS.ORDER_CHANGED);
+    return true;
   }
 
   // Check if any installed addons can provide streams (including embedded streams in metadata)

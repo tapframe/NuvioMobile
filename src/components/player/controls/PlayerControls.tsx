@@ -12,6 +12,14 @@ import { useSettings } from '../../../hooks/useSettings';
 
 import { introService } from '../../../services/introService';
 import { toastService } from '../../../services/toastService';
+import PlayerAspectRatioIcon from '../../../../assets/player-icons/ic_player_aspect_ratio.svg';
+import PlayerAudioFilledIcon from '../../../../assets/player-icons/ic_player_audio_filled.svg';
+import PlayerAudioOutlineIcon from '../../../../assets/player-icons/ic_player_audio_outline.svg';
+import PlayerEpisodesIcon from '../../../../assets/player-icons/ic_player_episodes.svg';
+import PlayerPauseIcon from '../../../../assets/player-icons/ic_player_pause.svg';
+import PlayerPlayIcon from '../../../../assets/player-icons/ic_player_play.svg';
+import PlayerSourceIcon from '../../../../assets/player-icons/ic_player_source.svg';
+import PlayerSubtitlesIcon from '../../../../assets/player-icons/ic_player_subtitles.svg';
 
 interface PlayerControlsProps {
   showControls: boolean;
@@ -498,11 +506,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                 {isBuffering ? (
                   <ActivityIndicator size="large" color="#FFFFFF" />
                 ) : (
-                  <Ionicons
-                    name={paused ? "play" : "pause"}
-                    size={playIconSizeCalculated}
-                    color="#FFFFFF"
-                  />
+                  paused ? (
+                    <PlayerPlayIcon width={playIconSizeCalculated} height={playIconSizeCalculated} />
+                  ) : (
+                    <PlayerPauseIcon width={playIconSizeCalculated} height={playIconSizeCalculated} />
+                  )
                 )}
               </Animated.View>
             </View>
@@ -594,7 +602,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
             <View style={styles.centerControlsContainer} pointerEvents="box-none">
               {/* Left Side: Aspect Ratio Button */}
               <TouchableOpacity style={styles.iconButton} onPress={cycleAspectRatio}>
-                <Ionicons name="expand-outline" size={24} color="white" />
+                <PlayerAspectRatioIcon width={24} height={24} />
               </TouchableOpacity>
 
               {/* Subtitle Button */}
@@ -602,7 +610,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                 style={styles.iconButton}
                 onPress={() => setShowSubtitleModal(!isSubtitleModalOpen)}
               >
-                <Ionicons name="text" size={24} color="white" />
+                <PlayerSubtitlesIcon width={24} height={24} />
               </TouchableOpacity>
 
               {/* Change Source Button */}
@@ -611,7 +619,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                   style={styles.iconButton}
                   onPress={() => setShowSourcesModal(true)}
                 >
-                  <Ionicons name="cloud-outline" size={24} color="white" />
+                  <PlayerSourceIcon width={24} height={24} />
                 </TouchableOpacity>
               )}
 
@@ -626,11 +634,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                 onPress={() => setShowAudioModal(true)}
                 disabled={ksAudioTracks.length <= 1}
               >
-                <Ionicons
-                  name="musical-notes-outline"
-                  size={24}
-                  color={ksAudioTracks.length <= 1 ? 'grey' : 'white'}
-                />
+                {ksAudioTracks.length <= 1 ? (
+                  <PlayerAudioOutlineIcon width={24} height={24} opacity={0.55} />
+                ) : (
+                  <PlayerAudioFilledIcon width={24} height={24} />
+                )}
               </TouchableOpacity>
 
               {/* Submit Intro Button */}
@@ -653,7 +661,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                   style={styles.iconButton}
                   onPress={() => setShowEpisodesModal(true)}
                 >
-                  <Ionicons name="list" size={24} color="white" />
+                  <PlayerEpisodesIcon width={24} height={24} />
                 </TouchableOpacity>
               )}
             </View>

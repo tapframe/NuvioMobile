@@ -361,6 +361,9 @@ const SettingsScreen: React.FC = () => {
     if (item && item.visible === false) return false;
     return true;
   };
+  const showTraktItem = isItemVisible('trakt');
+  const showSimklItem = isItemVisible('simkl');
+  const showCloudSyncItem = isItemVisible('cloud_sync');
 
   // Filter categories based on conditions
   const visibleCategories = SETTINGS_CATEGORIES.filter(category => {
@@ -376,22 +379,39 @@ const SettingsScreen: React.FC = () => {
       case 'account':
         return (
           <SettingsCard title={t('settings.sections.account')} isTablet={isTablet}>
-            {isItemVisible('trakt') && (
-                    <SettingItem
-                      title={t('trakt.title')}
-                      description={isAuthenticated ? `@${userProfile?.username || 'User'}` : t('settings.sign_in_sync')}
-                      customIcon={<TraktIcon size={isTablet ? 24 : 20} />}
+            {showCloudSyncItem && (
+              <SettingItem
+                title="Nuvio Sync"
+                description="Sync data across your Nuvio devices"
+                customIcon={
+                  <FastImage
+                    source={require('../../assets/nuvio-sync-icon-og.png')}
+                    style={[styles.syncLogoIcon, isTablet ? styles.syncLogoIconTablet : null]}
+                    resizeMode={FastImage.resizeMode.contain}
+                  />
+                }
                 renderControl={() => <ChevronRight />}
-                onPress={() => navigation.navigate('TraktSettings')}
-                isLast={!isItemVisible('simkl')}
+                onPress={() => (navigation as any).navigate('SyncSettings')}
+                isLast={!showTraktItem && !showSimklItem}
                 isTablet={isTablet}
               />
             )}
-            {isItemVisible('simkl') && (
-                    <SettingItem
-                      title={t('settings.items.simkl')}
-                      description={isSimklAuthenticated ? t('settings.items.simkl_connected') : t('settings.items.simkl_desc')}
-                      customIcon={<SimklIcon size={isTablet ? 24 : 20} />}
+            {showTraktItem && (
+              <SettingItem
+                title={t('trakt.title')}
+                description={isAuthenticated ? `@${userProfile?.username || 'User'}` : t('settings.sign_in_sync')}
+                customIcon={<TraktIcon size={isTablet ? 24 : 20} />}
+                renderControl={() => <ChevronRight />}
+                onPress={() => navigation.navigate('TraktSettings')}
+                isLast={!showSimklItem}
+                isTablet={isTablet}
+              />
+            )}
+            {showSimklItem && (
+              <SettingItem
+                title={t('settings.items.simkl')}
+                description={isSimklAuthenticated ? t('settings.items.simkl_connected') : t('settings.items.simkl_desc')}
+                customIcon={<SimklIcon size={isTablet ? 24 : 20} />}
                 renderControl={() => <ChevronRight />}
                 onPress={() => navigation.navigate('SimklSettings')}
                 isLast={true}
@@ -682,19 +702,35 @@ const SettingsScreen: React.FC = () => {
             contentContainerStyle={styles.scrollContent}
           >
             {/* Account */}
-            {(settingsConfig?.categories?.['account']?.visible !== false) && (isItemVisible('trakt') || isItemVisible('simkl')) && (
+            {(settingsConfig?.categories?.['account']?.visible !== false) && (showTraktItem || showSimklItem || showCloudSyncItem) && (
               <SettingsCard title={t('settings.account').toUpperCase()}>
-                {isItemVisible('trakt') && (
+                {showCloudSyncItem && (
+                  <SettingItem
+                    title="Nuvio Sync"
+                    description="Sync data across your Nuvio devices"
+                    customIcon={
+                      <FastImage
+                        source={require('../../assets/nuvio-sync-icon-og.png')}
+                        style={styles.syncLogoIcon}
+                        resizeMode={FastImage.resizeMode.contain}
+                      />
+                    }
+                    renderControl={() => <ChevronRight />}
+                    onPress={() => (navigation as any).navigate('SyncSettings')}
+                    isLast={!showTraktItem && !showSimklItem}
+                  />
+                )}
+                {showTraktItem && (
                   <SettingItem
                     title={t('trakt.title')}
                     description={isAuthenticated ? `@${userProfile?.username || 'User'}` : t('settings.sign_in_sync')}
                     customIcon={<TraktIcon size={20} />}
                     renderControl={() => <ChevronRight />}
                     onPress={() => navigation.navigate('TraktSettings')}
-                    isLast={!isItemVisible('simkl')}
+                    isLast={!showSimklItem}
                   />
                 )}
-                {isItemVisible('simkl') && (
+                {showSimklItem && (
                   <SettingItem
                     title={t('settings.items.simkl')}
                     description={isSimklAuthenticated ? t('settings.items.simkl_connected') : t('settings.items.simkl_desc')}
@@ -928,7 +964,7 @@ const SettingsScreen: React.FC = () => {
 
             <View style={styles.brandLogoContainer}>
               <FastImage
-                source={require('../../assets/nuviotext.png')}
+                source={require('../../assets/text_only_og.png')}
                 style={styles.brandLogo}
                 resizeMode={FastImage.resizeMode.contain}
               />
@@ -1197,6 +1233,14 @@ const styles = StyleSheet.create({
   monkeyAnimation: {
     width: 180,
     height: 180,
+  },
+  syncLogoIcon: {
+    width: 20,
+    height: 20,
+  },
+  syncLogoIconTablet: {
+    width: 24,
+    height: 24,
   },
   brandLogoContainer: {
     alignItems: 'center',

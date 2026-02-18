@@ -391,7 +391,7 @@ export const AboutFooter: React.FC<{ displayDownloads: number | null }> = ({ dis
 
             <View style={styles.brandLogoContainer}>
                 <FastImage
-                    source={require('../../../assets/nuviotext.png')}
+                    source={require('../../../assets/text_only_og.png')}
                     style={styles.brandLogo}
                     resizeMode={FastImage.resizeMode.contain}
                 />

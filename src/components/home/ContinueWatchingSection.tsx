@@ -119,6 +119,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
   const [loading, setLoading] = useState(true);
   const appState = useRef(AppState.currentState);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingRefreshRef = useRef(false);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -326,6 +327,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
   // Modified loadContinueWatching to render incrementally
   const loadContinueWatching = useCallback(async (isBackgroundRefresh = false) => {
     if (isRefreshingRef.current) {
+      pendingRefreshRef.current = true;
       return;
     }
 
@@ -366,6 +368,20 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
 
       // Final tiebreaker
       return candidateProgress > existingProgress;
+    };
+
+    const compareCwItems = (a: ContinueWatchingItem, b: ContinueWatchingItem): number => {
+      const aProgress = a.progress ?? 0;
+      const bProgress = b.progress ?? 0;
+      const aIsUpNext = a.type === 'series' && aProgress <= 0;
+      const bIsUpNext = b.type === 'series' && bProgress <= 0;
+
+      // Keep active in-progress items ahead of "Up Next" placeholders.
+      if (aIsUpNext !== bIsUpNext) {
+        return aIsUpNext ? 1 : -1;
+      }
+
+      return (b.lastUpdated ?? 0) - (a.lastUpdated ?? 0);
     };
 
     type LocalProgressEntry = {
@@ -466,7 +482,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
         }
 
         const merged = Array.from(map.values());
-        merged.sort((a, b) => (b.lastUpdated ?? 0) - (a.lastUpdated ?? 0));
+        merged.sort(compareCwItems);
 
         return merged;
       });
@@ -1272,7 +1288,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
             });
 
             // Sort by lastUpdated descending and set directly
-            adjustedItems.sort((a, b) => (b.lastUpdated ?? 0) - (a.lastUpdated ?? 0));
+            adjustedItems.sort(compareCwItems);
 
             // Debug final order (only if changed)
             try {
@@ -1515,7 +1531,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
             return it;
           });
 
-          adjustedItems.sort((a, b) => (b.lastUpdated ?? 0) - (a.lastUpdated ?? 0));
+          adjustedItems.sort(compareCwItems);
           setContinueWatchingItems(adjustedItems);
         } catch (err) {
           logger.error('[SimklSync] Error in Simkl merge:', err);
@@ -1529,6 +1545,12 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
     } finally {
       setLoading(false);
       isRefreshingRef.current = false;
+      if (pendingRefreshRef.current) {
+        pendingRefreshRef.current = false;
+        setTimeout(() => {
+          loadContinueWatching(true);
+        }, 0);
+      }
     }
   }, [getCachedMetadata]);
 
@@ -1602,6 +1624,13 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
   // Initial load
   useEffect(() => {
     loadContinueWatching();
+    const trailingRefreshId = setTimeout(() => {
+      loadContinueWatching(true);
+    }, 4000);
+
+    return () => {
+      clearTimeout(trailingRefreshId);
+    };
   }, [loadContinueWatching]);
 
   // Refresh on screen focus (lightweight, no polling)
@@ -1879,7 +1908,8 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
   }, [computedPosterWidth]);
 
   // Memoized render function for poster-style continue watching items
-  const renderPosterStyleItem = useCallback(({ item }: { item: ContinueWatchingItem }) => (
+  const renderPosterStyleItem = useCallback(({ item }: { item: ContinueWatchingItem }) => {
+    return (
     <TouchableOpacity
       style={[
         styles.posterContentItem,
@@ -1978,10 +2008,12 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
         )}
       </View>
     </TouchableOpacity>
-  ), [currentTheme.colors, handleContentPress, handleLongPress, deletingItemId, computedPosterWidth, computedPosterHeight, isTV, isLargeTablet, settings.posterBorderRadius]);
+    );
+  }, [currentTheme.colors, handleContentPress, handleLongPress, deletingItemId, computedPosterWidth, computedPosterHeight, isTV, isLargeTablet, settings.posterBorderRadius]);
 
   // Memoized render function for wide-style continue watching items
-  const renderWideStyleItem = useCallback(({ item }: { item: ContinueWatchingItem }) => (
+  const renderWideStyleItem = useCallback(({ item }: { item: ContinueWatchingItem }) => {
+    return (
     <TouchableOpacity
       style={[
         styles.wideContentItem,
@@ -2143,7 +2175,8 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
         )}
       </View>
     </TouchableOpacity>
-  ), [currentTheme.colors, handleContentPress, handleLongPress, deletingItemId, computedItemWidth, computedItemHeight, isTV, isLargeTablet, isTablet, settings.posterBorderRadius]);
+    );
+  }, [currentTheme.colors, handleContentPress, handleLongPress, deletingItemId, computedItemWidth, computedItemHeight, isTV, isLargeTablet, isTablet, settings.posterBorderRadius, t]);
 
   // Choose the appropriate render function based on settings
   const renderContinueWatchingItem = useCallback(({ item }: { item: ContinueWatchingItem }) => {
@@ -2190,7 +2223,14 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
       </View>
 
       <FlatList
-        data={[...continueWatchingItems].sort((a, b) => (b.lastUpdated ?? 0) - (a.lastUpdated ?? 0))}
+        data={[...continueWatchingItems].sort((a, b) => {
+          const aProgress = a.progress ?? 0;
+          const bProgress = b.progress ?? 0;
+          const aIsUpNext = a.type === 'series' && aProgress <= 0;
+          const bIsUpNext = b.type === 'series' && bProgress <= 0;
+          if (aIsUpNext !== bIsUpNext) return aIsUpNext ? 1 : -1;
+          return (b.lastUpdated ?? 0) - (a.lastUpdated ?? 0);
+        })}
         renderItem={renderContinueWatchingItem}
         keyExtractor={keyExtractor}
         horizontal

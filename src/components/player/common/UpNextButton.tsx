@@ -4,6 +4,7 @@ import { Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { logger } from '../../../utils/logger';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SkipInterval } from '../../../services/introService';
 
 export interface Insets {
   top: number;
@@ -33,6 +34,7 @@ interface UpNextButtonProps {
   metadata?: { poster?: string; id?: string }; // Added metadata prop
   controlsVisible?: boolean;
   controlsFixedOffset?: number;
+  outroSegment?: SkipInterval | null;
 }
 
 const UpNextButton: React.FC<UpNextButtonProps> = ({
@@ -49,6 +51,7 @@ const UpNextButton: React.FC<UpNextButtonProps> = ({
   metadata,
   controlsVisible = false,
   controlsFixedOffset = 100,
+  outroSegment,
 }) => {
   const [visible, setVisible] = useState(false);
   const opacity = useRef(new Animated.Value(0)).current;
@@ -76,10 +79,20 @@ const UpNextButton: React.FC<UpNextButtonProps> = ({
 
   const shouldShow = useMemo(() => {
     if (!nextEpisode || duration <= 0) return false;
+
+    // 1. Determine if we have a valid ending outro (within last 5 mins)
+    const hasValidEndingOutro = outroSegment && (duration - outroSegment.endTime < 300);
+
+    if (hasValidEndingOutro) {
+      // If we have a valid outro, ONLY show after it finishes
+      // This prevents the 60s fallback from "jumping the gun"
+      return currentTime >= outroSegment.endTime;
+    }
+
+    // 2. Standard Fallback (only if no valid ending outro was found)
     const timeRemaining = duration - currentTime;
-    // Be tolerant to timer jitter: show when under ~1 minute and above 10s
-    return timeRemaining < 61 && timeRemaining > 10;
-  }, [nextEpisode, duration, currentTime]);
+    return timeRemaining < 61 && timeRemaining > 0;
+  }, [nextEpisode, duration, currentTime, outroSegment]);
 
   // Debug logging removed to reduce console noise
   // The state is computed in shouldShow useMemo above

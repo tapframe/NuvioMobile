@@ -1486,10 +1486,10 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
       setActiveFetchingScrapers([]);
       setAddonResponseOrder([]); // Reset response order
 
-      // Get TMDB ID for external sources and determine the correct ID for Stremio addons
       if (__DEV__) console.log('🔍 [loadStreams] Getting TMDB ID for:', id);
       let tmdbId;
-      let stremioId = id; // Default to original ID
+      let stremioId = id;
+      let effectiveStreamType: string = type;
 
       if (id.startsWith('tmdb:')) {
         tmdbId = id.split(':')[1];
@@ -1544,56 +1544,66 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
         const allStremioAddons = await stremioService.getInstalledAddons();
         const localScrapers = await localScraperService.getInstalledScrapers();
 
-        // Map app-level "tv" type to Stremio "series" for addon capability checks
-        const stremioType = type === 'tv' ? 'series' : type;
+        const requestedStreamType = type;
 
-        // Filter Stremio addons to only include those that provide streams for this content type
-        const streamAddons = allStremioAddons.filter(addon => {
-          if (!addon.resources || !Array.isArray(addon.resources)) {
-            return false;
-          }
+        const pickEligibleStreamAddons = (requestType: string) =>
+          allStremioAddons.filter(addon => {
+            if (!addon.resources || !Array.isArray(addon.resources)) {
+              return false;
+            }
 
-          let hasStreamResource = false;
-          let supportsIdPrefix = false;
+            let hasStreamResource = false;
+            let supportsIdPrefix = false;
 
-          for (const resource of addon.resources) {
-            // Check if the current element is a ResourceObject
-            if (typeof resource === 'object' && resource !== null && 'name' in resource) {
-              const typedResource = resource as any;
-              if (typedResource.name === 'stream' &&
-                Array.isArray(typedResource.types) &&
-                typedResource.types.includes(stremioType)) {
-                hasStreamResource = true;
+            for (const resource of addon.resources) {
+              if (typeof resource === 'object' && resource !== null && 'name' in resource) {
+                const typedResource = resource as any;
+                if (typedResource.name === 'stream' &&
+                  Array.isArray(typedResource.types) &&
+                  typedResource.types.includes(requestType)) {
+                  hasStreamResource = true;
 
-                // Check if this addon supports the ID prefix generically: any prefix must match start of id
-                if (Array.isArray(typedResource.idPrefixes) && typedResource.idPrefixes.length > 0) {
-                  supportsIdPrefix = typedResource.idPrefixes.some((p: string) => id.startsWith(p));
-                } else {
-                  // If no idPrefixes specified, assume it supports all prefixes
-                  supportsIdPrefix = true;
+                  if (Array.isArray(typedResource.idPrefixes) && typedResource.idPrefixes.length > 0) {
+                    supportsIdPrefix = typedResource.idPrefixes.some((p: string) => stremioId.startsWith(p));
+                  } else {
+                    supportsIdPrefix = true;
+                  }
+                  break;
                 }
-                break;
+              } else if (typeof resource === 'string' && resource === 'stream' && addon.types) {
+                if (Array.isArray(addon.types) && addon.types.includes(requestType)) {
+                  hasStreamResource = true;
+                  if (addon.idPrefixes && Array.isArray(addon.idPrefixes) && addon.idPrefixes.length > 0) {
+                    supportsIdPrefix = addon.idPrefixes.some((p: string) => stremioId.startsWith(p));
+                  } else {
+                    supportsIdPrefix = true;
+                  }
+                  break;
+                }
               }
             }
-            // Check if the element is the simple string "stream" AND the addon has a top-level types array
-            else if (typeof resource === 'string' && resource === 'stream' && addon.types) {
-              if (Array.isArray(addon.types) && addon.types.includes(stremioType)) {
-                hasStreamResource = true;
-                // For simple string resources, check addon-level idPrefixes generically
-                if (addon.idPrefixes && Array.isArray(addon.idPrefixes) && addon.idPrefixes.length > 0) {
-                  supportsIdPrefix = addon.idPrefixes.some((p: string) => id.startsWith(p));
-                } else {
-                  // If no idPrefixes specified, assume it supports all prefixes
-                  supportsIdPrefix = true;
-                }
-                break;
-              }
+
+            return hasStreamResource && supportsIdPrefix;
+          });
+
+        effectiveStreamType = requestedStreamType;
+        let eligibleStreamAddons = pickEligibleStreamAddons(requestedStreamType);
+        
+        if (eligibleStreamAddons.length === 0) {
+          const fallbackTypes = ['series', 'movie'].filter(t => t !== requestedStreamType);
+          for (const fallbackType of fallbackTypes) {
+            const fallback = pickEligibleStreamAddons(fallbackType);
+            if (fallback.length > 0) {
+              effectiveStreamType = fallbackType;
+              eligibleStreamAddons = fallback;
+              if (__DEV__) console.log(`[useMetadata.loadStreams] No addons for '${requestedStreamType}', falling back to '${fallbackType}'`);
+              break;
             }
           }
+        }
 
-          return hasStreamResource && supportsIdPrefix;
-        });
-        if (__DEV__) console.log('[useMetadata.loadStreams] Eligible stream addons:', streamAddons.map(a => a.id));
+        const streamAddons = eligibleStreamAddons;
+        if (__DEV__) console.log('[useMetadata.loadStreams] Eligible stream addons:', streamAddons.map(a => a.id), { requestedStreamType, effectiveStreamType });
 
         // Initialize scraper statuses for tracking
         const initialStatuses: ScraperStatus[] = [];
@@ -1645,9 +1655,9 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
 
       // Start Stremio request using the converted ID format
       if (__DEV__) console.log('🎬 [loadStreams] Using ID for Stremio addons:', stremioId);
-      // Map app-level "tv" type to Stremio "series" when requesting streams
-      const stremioContentType = type === 'tv' ? 'series' : type;
-      processStremioSource(stremioContentType, stremioId, false);
+      // Use the effective type we selected when building the eligible addon list.
+      // This stays aligned with Stremio manifest filtering rules and avoids hard-mapping non-standard types.
+      processStremioSource(effectiveStreamType, stremioId, false);
 
       // Also extract any embedded streams from metadata (PPV-style addons)
       extractEmbeddedStreams();
@@ -1707,36 +1717,41 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
         const allStremioAddons = await stremioService.getInstalledAddons();
         const localScrapers = await localScraperService.getInstalledScrapers();
 
-        // Filter Stremio addons to only include those that provide streams for series content
-        const streamAddons = allStremioAddons.filter(addon => {
-          if (!addon.resources || !Array.isArray(addon.resources)) {
+        // We don't yet know the final episode ID format here (it can be normalized later),
+        // but we can still pre-filter by stream capability for the most likely types.
+        const pickStreamCapableAddons = (requestType: string) =>
+          allStremioAddons.filter(addon => {
+            if (!addon.resources || !Array.isArray(addon.resources)) return false;
+
+            for (const resource of addon.resources) {
+              if (typeof resource === 'object' && resource !== null && 'name' in resource) {
+                const typedResource = resource as any;
+                if (typedResource.name === 'stream' && Array.isArray(typedResource.types) && typedResource.types.includes(requestType)) {
+                  return true;
+                }
+              } else if (typeof resource === 'string' && resource === 'stream' && addon.types) {
+                if (Array.isArray(addon.types) && addon.types.includes(requestType)) {
+                  return true;
+                }
+              }
+            }
             return false;
-          }
+          });
 
-          let hasStreamResource = false;
-
-          for (const resource of addon.resources) {
-            // Check if the current element is a ResourceObject
-            if (typeof resource === 'object' && resource !== null && 'name' in resource) {
-              const typedResource = resource as any;
-              if (typedResource.name === 'stream' &&
-                Array.isArray(typedResource.types) &&
-                typedResource.types.includes('series')) {
-                hasStreamResource = true;
-                break;
-              }
-            }
-            // Check if the element is the simple string "stream" AND the addon has a top-level types array
-            else if (typeof resource === 'string' && resource === 'stream' && addon.types) {
-              if (Array.isArray(addon.types) && addon.types.includes('series')) {
-                hasStreamResource = true;
-                break;
-              }
+        const requestedEpisodeType = type;
+        let streamAddons = pickStreamCapableAddons(requestedEpisodeType);
+        
+        if (streamAddons.length === 0) {
+          const fallbackTypes = ['series', 'movie'].filter(t => t !== requestedEpisodeType);
+          for (const fallbackType of fallbackTypes) {
+            const fallback = pickStreamCapableAddons(fallbackType);
+            if (fallback.length > 0) {
+              streamAddons = fallback;
+              if (__DEV__) console.log(`[useMetadata.loadEpisodeStreams] No addons for '${requestedEpisodeType}', falling back to '${fallbackType}'`);
+              break;
             }
           }
-
-          return hasStreamResource;
-        });
+        }
 
         // Initialize scraper statuses for tracking
         const initialStatuses: ScraperStatus[] = [];
@@ -1923,10 +1938,8 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
       // Start Stremio request using the converted episode ID format
       if (__DEV__) console.log('🎬 [loadEpisodeStreams] Using episode ID for Stremio addons:', stremioEpisodeId);
 
-      // For collections, treat episodes as individual movies, not series
-      // For other types (e.g. StreamsPPV), preserve the original type unless it's explicitly 'series' logic we want
-      // Map app-level "tv" type to Stremio "series" for addon stream endpoint
-      const contentType = isCollection ? 'movie' : (type === 'tv' ? 'series' : type);
+      const requestedContentType = isCollection ? 'movie' : type;
+      const contentType = requestedContentType;
       if (__DEV__) console.log(`🎬 [loadEpisodeStreams] Using content type: ${contentType} for ${isCollection ? 'collection' : type}`);
 
       processStremioSource(contentType, stremioEpisodeId, true);
