@@ -625,7 +625,6 @@
         "enter_custom_key": "Ju lutem jepni dhe ruani çelësin tuaj personal.",
         "key_verified": "Çelësi API u verifikua dhe u ruajt me sukses."
     },
-    {
     "settings": {
         "language": "Gjuha",
         "select_language": "Zgjidh Gjuhën",
@@ -973,7 +972,6 @@
         "alert_disconnect_title": "Shkëput Torbox",
         "alert_disconnect_msg": "Jeni të sigurt? Kjo do të fshijë çelësin API të ruajtur."
     },
-    {
     "home_screen": {
         "title": "Cilësimet e Ekranit Kryesor",
         "changes_applied": "Ndryshimet u aplikuan",

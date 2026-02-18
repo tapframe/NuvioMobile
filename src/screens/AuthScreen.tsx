@@ -11,7 +11,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EMAIL_CONFIRMATION_REQUIRED_PREFIX = '__EMAIL_CONFIRMATION__';
-const AUTH_BG_GRADIENT = ['#07090F', '#0D1020', '#140B24'];
+const AUTH_BG_GRADIENT = ['#07090F', '#0D1020', '#140B24'] as const;
 
 const normalizeAuthErrorMessage = (input: string): string => {
   const raw = (input || '').trim();

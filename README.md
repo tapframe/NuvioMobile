@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="assets/nuviotext.png" alt="Nuvio" width="300" />
+  <img src="https://github.com/tapframe/NuvioTV/blob/main/assets/brand/app_logo_wordmark.png" alt="Nuvio" width="300" />
   <br />
   <br />
 

@@ -6,7 +6,7 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "build": "export NODE_ENV=production && cd android && ./gradlew assembleRelease",
+    "build": "export NODE_ENV=production && export SENTRY_DISABLE_AUTO_UPLOAD=true && cd android && ./gradlew assembleRelease",
     "postinstall": "patch-package"
   },
   "dependencies": {

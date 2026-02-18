@@ -625,7 +625,6 @@
         "enter_custom_key": "Voer je eigen TMDb API key in en sla op.",
         "key_verified": "API key geverifieerd en succesvol opgeslagen."
     },
-    {
     "settings": {
         "language": "Taal",
         "select_language": "Selecteer taal",
@@ -650,7 +649,7 @@
         "slovenian": "Sloveens",
         "macedonian": "Macedonisch",
         "russian": "Russisch",
-        "filipino": "Filipijns"
+        "filipino": "Filipijns",
         "dutch_nl": "Nederlands (Nederland)",
         "romanian": "Roemeens",
         "albanian": "Albanees",
@@ -1029,7 +1028,6 @@
         "no_upcoming_found": "Geen aankomende afleveringen gevonden",
         "add_series_desc": "Voeg series toe aan je bibliotheek om ze hier te zien"
     },
-    {
     "mdblist": {
         "title": "Beoordelingsbronnen",
         "status_disabled": "MDBList uitgeschakeld",

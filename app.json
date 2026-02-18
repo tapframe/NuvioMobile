@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nuvio",
     "slug": "nuvio",
-    "version": "1.3.7",
+    "version": "1.4.0",
     "orientation": "default",
     "backgroundColor": "#020404",
     "icon": "./assets/ios/AppIcon.appiconset/Icon-App-60x60@3x.png",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "icon": "./assets/ios/AppIcon.appiconset/Icon-App-60x60@3x.png",
-      "buildNumber": "35",
+      "buildNumber": "36",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -52,7 +52,7 @@
         "android.permission.WRITE_SETTINGS"
       ],
       "package": "com.nuvio.app",
-      "versionCode": 35,
+      "versionCode": 36,
       "architectures": [
         "arm64-v8a",
         "armeabi-v7a",
@@ -105,6 +105,6 @@
       "fallbackToCacheTimeout": 30000,
       "url": "https://ota.nuvioapp.space/api/manifest"
     },
-    "runtimeVersion": "1.3.7"
+    "runtimeVersion": "1.4.0"
   }
 }
