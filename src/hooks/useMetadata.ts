@@ -734,44 +734,119 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
       let contentResult = null;
       let lastError = null;
 
-      // Try with original ID first
-      try {
-        console.log('🔍 [useMetadata] Attempting metadata fetch with original ID:', { type, actualId, addonId });
-        const [content, castData] = await Promise.allSettled([
-          // Load content with timeout and retry
-          withRetry(async () => {
-            console.log('🔍 [useMetadata] Calling catalogService.getEnhancedContentDetails:', { type, actualId, addonId });
-            const result = await withTimeout(
-              catalogService.getEnhancedContentDetails(type, actualId, addonId),
-              API_TIMEOUT
-            );
-            // Store the actual ID used (could be IMDB)
-            if (actualId.startsWith('tt')) {
-              setImdbId(actualId);
-            }
-            console.log('🔍 [useMetadata] catalogService.getEnhancedContentDetails result:', {
-              hasResult: Boolean(result),
-              resultId: result?.id,
-              resultName: result?.name,
-              resultType: result?.type
-            });
-            if (__DEV__) logger.log('[loadMetadata] addon metadata fetched', { hasResult: Boolean(result) });
-            return result;
-          }),
-          // Start loading cast immediately in parallel
-          loadCast()
-        ]);
+      // Check if user prefers external meta addons
+      const preferExternal = settings.preferExternalMetaAddonDetail;
 
-        contentResult = content;
-        if (content.status === 'fulfilled' && content.value) {
-          console.log('🔍 [useMetadata] Successfully got metadata with original ID');
-        } else {
-          console.log('🔍 [useMetadata] Original ID failed, will try fallback conversion');
-          lastError = (content as any)?.reason;
+      if (preferExternal) {
+        // Try external meta addons first
+        try {
+          console.log('🔍 [useMetadata] Trying external meta addons first');
+          const [content, castData] = await Promise.allSettled([
+            withRetry(async () => {
+              // Get all installed addons
+              const allAddons = await stremioService.getInstalledAddonsAsync();
+              
+              // Find catalog addon index
+              const catalogAddonIndex = allAddons.findIndex(addon => addon.id === addonId);
+              
+              // Filter for meta addons that are BEFORE catalog addon in priority
+              const externalMetaAddons = allAddons
+                .slice(0, catalogAddonIndex >= 0 ? catalogAddonIndex : allAddons.length)
+                .filter(addon => {
+                  if (!addon.resources || !Array.isArray(addon.resources)) return false;
+                  
+                  return addon.resources.some(resource => {
+                    if (typeof resource === 'string') return resource === 'meta';
+                    return (resource as any).name === 'meta';
+                  });
+                });
+              
+              // Try each external meta addon in priority order
+              for (const addon of externalMetaAddons) {
+                try {
+                  const result = await withTimeout(
+                    stremioService.getMetaDetails(type, actualId, addon.id),
+                    API_TIMEOUT
+                  );
+                  
+                  if (result) {
+                    console.log('🔍 [useMetadata] Got metadata from external addon:', addon.name);
+                    if (actualId.startsWith('tt')) {
+                      setImdbId(actualId);
+                    }
+                    return result;
+                  }
+                } catch (error) {
+                  console.log('🔍 [useMetadata] External addon failed:', addon.name, error);
+                  continue;
+                }
+              }
+              
+              // If no external addon worked, fall back to catalog addon
+              console.log('🔍 [useMetadata] No external meta addon worked, falling back to catalog addon');
+              const result = await withTimeout(
+                catalogService.getEnhancedContentDetails(type, actualId, addonId),
+                API_TIMEOUT
+              );
+              if (actualId.startsWith('tt')) {
+                setImdbId(actualId);
+              }
+              return result;
+            }),
+            loadCast()
+          ]);
+
+          contentResult = content;
+          if (content.status === 'fulfilled' && content.value) {
+            console.log('🔍 [useMetadata] Successfully got metadata with external meta addon priority');
+          } else {
+            console.log('🔍 [useMetadata] External meta addon priority failed, will try fallback');
+            lastError = (content as any)?.reason;
+          }
+        } catch (error) {
+          console.log('🔍 [useMetadata] External meta addon attempt failed:', { error: error instanceof Error ? error.message : String(error) });
+          lastError = error;
         }
-      } catch (error) {
-        console.log('🔍 [useMetadata] Original ID attempt failed:', { error: error instanceof Error ? error.message : String(error) });
-        lastError = error;
+      } else {
+        // Original behavior: try with original ID first
+        try {
+          console.log('🔍 [useMetadata] Attempting metadata fetch with original ID:', { type, actualId, addonId });
+          const [content, castData] = await Promise.allSettled([
+            // Load content with timeout and retry
+            withRetry(async () => {
+              console.log('🔍 [useMetadata] Calling catalogService.getEnhancedContentDetails:', { type, actualId, addonId });
+              const result = await withTimeout(
+                catalogService.getEnhancedContentDetails(type, actualId, addonId),
+                API_TIMEOUT
+              );
+              // Store the actual ID used (could be IMDB)
+              if (actualId.startsWith('tt')) {
+                setImdbId(actualId);
+              }
+              console.log('🔍 [useMetadata] catalogService.getEnhancedContentDetails result:', {
+                hasResult: Boolean(result),
+                resultId: result?.id,
+                resultName: result?.name,
+                resultType: result?.type
+              });
+              if (__DEV__) logger.log('[loadMetadata] addon metadata fetched', { hasResult: Boolean(result) });
+              return result;
+            }),
+            // Start loading cast immediately in parallel
+            loadCast()
+          ]);
+
+          contentResult = content;
+          if (content.status === 'fulfilled' && content.value) {
+            console.log('🔍 [useMetadata] Successfully got metadata with original ID');
+          } else {
+            console.log('🔍 [useMetadata] Original ID failed, will try fallback conversion');
+            lastError = (content as any)?.reason;
+          }
+        } catch (error) {
+          console.log('🔍 [useMetadata] Original ID attempt failed:', { error: error instanceof Error ? error.message : String(error) });
+          lastError = error;
+        }
       }
 
       // If original TMDB ID failed and enrichment is disabled, try ID conversion as fallback
@@ -1831,10 +1906,10 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
           seasonNum = parts.pop() || '';
           showIdStr = parts.join(':');
         } else if (parts.length === 2) {
-          // Edge case: maybe just id:episode? unlikely but safe fallback
-          episodeNum = parts[1];
-          seasonNum = '1'; // Default
+          // For IDs like mal:57658:1, this is showId:episode (no season)
           showIdStr = parts[0];
+          episodeNum = parts[1];
+          seasonNum = ''; // No season for this format
         }
 
         if (__DEV__) console.log(`🔍 [loadEpisodeStreams] Parsed ID: show=${showIdStr}, s=${seasonNum}, e=${episodeNum}`);
@@ -1912,6 +1987,9 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
         // This handles cases where 'tt' is used for a unique episode ID directly
         if (!seasonNum && !episodeNum) {
           stremioEpisodeId = episodeId;
+        } else if (!seasonNum) {
+          // No season (e.g., mal:57658:1) - use id:episode format
+          stremioEpisodeId = `${id}:${episodeNum}`;
         } else {
           stremioEpisodeId = `${id}:${seasonNum}:${episodeNum}`;
         }
@@ -1923,6 +2001,9 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
         if (!seasonNum && !episodeNum) {
           // Remove 'series:' prefix if present to be safe, though parsing logic above usually handles it
           stremioEpisodeId = episodeId.replace(/^series:/, '');
+        } else if (!seasonNum) {
+          // No season (e.g., mal:57658:1) - use id:episode format
+          stremioEpisodeId = `${id}:${episodeNum}`;
         } else {
           stremioEpisodeId = `${id}:${seasonNum}:${episodeNum}`;
         }

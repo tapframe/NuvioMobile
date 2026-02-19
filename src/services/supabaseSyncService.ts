@@ -825,7 +825,11 @@ class SupabaseSyncService {
   }
 
   private normalizeUrl(url: string): string {
-    return url.trim().toLowerCase();
+    let u = url.trim().toLowerCase();
+    
+    u = u.replace(/\/manifest\.json\/?$/i, '');
+    u = u.replace(/\/+$/, '');
+    return u;
   }
 
   private toBigIntNumber(value: unknown): number {
@@ -1063,14 +1067,37 @@ class SupabaseSyncService {
         .map((url) => this.normalizeUrl(url))
     );
 
+    // Build a set of currently-installed addon manifest IDs so we can also
+    // skip by ID (prevents duplicate installations of stream-providing addons
+    // that the URL check alone might miss due to URL format differences).
+    const installedAddonIds = new Set(
+      installed.map((addon) => addon.id).filter(Boolean)
+    );
+
     for (const row of rows || []) {
       if (!row.url) continue;
       const normalized = this.normalizeUrl(row.url);
       if (installedUrls.has(normalized)) continue;
 
       try {
+        // Pre-check: fetch manifest to see if this addon ID is already installed.
+        // This prevents creating duplicate installations for stream-providing
+        // addons whose URLs differ only by format (e.g. with/without manifest.json).
+        let manifest: Manifest | null = null;
+        try {
+          manifest = await stremioService.getManifest(row.url);
+        } catch {
+          // If manifest fetch fails, fall through to installAddon which will also fail and be caught below.
+        }
+        if (manifest?.id && installedAddonIds.has(manifest.id)) {
+          // Addon already installed under a different URL variant — skip.
+          logger.log(`[SupabaseSyncService] pullAddonsToLocal: skipping duplicate addon id=${manifest.id} url=${row.url}`);
+          installedUrls.add(normalized);
+          continue;
+        }
         await stremioService.installAddon(row.url);
         installedUrls.add(normalized);
+        if (manifest?.id) installedAddonIds.add(manifest.id);
       } catch (error) {
         logger.warn('[SupabaseSyncService] Failed to install synced addon:', row.url, error);
       }

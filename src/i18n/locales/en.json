@@ -971,6 +971,8 @@
         "select_catalogs": "Select Catalogs",
         "all_catalogs": "All catalogs",
         "selected": "selected",
+        "prefer_external_meta": "Prefer External Meta Addon",
+        "prefer_external_meta_desc": "Use external metadata on detail page",
         "hero_layout": "Hero Layout",
         "layout_legacy": "Legacy",
         "layout_carousel": "Carousel",

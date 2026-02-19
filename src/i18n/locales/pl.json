@@ -983,6 +983,8 @@
         "select_catalogs": "Wybierz katalogi",
         "all_catalogs": "Wszystkie katalogi",
         "selected": "wybrane",
+        "prefer_external_meta": "Preferuj zewnętrzny dodatek meta",
+        "prefer_external_meta_desc": "Używaj zewnętrznych metadanych na stronie szczegółów",
         "hero_layout": "Układ sekcji Hero",
         "layout_legacy": "Klasyczny",
         "layout_carousel": "Karuzela",

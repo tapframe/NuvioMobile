@@ -344,9 +344,22 @@ const HomeScreenSettings: React.FC = () => {
               colors={colors}
               renderControl={ChevronRight}
               onPress={() => navigation.navigate('HeroCatalogs')}
-              isLast={true}
             />
           )}
+          <SettingItem
+            title={t("home_screen.prefer_external_meta")}
+            description={t("home_screen.prefer_external_meta_desc")}
+            icon="cloud-download"
+            isDarkMode={isDarkMode}
+            colors={colors}
+            renderControl={() => (
+              <CustomSwitch
+                value={settings.preferExternalMetaAddonDetail}
+                onValueChange={(value) => handleUpdateSetting('preferExternalMetaAddonDetail', value)}
+              />
+            )}
+            isLast={true}
+          />
         </SettingsCard>
 
         {settings.showHeroSection && (
