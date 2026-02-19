@@ -314,7 +314,8 @@ const SearchScreen = () => {
           selectedCatalog.catalogId,
           selectedCatalog.type,
           selectedDiscoverGenre || undefined,
-          1
+          1,
+          selectedCatalog.filterKey || 'genre'
         );
         if (isMounted.current) {
           const seen = new Set<string>();
@@ -360,7 +361,8 @@ const SearchScreen = () => {
         selectedCatalog.catalogId,
         selectedCatalog.type,
         selectedDiscoverGenre || undefined,
-        nextPage
+        nextPage,
+        selectedCatalog.filterKey || 'genre'
       );
 
       if (isMounted.current) {

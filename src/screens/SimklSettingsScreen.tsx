@@ -220,7 +220,7 @@ const SimklSettingsScreen: React.FC = () => {
                                     </View>
                                     <View style={styles.statItem}>
                                         <Text style={[styles.statValue, { color: currentTheme.colors.primary }]}>
-                                            {userStats.anime?.completed?.count || 0}
+                                            {(userStats.anime?.watching?.count || 0) + (userStats.anime?.completed?.count || 0)}
                                         </Text>
                                         <Text style={[styles.statLabel, { color: currentTheme.colors.mediumEmphasis }]}>
                                             Anime

@@ -27,6 +27,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { StreamingContent, CatalogContent, catalogService } from '../services/catalogService';
 import { stremioService } from '../services/stremioService';
+import { torrentStreamingService } from '../services/torrentStreamingService';
 import { Stream } from '../types/metadata';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -546,6 +547,16 @@ const HomeScreen = () => {
     if (!featuredContent) return;
 
     try {
+      let playbackUri = stream.url as any;
+      let torrentStreamId: string | undefined;
+
+      if (Platform.OS === 'android' && torrentStreamingService.isTorrentStream(stream)) {
+        showInfo('Preparing torrent stream...');
+        const prepared = await torrentStreamingService.preparePlayback(stream, featuredContent.name);
+        playbackUri = prepared.playbackUrl;
+        torrentStreamId = prepared.streamId;
+      }
+
       // Don't clear cache before player - causes broken images on return
       // FastImage's native libraries handle memory efficiently
 
@@ -564,13 +575,14 @@ const HomeScreen = () => {
 
       // @ts-ignore
       navigation.navigate(Platform.OS === 'ios' ? 'PlayerIOS' : 'PlayerAndroid', {
-        uri: stream.url as any,
+        uri: playbackUri,
         title: featuredContent.name,
         year: featuredContent.year,
         quality: stream.title?.match(/(\d+)p/)?.[1] || undefined,
         streamProvider: stream.name,
         id: featuredContent.id,
-        type: featuredContent.type
+        type: featuredContent.type,
+        torrentStreamId,
       });
     } catch (error) {
       logger.error('[HomeScreen] Error in handlePlayStream:', error);
@@ -588,7 +600,7 @@ const HomeScreen = () => {
         type: featuredContent.type
       });
     }
-  }, [featuredContent, navigation]);
+  }, [featuredContent, navigation, showInfo]);
 
   const refreshContinueWatching = useCallback(async () => {
     if (continueWatchingRef.current) {
@@ -1482,4 +1494,3 @@ const HomeScreenWithFocusSync = (props: any) => {
 };
 
 export default React.memo(HomeScreenWithFocusSync);
-

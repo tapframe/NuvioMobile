@@ -1573,7 +1573,9 @@ class LocalScraperService {
         description: result.size ? `${result.size}` : undefined,
         size: result.size ? this.parseSize(result.size) : undefined,
         behaviorHints: {
-          bingeGroup: `local-scraper-${scraper.id}`
+          bingeGroup: `local-scraper-${scraper.id}`,
+          seeders: typeof result.seeders === 'number' ? result.seeders : undefined,
+          peers: typeof result.peers === 'number' ? result.peers : undefined,
         }
       };
 

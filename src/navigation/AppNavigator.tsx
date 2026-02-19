@@ -152,6 +152,7 @@ export type RootStackParamList = {
     availableStreams?: { [providerId: string]: { streams: any[]; addonName: string } };
     backdrop?: string;
     videoType?: string;
+    torrentStreamId?: string;
     groupedEpisodes?: { [seasonNumber: number]: any[] };
   };
   PlayerAndroid: {
@@ -172,6 +173,7 @@ export type RootStackParamList = {
     availableStreams?: { [providerId: string]: { streams: any[]; addonName: string } };
     backdrop?: string;
     videoType?: string;
+    torrentStreamId?: string;
     groupedEpisodes?: { [seasonNumber: number]: any[] };
   };
   Catalog: { id: string; type: string; addonId?: string; name?: string; genreFilter?: string };
@@ -1315,13 +1317,13 @@ const InnerNavigator = ({ initialRouteName }: { initialRouteName?: keyof RootSta
               component={MetadataScreen}
               options={{
                 headerShown: false,
-                animation: Platform.OS === 'android' ? 'fade' : 'fade',
-                animationDuration: Platform.OS === 'android' ? 200 : 300,
+                animation: Platform.OS === 'android' ? 'default' : 'fade',
+                animationDuration: Platform.OS === 'android' ? 250 : 300,
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
                 ...(Platform.OS === 'ios' && {
                   cardStyleInterpolator: customFadeInterpolator,
                   animationTypeForReplace: 'push',
-                  gestureEnabled: true,
-                  gestureDirection: 'horizontal',
                 }),
                 contentStyle: {
                   backgroundColor: currentTheme.colors.darkBackground,

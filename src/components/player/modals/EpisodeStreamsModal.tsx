@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { MaterialIcons } from '@expo/vector-icons';
 import Animated, {
   FadeIn,
@@ -12,6 +13,11 @@ import { Episode } from '../../../types/metadata';
 import { Stream } from '../../../types/streams';
 import { stremioService } from '../../../services/stremioService';
 import { logger } from '../../../utils/logger';
+import {
+  estimateNetworkProfile,
+  getPlaybackViabilityFromStream,
+  rankStreamsByPlaybackViability,
+} from '../../../screens/streams/utils';
 
 interface EpisodeStreamsModalProps {
   visible: boolean;
@@ -66,6 +72,7 @@ export const EpisodeStreamsModal: React.FC<EpisodeStreamsModalProps> = ({
   const [availableStreams, setAvailableStreams] = useState<{ [providerId: string]: { streams: Stream[]; addonName: string } }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [hasErrors, setHasErrors] = useState<string[]>([]);
+  const [networkMbps, setNetworkMbps] = useState(20);
 
   useEffect(() => {
     if (visible && episode && metadata?.id) {
@@ -76,6 +83,20 @@ export const EpisodeStreamsModal: React.FC<EpisodeStreamsModalProps> = ({
       setHasErrors([]);
     }
   }, [visible, episode, metadata?.id]);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setNetworkMbps(estimateNetworkProfile(state as any).estimatedDownlinkMbps);
+    });
+
+    NetInfo.fetch()
+      .then(state => setNetworkMbps(estimateNetworkProfile(state as any).estimatedDownlinkMbps))
+      .catch(() => {
+        // Keep default profile.
+      });
+
+    return () => unsubscribe();
+  }, []);
 
   const fetchStreams = async () => {
     if (!episode || !metadata?.id) return;
@@ -137,9 +158,17 @@ export const EpisodeStreamsModal: React.FC<EpisodeStreamsModalProps> = ({
     return match ? match[1] : null;
   };
 
-  if (!visible) return null;
+  const sortedProviders = useMemo<Array<[string, { streams: Stream[]; addonName: string }]>>(() => {
+    return Object.entries(availableStreams).map(([providerId, providerData]) => [
+      providerId,
+      {
+        ...providerData,
+        streams: rankStreamsByPlaybackViability((providerData.streams as any) || [], networkMbps) as any as Stream[],
+      },
+    ]);
+  }, [availableStreams, networkMbps]);
 
-  const sortedProviders = Object.entries(availableStreams);
+  if (!visible) return null;
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 10000 }]}>
@@ -218,6 +247,7 @@ export const EpisodeStreamsModal: React.FC<EpisodeStreamsModalProps> = ({
               <View style={{ gap: 8 }}>
                 {providerData.streams.map((stream, index) => {
                   const quality = getQualityFromTitle(stream.title) || stream.quality;
+                  const viability = getPlaybackViabilityFromStream(stream as any);
 
                   return (
                     <TouchableOpacity
@@ -241,6 +271,19 @@ export const EpisodeStreamsModal: React.FC<EpisodeStreamsModalProps> = ({
                             <Text style={{ color: 'white', fontWeight: '700', fontSize: 14, flex: 1 }} numberOfLines={1}>
                               {stream.name || t('player_ui.unknown_source')}
                             </Text>
+                            {viability?.label ? (
+                              <View style={{
+                                backgroundColor: 'rgba(255,255,255,0.12)',
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                borderRadius: 4,
+                                marginLeft: 6,
+                              }}>
+                                <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>
+                                  {viability.label.toUpperCase()}
+                                </Text>
+                              </View>
+                            ) : null}
                             <QualityBadge quality={quality} />
                           </View>
                           {stream.title && (

@@ -55,6 +55,8 @@ export const DiscoverSection = ({
     currentTheme,
 }: DiscoverSectionProps) => {
     const { t } = useTranslation();
+    const isYearFilter = selectedCatalog?.filterLabel === 'year';
+    const allFilterLabel = isYearFilter ? 'All Years' : t('search.all_genres');
 
     return (
         <View style={styles.discoverContainer}>
@@ -94,14 +96,14 @@ export const DiscoverSection = ({
                     <MaterialIcons name="keyboard-arrow-down" size={20} color={currentTheme.colors.lightGray} />
                 </TouchableOpacity>
 
-                {/* Genre Selector Chip - only show if catalog has genres */}
+                {/* Filter Selector Chip - only show if catalog has options */}
                 {availableGenres.length > 0 && (
                     <TouchableOpacity
                         style={[styles.discoverSelectorChip, { backgroundColor: currentTheme.colors.elevation2 }]}
                         onPress={() => genreSheetRef.current?.present()}
                     >
                         <Text style={[styles.discoverSelectorText, { color: currentTheme.colors.white }]} numberOfLines={1}>
-                            {selectedDiscoverGenre || t('search.all_genres')}
+                            {selectedDiscoverGenre || allFilterLabel}
                         </Text>
                         <MaterialIcons name="keyboard-arrow-down" size={20} color={currentTheme.colors.lightGray} />
                     </TouchableOpacity>

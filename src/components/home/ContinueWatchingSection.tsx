@@ -829,8 +829,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
 
           lastTraktSyncRef.current = now;
 
-          // Fetch only playback progress (paused items with actual progress %)
-          // Removed: history items and watched shows - redundant with local logic
+          // Fetch playback progress (paused items with actual progress %)
           const playbackItems = await traktService.getPlaybackProgress();
 
           try {
@@ -849,6 +848,61 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
             logger.log('[CW][Trakt] top playback items:', top);
           } catch {
             // ignore
+          }
+
+          const normalizeImdbId = (imdbId?: string): string | null => {
+            if (!imdbId) return null;
+            const trimmed = String(imdbId).trim();
+            if (!trimmed) return null;
+            return trimmed.startsWith('tt') ? trimmed : `tt${trimmed}`;
+          };
+
+          const watchedEpisodeTimestampsByShow = new Map<string, Map<string, number>>();
+          const upsertWatchedEpisodeTimestamp = (
+            showImdb: string,
+            seasonNumber: number,
+            episodeNumber: number,
+            watchedAt?: string
+          ) => {
+            if (!Number.isFinite(seasonNumber) || !Number.isFinite(episodeNumber)) return;
+            const watchedAtTs = new Date(watchedAt).getTime();
+            const safeTimestamp = Number.isFinite(watchedAtTs) ? watchedAtTs : 0;
+            const episodeKey = `${seasonNumber}:${episodeNumber}`;
+            let showMap = watchedEpisodeTimestampsByShow.get(showImdb);
+            if (!showMap) {
+              showMap = new Map<string, number>();
+              watchedEpisodeTimestampsByShow.set(showImdb, showMap);
+            }
+            const existing = showMap.get(episodeKey) ?? 0;
+            if (safeTimestamp >= existing) {
+              showMap.set(episodeKey, safeTimestamp);
+            }
+          };
+
+          let watchedShows: any[] = [];
+          try {
+            watchedShows = await traktService.getWatchedShows();
+            for (const watchedShow of watchedShows) {
+              const normalizedShowId = normalizeImdbId(watchedShow?.show?.ids?.imdb);
+              if (!normalizedShowId) continue;
+
+              if (Array.isArray(watchedShow?.seasons)) {
+                for (const season of watchedShow.seasons) {
+                  if (!Array.isArray(season?.episodes)) continue;
+                  for (const episode of season.episodes) {
+                    upsertWatchedEpisodeTimestamp(
+                      normalizedShowId,
+                      Number(season.number),
+                      Number(episode.number),
+                      episode?.last_watched_at
+                    );
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            logger.warn('[TraktSync] Error preloading watched shows:', err);
+            watchedShows = [];
           }
 
 
@@ -901,15 +955,28 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
                 logger.log(`📺 [TraktPlayback] Adding movie ${item.movie.title} with ${item.progress.toFixed(1)}% progress`);
 
               } else if (item.type === 'episode' && item.show?.ids?.imdb && item.episode) {
-                const showImdb = item.show.ids.imdb.startsWith('tt')
-                  ? item.show.ids.imdb
-                  : `tt${item.show.ids.imdb}`;
+                const showImdb = normalizeImdbId(item.show.ids.imdb);
+                if (!showImdb) continue;
 
                 // Check if recently removed
                 const showKey = `series:${showImdb}`;
                 if (recentlyRemovedRef.current.has(showKey)) continue;
 
                 const pausedAt = new Date(item.paused_at).getTime();
+                const safePausedAt = Number.isFinite(pausedAt) ? pausedAt : 0;
+                const episodeSeason = Number((item.episode as any).season);
+                const episodeNumber = Number((item.episode as any).number ?? (item.episode as any).episode);
+                if (!Number.isFinite(episodeSeason) || !Number.isFinite(episodeNumber)) continue;
+
+                // If Trakt already marks this episode watched at/after this playback timestamp,
+                // treat this playback row as stale and skip it (prevents old episodes from resurfacing as Up Next).
+                const watchedEpisodeTs = watchedEpisodeTimestampsByShow
+                  .get(showImdb)
+                  ?.get(`${episodeSeason}:${episodeNumber}`);
+                if (typeof watchedEpisodeTs === 'number' && watchedEpisodeTs >= (safePausedAt - 5000)) {
+                  logger.log(`[CW][Trakt] Skip stale playback ${showImdb} S${episodeSeason}E${episodeNumber}`);
+                  continue;
+                }
 
                 const cachedData = await getCachedMetadata('series', showImdb);
                 if (!cachedData?.basicContent) continue;
@@ -919,8 +986,8 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
                   const metadata = cachedData.metadata;
                   if (metadata?.videos) {
                     const nextEpisode = findNextEpisode(
-                      item.episode.season,
-                      item.episode.number,
+                      episodeSeason,
+                      episodeNumber,
                       metadata.videos,
                       undefined, // No watched set needed, findNextEpisode handles it
                       showImdb
@@ -933,7 +1000,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
                         id: showImdb,
                         type: 'series',
                         progress: 0, // Up next - no progress yet
-                        lastUpdated: pausedAt,
+                        lastUpdated: safePausedAt,
                         season: nextEpisode.season,
                         episode: nextEpisode.episode,
                         episodeTitle: nextEpisode.title || `Episode ${nextEpisode.episode}`,
@@ -950,38 +1017,34 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
                   id: showImdb,
                   type: 'series',
                   progress: item.progress,
-                  lastUpdated: pausedAt,
-                  season: item.episode.season,
-                  episode: item.episode.number,
-                  episodeTitle: item.episode.title || `Episode ${item.episode.number}`,
+                  lastUpdated: safePausedAt,
+                  season: episodeSeason,
+                  episode: episodeNumber,
+                  episodeTitle: item.episode.title || `Episode ${episodeNumber}`,
                   addonId: undefined,
                   traktPlaybackId: item.id, // Store playback ID for removal
                 } as ContinueWatchingItem);
 
-                logger.log(`📺 [TraktPlayback] Adding ${item.show.title} S${item.episode.season}E${item.episode.number} with ${item.progress.toFixed(1)}% progress`);
+                logger.log(`📺 [TraktPlayback] Adding ${item.show.title} S${episodeSeason}E${episodeNumber} with ${item.progress.toFixed(1)}% progress`);
               }
             } catch (err) {
               // Continue with other items
             }
           }
 
-          // STEP 2: Get watched shows and find "Up Next" episodes
-          // This handles cases where episodes are fully completed and removed from playback progress
+          // STEP 2: Use watched shows to find "Up Next" episodes
+          // This handles cases where episodes are fully completed and removed from playback progress.
           try {
-            const watchedShows = await traktService.getWatchedShows();
             const thirtyDaysAgoForShows = Date.now() - (30 * 24 * 60 * 60 * 1000);
 
             for (const watchedShow of watchedShows) {
               try {
-                if (!watchedShow.show?.ids?.imdb) continue;
+                const showImdb = normalizeImdbId(watchedShow?.show?.ids?.imdb);
+                if (!showImdb) continue;
 
                 // Skip shows that haven't been watched recently
                 const lastWatchedAt = new Date(watchedShow.last_watched_at).getTime();
                 if (lastWatchedAt < thirtyDaysAgoForShows) continue;
-
-                const showImdb = watchedShow.show.ids.imdb.startsWith('tt')
-                  ? watchedShow.show.ids.imdb
-                  : `tt${watchedShow.show.ids.imdb}`;
 
                 // Check if recently removed
                 const showKey = `series:${showImdb}`;
@@ -996,7 +1059,15 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
                   for (const season of watchedShow.seasons) {
                     for (const episode of season.episodes) {
                       const episodeTimestamp = new Date(episode.last_watched_at).getTime();
-                      if (episodeTimestamp > latestEpisodeTimestamp) {
+                      const isMoreRecent = episodeTimestamp > latestEpisodeTimestamp;
+                      const isTimestampTieWithLaterEpisode =
+                        episodeTimestamp === latestEpisodeTimestamp &&
+                        (
+                          season.number > lastWatchedSeason ||
+                          (season.number === lastWatchedSeason && episode.number > lastWatchedEpisode)
+                        );
+
+                      if (isMoreRecent || isTimestampTieWithLaterEpisode) {
                         latestEpisodeTimestamp = episodeTimestamp;
                         lastWatchedSeason = season.number;
                         lastWatchedEpisode = episode.number;
@@ -1013,11 +1084,10 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
 
                 // Build a set of watched episodes for this show
                 const watchedEpisodeSet = new Set<string>();
-                if (watchedShow.seasons) {
-                  for (const season of watchedShow.seasons) {
-                    for (const episode of season.episodes) {
-                      watchedEpisodeSet.add(`${showImdb}:${season.number}:${episode.number}`);
-                    }
+                const watchedEpisodeMap = watchedEpisodeTimestampsByShow.get(showImdb);
+                if (watchedEpisodeMap && watchedEpisodeMap.size > 0) {
+                  for (const episodeKey of watchedEpisodeMap.keys()) {
+                    watchedEpisodeSet.add(`${showImdb}:${episodeKey}`);
                   }
                 }
 
@@ -1310,7 +1380,7 @@ const ContinueWatchingSection = React.forwardRef<ContinueWatchingRef>((props, re
               // ignore
             }
 
-            setContinueWatchingItems(adjustedItems);
+            await mergeBatchIntoState(adjustedItems);
 
             // Fire-and-forget reconcile (don't block UI)
             if (reconcilePromises.length > 0) {

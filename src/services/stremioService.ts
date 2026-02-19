@@ -272,6 +272,7 @@ class StremioService {
   private initialized: boolean = false;
   private initializationPromise: Promise<void> | null = null;
   private catalogHasMore: Map<string, boolean> = new Map();
+  private catalogPageSize: Map<string, number> = new Map();
 
   private constructor() {
     // Start initialization but don't wait for it
@@ -889,7 +890,10 @@ class StremioService {
     // Build URLs per Stremio protocol: /{resource}/{type}/{id}/{extraArgs}.json
     // Extra args (search, genre, skip) go in path segment, NOT query params
     const encodedId = encodeURIComponent(id);
-    const pageSkip = (page - 1) * this.DEFAULT_PAGE_SIZE;
+    const catalogKey = `${manifest.id}|${type}|${id}`;
+    const knownPageSize = this.catalogPageSize.get(catalogKey);
+    const pageSize = knownPageSize && knownPageSize > 0 ? knownPageSize : this.DEFAULT_PAGE_SIZE;
+    const pageSkip = (page - 1) * pageSize;
 
     // For all addons
     if (!manifest.url) {
@@ -931,7 +935,7 @@ class StremioService {
         .filter(f => f && f.value)
         .map(f => `&${encodeURIComponent(f.title)}=${encodeURIComponent(f.value!)}`)
         .join('');
-      let urlQueryStyle = `${baseUrl}/catalog/${type}/${encodedId}.json?skip=${pageSkip}&limit=${this.DEFAULT_PAGE_SIZE}`;
+      let urlQueryStyle = `${baseUrl}/catalog/${type}/${encodedId}.json?skip=${pageSkip}&limit=${pageSize}`;
       if (queryParams) urlQueryStyle += `&${queryParams}`;
       urlQueryStyle += legacyFilterQuery;
 
@@ -973,10 +977,12 @@ class StremioService {
       if (response && response.data) {
         const hasMore = typeof response.data.hasMore === 'boolean' ? response.data.hasMore : undefined;
         try {
-          const key = `${manifest.id}|${type}|${id}`;
-          if (typeof hasMore === 'boolean') this.catalogHasMore.set(key, hasMore);
+          if (typeof hasMore === 'boolean') this.catalogHasMore.set(catalogKey, hasMore);
         } catch { }
         if (response.data.metas && Array.isArray(response.data.metas)) {
+          if (page === 1 && response.data.metas.length > 0) {
+            this.catalogPageSize.set(catalogKey, response.data.metas.length);
+          }
           return response.data.metas;
         }
       }
@@ -1752,6 +1758,18 @@ class StremioService {
           videoHash: stream.behaviorHints?.videoHash || undefined,
           videoSize: stream.behaviorHints?.videoSize || undefined,
           filename: stream.behaviorHints?.filename || undefined,
+          seeders:
+            typeof stream.seeders === 'number'
+              ? stream.seeders
+              : typeof stream.behaviorHints?.seeders === 'number'
+                ? stream.behaviorHints.seeders
+                : undefined,
+          peers:
+            typeof stream.peers === 'number'
+              ? stream.peers
+              : typeof stream.behaviorHints?.peers === 'number'
+                ? stream.behaviorHints.peers
+                : undefined,
           // Include essential torrent data for magnet streams
           ...(isMagnetStream ? {
             infoHash: stream.infoHash || streamUrl?.match(/btih:([a-zA-Z0-9]+)/)?.[1],

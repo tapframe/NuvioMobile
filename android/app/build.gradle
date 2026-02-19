@@ -4,6 +4,10 @@ apply plugin: "com.facebook.react"
 apply plugin: "io.sentry.android.gradle"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+def resolveTargetAbis = {
+    def configured = project.findProperty("reactNativeArchitectures") ?: "armeabi-v7a,arm64-v8a,x86,x86_64"
+    configured.split(",").collect { it.trim() }.findAll { it }
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -20,6 +24,11 @@ react {
     // works correctly with Expo projects.
     cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
     bundleCommand = "export:embed"
+
+    // Optional: build a debug APK with embedded JS so it doesn't require Metro.
+    if ((findProperty("standaloneDebug") ?: "false").toBoolean()) {
+        debuggableVariants = []
+    }
 
     /* Folders */
      //   The root of your project, i.e. where "package.json" lives. Default is '../..'
@@ -106,8 +115,8 @@ android {
         abi {
             enable true
             reset()
-            include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
-            universalApk true
+            include(*resolveTargetAbis())
+            universalApk(resolveTargetAbis().size() > 1)
         }
         density {
             enable false
@@ -249,6 +258,15 @@ dependencies {
     
     // MPV Player library
     implementation files("libs/libmpv-release.aar")
+
+    // Torrent streaming engine
+    def jlibtorrentVersion = '2.0.12.7'
+    implementation("com.frostwire:jlibtorrent:${jlibtorrentVersion}")
+    implementation("com.frostwire:jlibtorrent-android-arm:${jlibtorrentVersion}")
+    implementation("com.frostwire:jlibtorrent-android-arm64:${jlibtorrentVersion}")
+    implementation("com.frostwire:jlibtorrent-android-x86:${jlibtorrentVersion}")
+    implementation("com.frostwire:jlibtorrent-android-x86_64:${jlibtorrentVersion}")
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
 
     // Google Cast Framework
     implementation "com.google.android.gms:play-services-cast-framework:${safeExtGet('castFrameworkVersion', '+')}"

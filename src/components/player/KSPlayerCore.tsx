@@ -48,6 +48,7 @@ import { useTraktAutosync } from '../../hooks/useTraktAutosync';
 import { useMetadata } from '../../hooks/useMetadata';
 import { usePlayerGestureControls } from '../../hooks/usePlayerGestureControls';
 import stremioService from '../../services/stremioService';
+import { torrentStreamingService } from '../../services/torrentStreamingService';
 import { logger } from '../../utils/logger';
 
 // Utils
@@ -78,6 +79,7 @@ interface PlayerRouteParams {
   availableStreams?: { [providerId: string]: { streams: any[]; addonName: string } };
   headers?: Record<string, string>;
   initialPosition?: number;
+  torrentStreamId?: string;
 }
 
 const KSPlayerCore: React.FC = () => {
@@ -92,7 +94,8 @@ const KSPlayerCore: React.FC = () => {
     uri, title, episodeTitle, season, episode, id, type, quality, year,
     episodeId, imdbId, backdrop, availableStreams,
     headers, streamProvider, streamName,
-    initialPosition: routeInitialPosition
+    initialPosition: routeInitialPosition,
+    torrentStreamId
   } = params;
 
   const videoType = (params as any)?.videoType as string | undefined;
@@ -115,10 +118,11 @@ const KSPlayerCore: React.FC = () => {
       streamProvider,
       streamName,
       videoType,
+      torrentStreamId,
       headersKeys: headerKeys,
       headersCount: headerKeys.length,
     });
-  }, [uri, episodeId]);
+  }, [uri, episodeId, torrentStreamId]);
 
   useEffect(() => {
     if (!__DEV__) return;
@@ -566,9 +570,20 @@ const KSPlayerCore: React.FC = () => {
     // The useWatchProgress and useTraktAutosync hooks handle cleanup on unmount
     traktAutosync.handleProgressUpdate(currentTime, duration, true);
     traktAutosync.handlePlaybackEnd(currentTime, duration, 'user_close');
+    if (torrentStreamId) {
+      void torrentStreamingService.stopStream(torrentStreamId);
+    }
 
     navigation.goBack();
-  }, [navigation, currentTime, duration, traktAutosync]);
+  }, [navigation, currentTime, duration, traktAutosync, torrentStreamId]);
+
+  useEffect(() => {
+    return () => {
+      if (torrentStreamId) {
+        void torrentStreamingService.stopStream(torrentStreamId);
+      }
+    };
+  }, [torrentStreamId]);
 
   // Track selection handlers - update state, prop change triggers native update
   const handleSelectTextTrack = useCallback((trackId: number) => {
@@ -591,9 +606,44 @@ const KSPlayerCore: React.FC = () => {
     }
   }, [tracks, ksPlayerRef]);
 
+  const getEstimatedNetworkMbpsFromStream = useCallback((stream: any): number | undefined => {
+    const hinted = stream?.behaviorHints?.playbackViability?.availableMbps;
+    if (typeof hinted === 'number' && Number.isFinite(hinted) && hinted > 0) {
+      return hinted;
+    }
+    return undefined;
+  }, []);
+
   // Stream selection handler
   const handleSelectStream = async (newStream: any) => {
-    if (newStream.url === uri) {
+    let resolvedUri = newStream?.url;
+    let nextTorrentStreamId: string | undefined;
+    let resolvedHeaders = newStream?.headers;
+
+    const shouldPrepareNativeTorrent =
+      torrentStreamingService.isNativeSupported() &&
+      torrentStreamingService.isTorrentStream(newStream);
+
+    if (shouldPrepareNativeTorrent) {
+      try {
+        const prepared = await torrentStreamingService.preparePlayback(
+          newStream,
+          title || newStream?.title || newStream?.name,
+          { networkMbps: getEstimatedNetworkMbpsFromStream(newStream) }
+        );
+        resolvedUri = prepared.playbackUrl;
+        nextTorrentStreamId = prepared.streamId;
+        resolvedHeaders = undefined;
+      } catch (error: any) {
+        modals.setErrorDetails(error?.message || 'Failed to initialize torrent playback.');
+        modals.setShowErrorModal(true);
+        return;
+      }
+    }
+
+    if (!resolvedUri) return;
+
+    if (resolvedUri === uri && !nextTorrentStreamId) {
       modals.setShowSourcesModal(false);
       return;
     }
@@ -601,10 +651,11 @@ const KSPlayerCore: React.FC = () => {
     if (__DEV__) {
       logger.log('[KSPlayerCore] switching stream', {
         fromUri: typeof uri === 'string' ? uri.slice(0, 240) : uri,
-        toUri: typeof newStream?.url === 'string' ? newStream.url.slice(0, 240) : newStream?.url,
+        toUri: typeof resolvedUri === 'string' ? resolvedUri.slice(0, 240) : resolvedUri,
         newStreamHeadersKeys: Object.keys(newStream?.headers || {}),
         newProvider: newStream?.addonName || newStream?.name || newStream?.addon || 'Unknown',
         newName: newStream?.name || newStream?.title || 'Unknown',
+        nextTorrentStreamId,
       });
     }
 
@@ -616,14 +667,18 @@ const KSPlayerCore: React.FC = () => {
     const newStreamName = newStream.name || newStream.title || 'Unknown';
 
     setTimeout(() => {
+      if (torrentStreamId && torrentStreamId !== nextTorrentStreamId) {
+        void torrentStreamingService.stopStream(torrentStreamId);
+      }
       (navigation as any).replace('PlayerIOS', {
         ...params,
-        uri: newStream.url,
+        uri: resolvedUri,
         quality: newQuality,
         streamProvider: newProvider,
         streamName: newStreamName,
-        headers: newStream.headers,
-        availableStreams: availableStreams
+        headers: resolvedHeaders,
+        availableStreams: availableStreams,
+        torrentStreamId: nextTorrentStreamId,
       });
     }, 100);
   };
@@ -638,13 +693,40 @@ const KSPlayerCore: React.FC = () => {
   // Episode stream selection handler - navigates to new episode with selected stream
   const handleEpisodeStreamSelect = async (stream: any) => {
     if (!modals.selectedEpisodeForStreams) return;
+    let resolvedUri = stream?.url;
+    let nextTorrentStreamId: string | undefined;
+    let resolvedHeaders = stream?.headers || undefined;
+
+    const shouldPrepareNativeTorrent =
+      torrentStreamingService.isNativeSupported() &&
+      torrentStreamingService.isTorrentStream(stream);
+
+    if (shouldPrepareNativeTorrent) {
+      try {
+        const prepared = await torrentStreamingService.preparePlayback(
+          stream,
+          title || stream?.title || stream?.name,
+          { networkMbps: getEstimatedNetworkMbpsFromStream(stream) }
+        );
+        resolvedUri = prepared.playbackUrl;
+        nextTorrentStreamId = prepared.streamId;
+        resolvedHeaders = undefined;
+      } catch (error: any) {
+        modals.setErrorDetails(error?.message || 'Failed to initialize torrent playback.');
+        modals.setShowErrorModal(true);
+        return;
+      }
+    }
+
+    if (!resolvedUri) return;
+
     modals.setShowEpisodeStreamsModal(false);
     setPaused(true);
     const ep = modals.selectedEpisodeForStreams;
 
     if (__DEV__) {
       logger.log('[KSPlayerCore] switching episode stream', {
-        toUri: typeof stream?.url === 'string' ? stream.url.slice(0, 240) : stream?.url,
+        toUri: typeof resolvedUri === 'string' ? resolvedUri.slice(0, 240) : resolvedUri,
         streamHeadersKeys: Object.keys(stream?.headers || {}),
         ep: {
           season: ep?.season_number,
@@ -652,6 +734,7 @@ const KSPlayerCore: React.FC = () => {
           name: ep?.name,
           stremioId: ep?.stremioId,
         },
+        nextTorrentStreamId,
       });
     }
 
@@ -660,8 +743,11 @@ const KSPlayerCore: React.FC = () => {
     const newStreamName = stream.name || stream.title || 'Unknown Stream';
 
     setTimeout(() => {
+      if (torrentStreamId && torrentStreamId !== nextTorrentStreamId) {
+        void torrentStreamingService.stopStream(torrentStreamId);
+      }
       (navigation as any).replace('PlayerIOS', {
-        uri: stream.url,
+        uri: resolvedUri,
         title: title,
         episodeTitle: ep.name,
         season: ep.season_number,
@@ -670,12 +756,13 @@ const KSPlayerCore: React.FC = () => {
         year: year,
         streamProvider: newProvider,
         streamName: newStreamName,
-        headers: stream.headers || undefined,
+        headers: resolvedHeaders,
         id,
         type: 'series',
         episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number} `,
         imdbId: imdbId ?? undefined,
         backdrop: backdrop || undefined,
+        torrentStreamId: nextTorrentStreamId,
       });
     }, 100);
   };

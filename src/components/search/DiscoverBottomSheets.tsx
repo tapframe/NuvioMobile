@@ -37,6 +37,9 @@ export const DiscoverBottomSheets = ({
     currentTheme,
 }: DiscoverBottomSheetsProps) => {
     const { t } = useTranslation();
+    const isYearFilter = selectedCatalog?.filterLabel === 'year';
+    const filterTitle = isYearFilter ? 'Select Year' : t('search.select_genre');
+    const allFilterLabel = isYearFilter ? 'All Years' : t('search.all_genres');
 
     const typeSnapPoints = useMemo(() => ['25%'], []);
     const catalogSnapPoints = useMemo(() => ['50%'], []);
@@ -140,7 +143,7 @@ export const DiscoverBottomSheets = ({
             >
                 <View style={[styles.bottomSheetHeader, { backgroundColor: currentTheme.colors.darkGray || '#0A0C0C' }]}>
                     <Text style={[styles.bottomSheetTitle, { color: currentTheme.colors.white }]}>
-                        {t('search.select_genre')}
+                        {filterTitle}
                     </Text>
                     <TouchableOpacity onPress={() => genreSheetRef.current?.dismiss()}>
                         <MaterialIcons name="close" size={24} color={currentTheme.colors.lightGray} />
@@ -160,7 +163,7 @@ export const DiscoverBottomSheets = ({
                     >
                         <View style={styles.bottomSheetItemContent}>
                             <Text style={[styles.bottomSheetItemTitle, { color: currentTheme.colors.white }]}>
-                                {t('search.all_genres')}
+                                {allFilterLabel}
                             </Text>
                             <Text style={[styles.bottomSheetItemSubtitle, { color: currentTheme.colors.lightGray }]}>
                                 {t('search.show_all_content')}

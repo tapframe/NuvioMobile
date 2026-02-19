@@ -58,6 +58,7 @@ import { styles } from './utils/playerStyles';
 import { formatTime, isHlsStream, getHlsHeaders, defaultAndroidHeaders, parseSRT } from './utils/playerUtils';
 import { storageService } from '../../services/storageService';
 import stremioService from '../../services/stremioService';
+import { torrentStreamingService } from '../../services/torrentStreamingService';
 import { WyzieSubtitle, SubtitleCue } from './utils/playerTypes';
 import { findBestSubtitleTrack, findBestAudioTrack } from './utils/trackSelectionUtils';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -74,7 +75,7 @@ const AndroidVideoPlayer: React.FC = () => {
   const {
     uri, title = 'Episode Name', season, episode, episodeTitle, quality, year,
     streamProvider, streamName, headers, id, type, episodeId, imdbId,
-    availableStreams: passedAvailableStreams, backdrop, groupedEpisodes
+    availableStreams: passedAvailableStreams, backdrop, groupedEpisodes, torrentStreamId
   } = route.params;
 
   // --- State & Custom Hooks ---
@@ -107,6 +108,10 @@ const AndroidVideoPlayer: React.FC = () => {
   const [useExoPlayer, setUseExoPlayer] = useState(!shouldUseMpvOnly);
   const hasExoPlayerFailed = useRef(false);
   const [showMpvSwitchAlert, setShowMpvSwitchAlert] = useState(false);
+  const [openingBufferProgress, setOpeningBufferProgress] = useState(0);
+  const openingBufferProgressRef = useRef(0);
+  const openingOverlayCompletedRef = useRef(false);
+  const openingFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   // Sync useExoPlayer with settings when videoPlayerEngine is set to 'mpv'
@@ -234,6 +239,43 @@ const AndroidVideoPlayer: React.FC = () => {
   });
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const initialBufferTargetSec = useMemo(() => {
+    const isTorrentPlayback = !!torrentStreamId || torrentStreamingService.isLocalTorrentPlaybackUrl(currentStreamUrl);
+    if (isTorrentPlayback) {
+      return 28;
+    }
+    const looksLikeHls =
+      isHlsStream(currentStreamUrl) ||
+      currentVideoType === 'm3u8' ||
+      currentVideoType === 'hls';
+    return looksLikeHls ? 12 : 20;
+  }, [currentStreamUrl, currentVideoType, torrentStreamId]);
+
+  const completeOpeningOverlay = useCallback((force = false) => {
+    if (openingOverlayCompletedRef.current) return;
+    if (!force && openingBufferProgressRef.current < 0.999) return;
+
+    openingOverlayCompletedRef.current = true;
+    if (openingFallbackTimeoutRef.current) {
+      clearTimeout(openingFallbackTimeoutRef.current);
+      openingFallbackTimeoutRef.current = null;
+    }
+
+    openingBufferProgressRef.current = 1;
+    setOpeningBufferProgress(1);
+    openingAnimation.completeOpeningAnimation();
+  }, [openingAnimation]);
+
+  const updateOpeningBufferProgress = useCallback((nextProgress: number, forceComplete = false) => {
+    const clamped = Math.max(openingBufferProgressRef.current, Math.max(0, Math.min(1, nextProgress)));
+    if (clamped !== openingBufferProgressRef.current) {
+      openingBufferProgressRef.current = clamped;
+      setOpeningBufferProgress(clamped);
+    }
+    if (forceComplete || clamped >= 0.999) {
+      completeOpeningOverlay(true);
+    }
+  }, [completeOpeningOverlay]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -272,6 +314,26 @@ const AndroidVideoPlayer: React.FC = () => {
 
   useEffect(() => {
     openingAnimation.startOpeningAnimation();
+  }, []);
+
+  useEffect(() => {
+    openingOverlayCompletedRef.current = false;
+    openingBufferProgressRef.current = 0;
+    setOpeningBufferProgress(0);
+
+    if (openingFallbackTimeoutRef.current) {
+      clearTimeout(openingFallbackTimeoutRef.current);
+      openingFallbackTimeoutRef.current = null;
+    }
+  }, [currentStreamUrl, torrentStreamId, currentVideoType]);
+
+  useEffect(() => {
+    return () => {
+      if (openingFallbackTimeoutRef.current) {
+        clearTimeout(openingFallbackTimeoutRef.current);
+        openingFallbackTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   // Load subtitle settings on mount
@@ -367,7 +429,14 @@ const AndroidVideoPlayer: React.FC = () => {
     }
 
     playerState.setIsVideoLoaded(true);
-    openingAnimation.completeOpeningAnimation();
+    updateOpeningBufferProgress(0.2);
+
+    if (openingFallbackTimeoutRef.current) {
+      clearTimeout(openingFallbackTimeoutRef.current);
+    }
+    openingFallbackTimeoutRef.current = setTimeout(() => {
+      completeOpeningOverlay(true);
+    }, 12000);
 
     // Auto-select audio track based on preferences
     if (data.audioTracks && data.audioTracks.length > 0 && settings?.preferredAudioLanguage) {
@@ -437,16 +506,48 @@ const AndroidVideoPlayer: React.FC = () => {
         }
       }, 300);
     }
-  }, [id, type, episodeId, playerState.isMounted, watchProgress.initialPosition, useExoPlayer]);
+  }, [id, type, episodeId, playerState.isMounted, watchProgress.initialPosition, useExoPlayer, updateOpeningBufferProgress, completeOpeningOverlay]);
 
   const handleProgress = useCallback((data: any) => {
     if (playerState.isDragging.current || playerState.isSeeking.current || !playerState.isMounted.current || setupHook.isAppBackgrounded.current) return;
     const currentTimeInSeconds = data.currentTime;
+    const playableDuration = data.playableDuration || currentTimeInSeconds;
+    const bufferAhead = Math.max(0, playableDuration - currentTimeInSeconds);
+
+    if (!openingOverlayCompletedRef.current) {
+      const progressFloor = playerState.isVideoLoaded ? 0.22 : 0.08;
+      const progress = Math.max(progressFloor, Math.min(1, bufferAhead / initialBufferTargetSec));
+      const shouldComplete = playerState.isVideoLoaded && progress >= 1;
+      updateOpeningBufferProgress(progress, shouldComplete);
+    }
+
     if (Math.abs(currentTimeInSeconds - playerState.currentTime) > 0.5) {
       playerState.setCurrentTime(currentTimeInSeconds);
-      playerState.setBuffered(data.playableDuration || currentTimeInSeconds);
+      playerState.setBuffered(playableDuration);
     }
-  }, [playerState.currentTime, playerState.isDragging, playerState.isSeeking, setupHook.isAppBackgrounded]);
+  }, [playerState.currentTime, playerState.isDragging, playerState.isSeeking, setupHook.isAppBackgrounded, playerState.isVideoLoaded, initialBufferTargetSec, updateOpeningBufferProgress]);
+
+  const isLikelyTailPlaybackError = useCallback((message: string): boolean => {
+    const lower = (message || '').toLowerCase();
+    const isKnownTailIoError =
+      lower.includes('error_code_io_unspecified') ||
+      lower.includes('22000') ||
+      lower.includes('unable to play media. source may be unreachable') ||
+      lower.includes('source may be unreachable') ||
+      lower.includes('source error');
+
+    if (!isKnownTailIoError) return false;
+
+    const current = playerState.currentTime || 0;
+    const duration = playerState.duration || 0;
+
+    if (duration > 0) {
+      const remaining = duration - current;
+      return current > 0 && (remaining <= 2.5 || current / duration >= 0.985);
+    }
+
+    return current > 45;
+  }, [playerState.currentTime, playerState.duration]);
 
   // Auto-select subtitles when both internal tracks and video are loaded
   // This ensures we wait for internal tracks before falling back to external
@@ -514,9 +615,20 @@ const AndroidVideoPlayer: React.FC = () => {
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleClose = useCallback(() => {
+    if (torrentStreamId) {
+      void torrentStreamingService.stopStream(torrentStreamId);
+    }
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.reset({ index: 0, routes: [{ name: 'Home' }] } as any);
-  }, [navigation]);
+  }, [navigation, torrentStreamId]);
+
+  useEffect(() => {
+    return () => {
+      if (torrentStreamId) {
+        void torrentStreamingService.stopStream(torrentStreamId);
+      }
+    };
+  }, [torrentStreamId]);
 
   // Handle codec errors from ExoPlayer - silently switch to MPV
   const handleCodecError = useCallback(() => {
@@ -555,9 +667,34 @@ const AndroidVideoPlayer: React.FC = () => {
     }, 500);
   }, [playerState.currentTime]);
 
+  const getEstimatedNetworkMbpsFromStream = useCallback((stream: any): number | undefined => {
+    const hinted = stream?.behaviorHints?.playbackViability?.availableMbps;
+    if (typeof hinted === 'number' && Number.isFinite(hinted) && hinted > 0) {
+      return hinted;
+    }
+    return undefined;
+  }, []);
 
   const handleSelectStream = async (newStream: any) => {
-    if (newStream.url === currentStreamUrl) {
+    let resolvedUri = newStream.url;
+    let nextTorrentStreamId: string | undefined;
+
+    if (torrentStreamingService.isNativeSupported() && torrentStreamingService.isTorrentStream(newStream)) {
+      try {
+        const prepared = await torrentStreamingService.preparePlayback(
+          newStream,
+          title || newStream?.title || newStream?.name,
+          { networkMbps: getEstimatedNetworkMbpsFromStream(newStream) }
+        );
+        resolvedUri = prepared.playbackUrl;
+        nextTorrentStreamId = prepared.streamId;
+      } catch (error: any) {
+        toast.error(error?.message || 'Failed to initialize torrent stream');
+        return;
+      }
+    }
+
+    if (resolvedUri === currentStreamUrl) {
       modals.setShowSourcesModal(false);
       return;
     }
@@ -575,18 +712,38 @@ const AndroidVideoPlayer: React.FC = () => {
     setTimeout(() => {
       (navigation as any).replace('PlayerAndroid', {
         ...route.params,
-        uri: newStream.url,
+        uri: resolvedUri,
         quality: newQuality,
         streamProvider: newProvider,
         streamName: newStreamName,
-        headers: newStream.headers,
-        availableStreams: availableStreams
+        headers: nextTorrentStreamId ? undefined : newStream.headers,
+        availableStreams: availableStreams,
+        torrentStreamId: nextTorrentStreamId,
       });
     }, 300);
   };
 
   const handleEpisodeStreamSelect = async (stream: any) => {
     if (!modals.selectedEpisodeForStreams) return;
+
+    let resolvedUri = stream.url;
+    let nextTorrentStreamId: string | undefined;
+
+    if (torrentStreamingService.isNativeSupported() && torrentStreamingService.isTorrentStream(stream)) {
+      try {
+        const prepared = await torrentStreamingService.preparePlayback(
+          stream,
+          title || stream?.title || stream?.name,
+          { networkMbps: getEstimatedNetworkMbpsFromStream(stream) }
+        );
+        resolvedUri = prepared.playbackUrl;
+        nextTorrentStreamId = prepared.streamId;
+      } catch (error: any) {
+        toast.error(error?.message || 'Failed to initialize torrent stream');
+        return;
+      }
+    }
+
     modals.setShowEpisodeStreamsModal(false);
     playerState.setPaused(true);
 
@@ -602,7 +759,7 @@ const AndroidVideoPlayer: React.FC = () => {
     // Wait for unmount to complete, then navigate
     setTimeout(() => {
       (navigation as any).replace('PlayerAndroid', {
-        uri: stream.url,
+        uri: resolvedUri,
         title: title,
         episodeTitle: ep.name,
         season: ep.season_number,
@@ -611,7 +768,7 @@ const AndroidVideoPlayer: React.FC = () => {
         year: year,
         streamProvider: newProvider,
         streamName: newStreamName,
-        headers: stream.headers || undefined,
+        headers: nextTorrentStreamId ? undefined : (stream.headers || undefined),
         id,
         type: 'series',
         episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number}`,
@@ -619,6 +776,7 @@ const AndroidVideoPlayer: React.FC = () => {
         backdrop: backdrop || undefined,
         availableStreams: {},
         groupedEpisodes: groupedEpisodes,
+        torrentStreamId: nextTorrentStreamId,
       });
     }, 300);
   };
@@ -745,6 +903,8 @@ const AndroidVideoPlayer: React.FC = () => {
         backdrop={backdrop || null}
         hasLogo={hasLogo}
         logo={metadata?.logo}
+        loadingTitle={episodeTitle || title}
+        loadingProgress={openingBufferProgress}
         backgroundFadeAnim={openingAnimation.backgroundFadeAnim}
         backdropImageOpacityAnim={openingAnimation.backdropImageOpacityAnim}
         onClose={handleClose}
@@ -792,11 +952,27 @@ const AndroidVideoPlayer: React.FC = () => {
                 displayError = JSON.stringify(err);
               }
 
+              if (isLikelyTailPlaybackError(displayError)) {
+                logger.warn('[AndroidVideoPlayer] Treating tail I/O error as graceful end', {
+                  error: displayError,
+                  currentTime: playerState.currentTime,
+                  duration: playerState.duration,
+                });
+
+                if (!modals.showEpisodeStreamsModal) {
+                  playerState.setPaused(true);
+                }
+                return;
+              }
+
               modals.setErrorDetails(displayError);
               modals.setShowErrorModal(true);
             }}
             onBuffer={(buf) => {
               playerState.setIsBuffering(buf.isBuffering);
+              if (!buf.isBuffering && playerState.isVideoLoaded && openingBufferProgressRef.current >= 0.8) {
+                completeOpeningOverlay(true);
+              }
             }}
             onTracksChanged={(data) => {
               console.log('[AndroidVideoPlayer] onTracksChanged:', data);

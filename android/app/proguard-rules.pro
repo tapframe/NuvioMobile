@@ -26,3 +26,6 @@
   **[] $VALUES;
   public *;
 }
+
+# jlibtorrent JNI
+-keep class com.frostwire.jlibtorrent.swig.libtorrent_jni { *; }

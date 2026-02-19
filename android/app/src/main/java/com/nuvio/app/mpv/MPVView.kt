@@ -156,12 +156,14 @@ class MPVView @JvmOverloads constructor(
         
         MPVLib.setOptionString("ao", "audiotrack,opensles")
         
-        // Limit demuxer cache based on Android version (like mpvKt)
-        val cacheMegs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) 64 else 32
+        // Use a larger demuxer cache window to reduce rebuffering on unstable links.
+        val cacheMegs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) 192 else 96
         MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
         MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
         MPVLib.setOptionString("cache", "yes")
-        MPVLib.setOptionString("cache-secs", "30")
+        MPVLib.setOptionString("cache-secs", "120")
+        MPVLib.setOptionString("demuxer-readahead-secs", "120")
+        MPVLib.setOptionString("cache-pause-wait", "5")
         
         MPVLib.setOptionString("network-timeout", "60")
         MPVLib.setOptionString("ytdl", "no")
@@ -595,14 +597,20 @@ class MPVView @JvmOverloads constructor(
             MPV_EVENT_END_FILE -> {
                 Log.d(TAG, "MPV_EVENT_END_FILE")
                 
-                // Heuristic: If duration is effectively 0 at end of file, it's a load error
+                // Heuristic: certain links don't report duration reliably and still end correctly.
+                // Treat them as completed if we already played a meaningful amount.
                 val duration = MPVLib.getPropertyDouble("duration/full") ?: MPVLib.getPropertyDouble("duration") ?: 0.0
                 val timePos = MPVLib.getPropertyDouble("time-pos") ?: 0.0
                 val eofReached = MPVLib.getPropertyBoolean("eof-reached") ?: false
                 
                 Log.d(TAG, "End stats - Duration: $duration, Time: $timePos, EOF: $eofReached")
                 
-                if (duration < 1.0 && !eofReached) {
+                if (eofReached) {
+                    onEndCallback?.invoke()
+                } else if (timePos > 10.0) {
+                    // Playback advanced enough to consider this a normal end.
+                    onEndCallback?.invoke()
+                } else if (duration < 1.0 && timePos < 1.0) {
                      val customError = "Unable to play media. Source may be unreachable."
                      Log.e(TAG, "Playback error detected (heuristic): $customError")
                      onErrorCallback?.invoke(customError)

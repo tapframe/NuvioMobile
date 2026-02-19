@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { MaterialIcons } from '@expo/vector-icons';
 import Animated, {
   FadeIn,
@@ -9,6 +10,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { Stream } from '../../../types/streams';
+import {
+  estimateNetworkProfile,
+  getPlaybackViabilityFromStream,
+  rankStreamsByPlaybackViability,
+} from '../../../screens/streams/utils';
 
 interface SourcesModalProps {
   showSourcesModal: boolean;
@@ -61,14 +67,35 @@ export const SourcesModal: React.FC<SourcesModalProps> = ({
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const MENU_WIDTH = Math.min(width * 0.85, 400);
+  const [networkMbps, setNetworkMbps] = useState(20);
 
   const handleClose = () => {
     setShowSourcesModal(false);
   };
 
-  if (!showSourcesModal) return null;
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setNetworkMbps(estimateNetworkProfile(state as any).estimatedDownlinkMbps);
+    });
 
-  const sortedProviders = Object.entries(availableStreams);
+    NetInfo.fetch()
+      .then(state => setNetworkMbps(estimateNetworkProfile(state as any).estimatedDownlinkMbps))
+      .catch(() => {
+        // Keep default profile.
+      });
+
+    return () => unsubscribe();
+  }, []);
+
+  const sortedProviders = useMemo<Array<[string, { streams: Stream[]; addonName: string }]>>(() => {
+    return Object.entries(availableStreams).map(([providerId, providerData]) => [
+      providerId,
+      {
+        ...providerData,
+        streams: rankStreamsByPlaybackViability((providerData.streams as any) || [], networkMbps) as any as Stream[],
+      },
+    ]);
+  }, [availableStreams, networkMbps]);
 
   const handleStreamSelect = (stream: Stream) => {
     if (stream.url !== currentStreamUrl && !isChangingSource) {
@@ -85,6 +112,8 @@ export const SourcesModal: React.FC<SourcesModalProps> = ({
   const isStreamSelected = (stream: Stream): boolean => {
     return stream.url === currentStreamUrl;
   };
+
+  if (!showSourcesModal) return null;
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 10000 }]}>
@@ -168,6 +197,7 @@ export const SourcesModal: React.FC<SourcesModalProps> = ({
                   {providerData.streams.map((stream, index) => {
                     const isSelected = isStreamSelected(stream);
                     const quality = getQualityFromTitle(stream.title) || stream.quality;
+                    const viability = getPlaybackViabilityFromStream(stream as any);
 
                     return (
                       <TouchableOpacity
@@ -195,6 +225,23 @@ export const SourcesModal: React.FC<SourcesModalProps> = ({
                               }} numberOfLines={1}>
                                 {stream.title || stream.name || t('player_ui.stream', { number: index + 1 })}
                               </Text>
+                              {viability?.label ? (
+                                <View style={{
+                                  backgroundColor: isSelected ? 'rgba(0,0,0,0.16)' : 'rgba(255,255,255,0.12)',
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 2,
+                                  borderRadius: 4,
+                                  marginLeft: 6,
+                                }}>
+                                  <Text style={{
+                                    color: isSelected ? 'black' : 'white',
+                                    fontSize: 10,
+                                    fontWeight: '700',
+                                  }}>
+                                    {viability.label.toUpperCase()}
+                                  </Text>
+                                </View>
+                              ) : null}
                               <QualityBadge quality={quality} />
                             </View>
 

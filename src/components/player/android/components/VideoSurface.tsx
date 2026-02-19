@@ -338,14 +338,17 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
                         requestHeaders: exoRequestHeadersArray,
                         ...(resolvedRnVideoType ? { type: resolvedRnVideoType } : null),
                         bufferConfig: {
-                            minBufferMs: 10000,
-                            maxBufferMs: 20000,
-                            bufferForPlaybackMs: 2000,
-                            bufferForPlaybackAfterRebufferMs: 4000,
+                            minBufferMs: 45000,
+                            maxBufferMs: 1800000,
+                            bufferForPlaybackMs: 2500,
+                            bufferForPlaybackAfterRebufferMs: 6000,
+                            backBufferDurationMs: 300000,
                             // @ts-ignore - Extra props supported by patched react-native-video
-                            minBufferMemoryReservePercent: 0.15,
+                            minBufferMemoryReservePercent: 0.05,
                             // @ts-ignore - Extra props supported by patched react-native-video
-                            maxHeapAllocationPercent: 0.25,
+                            maxHeapAllocationPercent: 0.55,
+                            // @ts-ignore - Extra props supported by patched react-native-video
+                            cacheSizeMB: 2048,
                         }
                     } as any}
                     paused={paused}
