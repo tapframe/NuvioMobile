@@ -70,6 +70,23 @@ const SUBTITLE_SOURCE_OPTIONS = [
     { value: 'any', label: 'Any Available', description: 'Use first available subtitle track' },
 ];
 
+/**
+ * Quality options for the "Auto-play First Stream" feature.
+ * These are used in the bottom sheet selection to allow users to target specific resolutions.
+ */
+const AUTOPLAY_QUALITY_OPTIONS = [
+    { id: '4320p', label: '8K' },
+    { id: '4K', label: '4K' },
+    { id: '3660p', label: '3660p' },
+    { id: '1440p', label: '1440p' },
+    { id: '1080p', label: '1080p' },
+    { id: '720p', label: '720p' },
+    { id: '480p', label: '480p' },
+    { id: '360p', label: '360p' },
+    { id: '240p', label: '240p' },
+    { id: '140p', label: '140p' },
+];
+
 // Props for the reusable content component
 interface PlaybackSettingsContentProps {
     isTablet?: boolean;
@@ -159,28 +176,53 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
     const audioLanguageSheetRef = useRef<BottomSheetModal>(null);
     const subtitleLanguageSheetRef = useRef<BottomSheetModal>(null);
     const subtitleSourceSheetRef = useRef<BottomSheetModal>(null);
+    const autoplayQualitySheetRef = useRef<BottomSheetModal>(null);
+    const autoplayLanguageSheetRef = useRef<BottomSheetModal>(null);
 
     // Snap points
     const languageSnapPoints = useMemo(() => ['70%'], []);
     const sourceSnapPoints = useMemo(() => ['45%'], []);
+    const qualitySnapPoints = useMemo(() => ['45%'], []);
 
     // Handlers to present sheets - ensure only one is open at a time
     const openAudioLanguageSheet = useCallback(() => {
         subtitleLanguageSheetRef.current?.dismiss();
         subtitleSourceSheetRef.current?.dismiss();
+        autoplayQualitySheetRef.current?.dismiss();
+        autoplayLanguageSheetRef.current?.dismiss();
         setTimeout(() => audioLanguageSheetRef.current?.present(), 100);
     }, []);
 
     const openSubtitleLanguageSheet = useCallback(() => {
         audioLanguageSheetRef.current?.dismiss();
         subtitleSourceSheetRef.current?.dismiss();
+        autoplayQualitySheetRef.current?.dismiss();
+        autoplayLanguageSheetRef.current?.dismiss();
         setTimeout(() => subtitleLanguageSheetRef.current?.present(), 100);
     }, []);
 
     const openSubtitleSourceSheet = useCallback(() => {
         audioLanguageSheetRef.current?.dismiss();
         subtitleLanguageSheetRef.current?.dismiss();
+        autoplayQualitySheetRef.current?.dismiss();
+        autoplayLanguageSheetRef.current?.dismiss();
         setTimeout(() => subtitleSourceSheetRef.current?.present(), 100);
+    }, []);
+
+    const openAutoplayQualitySheet = useCallback(() => {
+        audioLanguageSheetRef.current?.dismiss();
+        subtitleLanguageSheetRef.current?.dismiss();
+        subtitleSourceSheetRef.current?.dismiss();
+        autoplayLanguageSheetRef.current?.dismiss();
+        setTimeout(() => autoplayQualitySheetRef.current?.present(), 100);
+    }, []);
+
+    const openAutoplayLanguageSheet = useCallback(() => {
+        audioLanguageSheetRef.current?.dismiss();
+        subtitleLanguageSheetRef.current?.dismiss();
+        subtitleSourceSheetRef.current?.dismiss();
+        autoplayQualitySheetRef.current?.dismiss();
+        setTimeout(() => autoplayLanguageSheetRef.current?.present(), 100);
     }, []);
 
     const isItemVisible = (itemId: string) => {
@@ -234,6 +276,16 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
         subtitleSourceSheetRef.current?.dismiss();
     };
 
+    const handleSelectAutoplayQuality = (quality: string) => {
+        updateSetting('autoplayPreferredQuality', quality);
+        autoplayQualitySheetRef.current?.dismiss();
+    };
+
+    const handleSelectAutoplayLanguage = (language: string) => {
+        updateSetting('autoplayPreferredLanguage', language);
+        autoplayLanguageSheetRef.current?.dismiss();
+    };
+
     return (
         <>
             {hasVisibleItems(['video_player']) && (
@@ -256,6 +308,38 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
             )}
 
             <SettingsCard title={t('player.section_playback', { defaultValue: 'Playback' })} isTablet={isTablet}>
+                <SettingItem
+                    title={t('player.autoplay_title', { defaultValue: 'Auto-play First Stream' })}
+                    description={t('player.autoplay_desc', { defaultValue: 'Automatically start the first stream shown in the list.' })}
+                    icon="play-arrow"
+                    renderControl={() => (
+                        <CustomSwitch
+                            value={settings?.autoplayBestStream ?? false}
+                            onValueChange={(value) => updateSetting('autoplayBestStream', value)}
+                        />
+                    )}
+                    isTablet={isTablet}
+                />
+                {settings?.autoplayBestStream && (
+                    <>
+                        <SettingItem
+                            title={t('player.preferred_quality_title', { defaultValue: 'Preferred Quality' })}
+                            description={settings?.autoplayPreferredQuality || '1080p'}
+                            icon="high-quality"
+                            renderControl={() => <ChevronRight />}
+                            onPress={openAutoplayQualitySheet}
+                            isTablet={isTablet}
+                        />
+                        <SettingItem
+                            title={t('player.preferred_language_title', { defaultValue: 'Preferred Language' })}
+                            description={settings?.autoplayPreferredLanguage === 'Any' ? t('common.any') : settings?.autoplayPreferredLanguage || t('common.any')}
+                            icon="language"
+                            renderControl={() => <ChevronRight />}
+                            onPress={openAutoplayLanguageSheet}
+                            isTablet={isTablet}
+                        />
+                    </>
+                )}
                 <SettingItem
                     title={t('player.skip_intro_settings_title', { defaultValue: 'Skip Intro' })}
                     description={t('player.powered_by_introdb', { defaultValue: 'Powered by IntroDB' })}
@@ -528,6 +612,95 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                                         {option.value === 'any' && t('settings.options.any_available_desc')}
                                     </Text>
                                 </View>
+                                {isSelected && (
+                                    <MaterialIcons name="check" size={20} color={currentTheme.colors.primary} />
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </BottomSheetScrollView>
+            </BottomSheetModal>
+
+            {/* Autoplay Quality Bottom Sheet */}
+            <BottomSheetModal
+                ref={autoplayQualitySheetRef}
+                index={0}
+                snapPoints={qualitySnapPoints}
+                enableDynamicSizing={false}
+                enablePanDownToClose={true}
+                backdropComponent={renderBackdrop}
+                backgroundStyle={{ backgroundColor: '#1a1a1a' }}
+                handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
+            >
+                <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>{t('player.preferred_quality_title')}</Text>
+                </View>
+                <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+                    {AUTOPLAY_QUALITY_OPTIONS.map((option) => {
+                        const isSelected = option.id === (settings?.autoplayPreferredQuality || '1080p');
+                        return (
+                            <TouchableOpacity
+                                key={option.id}
+                                style={[
+                                    styles.languageItem,
+                                    isSelected && { backgroundColor: currentTheme.colors.primary + '20' }
+                                ]}
+                                onPress={() => handleSelectAutoplayQuality(option.id)}
+                            >
+                                <Text style={[styles.languageName, { color: isSelected ? currentTheme.colors.primary : '#fff' }]}>
+                                    {option.label}
+                                </Text>
+                                {isSelected && (
+                                    <MaterialIcons name="check" size={20} color={currentTheme.colors.primary} />
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </BottomSheetScrollView>
+            </BottomSheetModal>
+
+            {/* Autoplay Language Bottom Sheet */}
+            <BottomSheetModal
+                ref={autoplayLanguageSheetRef}
+                index={0}
+                snapPoints={languageSnapPoints}
+                enableDynamicSizing={false}
+                enablePanDownToClose={true}
+                backdropComponent={renderBackdrop}
+                backgroundStyle={{ backgroundColor: '#1a1a1a' }}
+                handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
+            >
+                <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>{t('player.preferred_language_title')}</Text>
+                </View>
+                <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+                    {[
+                        { id: 'Any', label: t('common.any') || 'Any' },
+                        { id: 'English', label: t('settings.english') || 'English' },
+                        { id: 'Spanish', label: t('settings.spanish') || 'Spanish' },
+                        { id: 'French', label: t('settings.french') || 'French' },
+                        { id: 'German', label: t('settings.german') || 'German' },
+                        { id: 'Italian', label: t('settings.italian') || 'Italian' },
+                        { id: 'Portuguese', label: t('settings.portuguese') || 'Portuguese' },
+                        { id: 'Russian', label: t('settings.russian') || 'Russian' },
+                        { id: 'Hindi', label: t('settings.hindi') || 'Hindi' },
+                        { id: 'Chinese', label: t('settings.chinese') || 'Chinese' },
+                        { id: 'Japanese', label: t('settings.japanese') || 'Japanese' },
+                        { id: 'Korean', label: t('settings.korean') || 'Korean' },
+                    ].map((option) => {
+                        const isSelected = option.id === (settings?.autoplayPreferredLanguage || 'Any');
+                        return (
+                            <TouchableOpacity
+                                key={option.id}
+                                style={[
+                                    styles.languageItem,
+                                    isSelected && { backgroundColor: currentTheme.colors.primary + '20' }
+                                ]}
+                                onPress={() => handleSelectAutoplayLanguage(option.id)}
+                            >
+                                <Text style={[styles.languageName, { color: isSelected ? currentTheme.colors.primary : '#fff' }]}>
+                                    {option.label}
+                                </Text>
                                 {isSelected && (
                                     <MaterialIcons name="check" size={20} color={currentTheme.colors.primary} />
                                 )}

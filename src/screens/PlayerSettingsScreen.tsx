@@ -261,48 +261,6 @@ const PlayerSettingsScreen: React.FC = () => {
               },
             ]}
           >
-            <View style={styles.settingItem}>
-              <View style={styles.settingContent}>
-                <View style={[
-                  styles.settingIconContainer,
-                  { backgroundColor: 'rgba(255,255,255,0.1)' }
-                ]}>
-                  <MaterialIcons
-                    name="play-arrow"
-                    size={20}
-                    color={currentTheme.colors.primary}
-                  />
-                </View>
-                <View style={styles.settingText}>
-                  <Text
-                    style={[
-                      styles.settingTitle,
-                      { color: currentTheme.colors.text },
-                    ]}
-                  >
-                    {t('player.autoplay_title')}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.settingDescription,
-                      { color: currentTheme.colors.textMuted },
-                    ]}
-                  >
-                    {t('player.autoplay_desc')}
-                  </Text>
-                </View>
-                <Switch
-                  value={settings.autoplayBestStream}
-                  onValueChange={(value) => updateSetting('autoplayBestStream', value)}
-                  trackColor={{ false: '#767577', true: currentTheme.colors.primary }}
-                  thumbColor={settings.autoplayBestStream ? '#ffffff' : '#f4f3f4'}
-                  ios_backgroundColor="#3e3e3e"
-                />
-              </View>
-            </View>
-
-
-
             {/* Video Player Engine for Android */}
             {Platform.OS === 'android' && !settings.useExternalPlayer && (
               <>
@@ -653,6 +611,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 52,
     gap: 8,
   },
+  optionButtonsRowScroll: {
+    paddingHorizontal: 52,
+    gap: 8,
+    marginTop: 12,
+    paddingBottom: 4,
+  },
   optionButton: {
     flex: 1,
     paddingVertical: 10,
@@ -661,6 +625,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  optionButtonLanguage: {
+    minWidth: 90,
+    flex: 0,
   },
   optionButtonWide: {
     flex: 1.5,
