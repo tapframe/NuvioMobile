@@ -120,6 +120,8 @@ export interface AppSettings {
   preferredAudioLanguage: string; // Preferred language for audio tracks (ISO 639-1 code)
   subtitleSourcePreference: 'internal' | 'external' | 'any'; // Prefer internal (embedded), external (addon), or any
   enableSubtitleAutoSelect: boolean; // Auto-select subtitles based on preferences
+  // External metadata addon preference
+  preferExternalMetaAddonDetail: boolean; // Prefer metadata from external meta addons on detail page
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -212,6 +214,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   preferredAudioLanguage: 'en', // Default to English audio
   subtitleSourcePreference: 'internal', // Prefer internal/embedded subtitles first
   enableSubtitleAutoSelect: true, // Auto-select subtitles by default
+  // External metadata addon preference
+  preferExternalMetaAddonDetail: false, // Disabled by default
 };
 
 const SETTINGS_STORAGE_KEY = 'app_settings';

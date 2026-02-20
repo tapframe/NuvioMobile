@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, TextInput, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform, Animated, Easing, Keyboard, StatusBar, useWindowDimensions } from 'react-native';
+import { View, TextInput, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform, Animated, Easing, Keyboard, StatusBar, useWindowDimensions, Linking } from 'react-native';
 import { mmkvStorage } from '../services/mmkvStorage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -425,6 +425,16 @@ const AuthScreen: React.FC = () => {
                 </View>
               </View>
 
+              {mode === 'signin' && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL('https://nuvioapp.space/account/reset-password')}
+                  activeOpacity={0.75}
+                  style={styles.forgotPasswordButton}
+                >
+                  <Text style={[styles.forgotPasswordText, { color: currentTheme.colors.textMuted }]}>Forgot password?</Text>
+                </TouchableOpacity>
+              )}
+
               {/* Confirm Password (signup only) */}
               {mode === 'signup' && (
                 <View style={styles.inputContainer}>
@@ -743,6 +753,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '500',
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: -6,
+    marginBottom: 12,
+  },
+  forgotPasswordText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 
