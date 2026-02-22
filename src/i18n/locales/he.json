@@ -653,6 +653,7 @@
         "dutch_nl": "הולנדית (הולנד)",
         "romanian": "רומנית",
         "albanian": "אלבנית",
+        "catalan": "קטלאנית",
         "account": "חשבון",
         "content_discovery": "תוכן וגילוי",
         "appearance": "מראה",
@@ -1427,4 +1428,5 @@
             "no_logs_captured": "לא נלכדו לוגים."
         }
     }
+
 }
