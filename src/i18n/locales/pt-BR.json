@@ -775,6 +775,64 @@
         "app_updates": "Atualizações do App",
         "about_nuvio": "Sobre o Nuvio"
     },
+    "cloud_sync": {
+        "title": "Nuvio Sync",
+        "description": "Sincronize dados entre seus dispositivos Nuvio",
+        "hero_title": "Sincronização na Nuvem",
+        "hero_subtitle": "Mantenha seus addons, progresso e biblioteca alinhados em todos os dispositivos.",
+        "auth": {
+            "account": "Conta",
+            "not_configured": "Supabase não configurado",
+            "not_authenticated": "Não autenticado",
+            "email_session": "Sessão de email",
+            "signed_in_as": "Logado como {{email}}",
+            "not_signed_in": "Não logado",
+            "effective_owner": "Proprietário efetivo: {{id}}"
+        },
+        "stats": {
+            "title": "Estatísticas do Banco de Dados",
+            "plugins": "Plugins",
+            "addons": "Addons",
+            "watch_progress": "Progresso",
+            "library_items": "Itens na Biblioteca",
+            "watched_items": "Itens Assistidos",
+            "signin_required": "Faça login para carregar contagens de dados remotos."
+        },
+        "actions": {
+            "title": "Ações",
+            "description": "Baixe para atualizar este dispositivo a partir da nuvem, ou envie deste dispositivo como a fonte mais recente.",
+            "pull_btn": "Baixar da Nuvem",
+            "push_btn": "Enviar deste Dispositivo",
+            "manage_account": "Gerenciar Conta",
+            "sign_out": "Sair",
+            "sign_in_up": "Entrar / Cadastrar"
+        },
+        "alerts": {
+            "pull_success_title": "Dados da Nuvem Baixados",
+            "pull_success_msg": "Os dados mais recentes da nuvem foram baixados para este dispositivo.",
+            "pull_failed_title": "Falha ao Baixar",
+            "pull_failed_msg": "Falha ao baixar dados da nuvem",
+            "push_success_title": "Envio Concluído",
+            "push_success_msg": "Os dados deste dispositivo foram enviados para a nuvem.",
+            "push_failed_title": "Falha ao Enviar",
+            "push_failed_msg": "Falha ao enviar dados locais",
+            "sign_out_failed": "Falha ao Sair",
+            "sign_out_failed_title": "Erro de Saida"
+        },
+        "external_sync": {
+            "title": "Prioridade de Sincronização Externa",
+            "active_msg": "{{services}} está ativo. O progresso e atualizações da biblioteca são gerenciados por esses serviços em vez do banco de dados Nuvio.",
+            "inactive_msg": "Se a sincronização do Trakt ou Simkl estiver ativada, o progresso e a biblioteca usarão esses serviços em vez do banco de dados Nuvio."
+        },
+        "pre_auth": {
+            "title": "Antes de Sincronizar",
+            "description": "Faça login para iniciar a sincronização na nuvem e manter seus dados consistentes entre dispositivos.",
+            "point_1": "• Configurações de addons e plugins",
+            "point_2": "• Progresso de exibição e biblioteca",
+            "env_warning": "Defina EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY para habilitar a sincronização."
+        },
+        "connection": "Conexão"
+    },
     "privacy": {
         "title": "Privacidade e Dados",
         "settings_desc": "Controle a telemetria e coleta de dados",

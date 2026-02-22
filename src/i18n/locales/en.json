@@ -767,6 +767,64 @@
         "app_updates": "App Updates",
         "about_nuvio": "About Nuvio"
     },
+    "cloud_sync": {
+        "title": "Nuvio Sync",
+        "description": "Sync data across your Nuvio devices",
+        "hero_title": "Cloud Sync",
+        "hero_subtitle": "Keep your addons, progress, and library aligned across all devices.",
+        "auth": {
+            "account": "Account",
+            "not_configured": "Supabase not configured",
+            "not_authenticated": "Not authenticated",
+            "email_session": "Email session",
+            "signed_in_as": "Signed in as {{email}}",
+            "not_signed_in": "Not signed in",
+            "effective_owner": "Effective owner: {{id}}"
+        },
+        "stats": {
+            "title": "Database Statistics",
+            "plugins": "Plugins",
+            "addons": "Addons",
+            "watch_progress": "Watch Progress",
+            "library_items": "Library Items",
+            "watched_items": "Watched Items",
+            "signin_required": "Sign in to load remote data counts."
+        },
+        "actions": {
+            "title": "Actions",
+            "description": "Pull to update this device from the cloud, or push from this device as the latest source.",
+            "pull_btn": "Pull from Cloud",
+            "push_btn": "Push from Device",
+            "manage_account": "Manage Account",
+            "sign_out": "Sign Out",
+            "sign_in_up": "Sign In / Up"
+        },
+        "alerts": {
+            "pull_success_title": "Cloud Data Pulled",
+            "pull_success_msg": "The latest cloud data has been downloaded to this device.",
+            "pull_failed_title": "Pull Failed",
+            "pull_failed_msg": "Failed to download data from the cloud",
+            "push_success_title": "Push Completed",
+            "push_success_msg": "Device data has been uploaded to the cloud.",
+            "push_failed_title": "Push Failed",
+            "push_failed_msg": "Failed to upload local data",
+            "sign_out_failed": "Sign Out Failed",
+            "sign_out_failed_title": "Logout Error"
+        },
+        "external_sync": {
+            "title": "External Sync Priority",
+            "active_msg": "{{services}} is active. Watch progress and library updates are managed by these services instead of Nuvio cloud database.",
+            "inactive_msg": "If Trakt or Simkl sync is enabled, watch progress and library updates will use those services instead of Nuvio cloud database."
+        },
+        "pre_auth": {
+            "title": "Before Syncing",
+            "description": "Sign in to start cloud sync and keep your data consistent across devices.",
+            "point_1": "• Addons and plugins settings",
+            "point_2": "• Watch progress and library",
+            "env_warning": "Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to enable sync."
+        },
+        "connection": "Connection"
+    },
     "privacy": {
         "title": "Privacy & Data",
         "settings_desc": "Control telemetry and data collection",

@@ -48,7 +48,7 @@ const SyncSettingsScreen: React.FC = () => {
     (title: string, message: string, actions?: Array<{ label: string; onPress: () => void; style?: object }>) => {
       setAlertTitle(title);
       setAlertMessage(message);
-      setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => {} }]);
+      setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
       setAlertVisible(true);
     },
     []
@@ -64,7 +64,7 @@ const SyncSettingsScreen: React.FC = () => {
       const stats = await supabaseSyncService.getRemoteStats();
       setRemoteStats(stats);
     } catch (error: any) {
-      openAlert('Sync Error', error?.message || 'Failed to load sync state');
+      openAlert(t('common.error'), error?.message || t('settings.cloud_sync.auth.not_authenticated'));
     } finally {
       setLoading(false);
     }
@@ -77,19 +77,19 @@ const SyncSettingsScreen: React.FC = () => {
   );
 
   const authLabel = useMemo(() => {
-    if (!supabaseSyncService.isConfigured()) return 'Supabase not configured';
-    if (!sessionUser) return 'Not authenticated';
-    return `Email session${sessionUser.email ? ` (${sessionUser.email})` : ''}`;
+    if (!supabaseSyncService.isConfigured()) return t('settings.cloud_sync.auth.not_configured');
+    if (!sessionUser) return t('settings.cloud_sync.auth.not_authenticated');
+    return `${t('settings.cloud_sync.auth.email_session')} ${sessionUser.email ? `(${sessionUser.email})` : ''}`;
   }, [sessionUser]);
 
   const statItems = useMemo(() => {
     if (!remoteStats) return [];
     return [
-      { label: 'Plugins', value: remoteStats.plugins },
-      { label: 'Addons', value: remoteStats.addons },
-      { label: 'Watch Progress', value: remoteStats.watchProgress },
-      { label: 'Library Items', value: remoteStats.libraryItems },
-      { label: 'Watched Items', value: remoteStats.watchedItems },
+      { label: t('settings.cloud_sync.stats.plugins'), value: remoteStats.plugins },
+      { label: t('settings.cloud_sync.stats.addons'), value: remoteStats.addons },
+      { label: t('settings.cloud_sync.stats.watch_progress'), value: remoteStats.watchProgress },
+      { label: t('settings.cloud_sync.stats.library_items'), value: remoteStats.libraryItems },
+      { label: t('settings.cloud_sync.stats.watched_items'), value: remoteStats.watchedItems },
     ];
   }, [remoteStats]);
   const isSignedIn = Boolean(user);
@@ -106,10 +106,10 @@ const SyncSettingsScreen: React.FC = () => {
     setSyncCodeLoading(true);
     try {
       await supabaseSyncService.pullAllToLocal();
-      openAlert('Cloud Data Pulled', 'Latest cloud data was pulled to this device.');
+      openAlert(t('settings.cloud_sync.alerts.pull_success_title'), t('settings.cloud_sync.alerts.pull_success_msg'));
       await loadSyncState();
     } catch (error: any) {
-      openAlert('Pull Failed', error?.message || 'Failed to pull cloud data');
+      openAlert(t('settings.cloud_sync.alerts.pull_failed_title'), error?.message || t('settings.cloud_sync.alerts.pull_failed_msg'));
     } finally {
       setSyncCodeLoading(false);
     }
@@ -119,10 +119,10 @@ const SyncSettingsScreen: React.FC = () => {
     setSyncCodeLoading(true);
     try {
       await supabaseSyncService.pushAllLocalData();
-      openAlert('Upload Complete', 'This device data has been uploaded to cloud.');
+      openAlert(t('settings.cloud_sync.alerts.push_success_title'), t('settings.cloud_sync.alerts.push_success_msg'));
       await loadSyncState();
     } catch (error: any) {
-      openAlert('Upload Failed', error?.message || 'Failed to upload local data');
+      openAlert(t('settings.cloud_sync.alerts.push_failed_title'), error?.message || t('settings.cloud_sync.alerts.push_failed_msg'));
     } finally {
       setSyncCodeLoading(false);
     }
@@ -134,14 +134,14 @@ const SyncSettingsScreen: React.FC = () => {
       await signOut();
       await loadSyncState();
     } catch (error: any) {
-      openAlert('Sign Out Failed', error?.message || 'Failed to sign out');
+      openAlert(t('settings.cloud_sync.alerts.sign_out_failed_title'), error?.message || t('settings.cloud_sync.alerts.sign_out_failed_msg'));
     } finally {
       setSyncCodeLoading(false);
     }
   };
 
   return (
-      <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.darkBackground }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.darkBackground }]}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -150,176 +150,181 @@ const SyncSettingsScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.headerActions} />
       </View>
-      <Text style={[styles.screenTitle, { color: currentTheme.colors.highEmphasis }]}>Nuvio Sync</Text>
+      <Text style={[styles.screenTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.title')}</Text>
 
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={currentTheme.colors.primary} size="large" />
         </View>
       ) : (
-      <>
+        <>
 
-      <ScrollView contentContainerStyle={[styles.content, isTablet ? styles.contentTablet : null, { paddingBottom: insets.bottom + 24 }]}>
-        <View style={[styles.heroCard, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroTitleWrap}>
-              <Text style={[styles.heroTitle, { color: currentTheme.colors.highEmphasis }]}>Cloud Sync</Text>
-              <Text style={[styles.heroSubtitle, { color: currentTheme.colors.mediumEmphasis }]}>
-                Keep your addons, progress and library aligned across devices.
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.noteCard, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="info-outline" size={18} color={currentTheme.colors.highEmphasis} />
-            <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>External Sync Priority</Text>
-          </View>
-          <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
-            {externalSyncActive
-              ? `${externalSyncServices.join(' + ')} is active. Watch progress and library updates are managed by these services instead of Nuvio cloud database.`
-              : 'If Trakt or Simkl sync is enabled, watch progress and library updates will use those services instead of Nuvio cloud database.'}
-          </Text>
-        </View>
-
-        <View style={[styles.card, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="person-outline" size={18} color={currentTheme.colors.highEmphasis} />
-            <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>Account</Text>
-          </View>
-          <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
-            {user?.email ? `Signed in as ${user.email}` : 'Not signed in'}
-          </Text>
-          <View style={styles.buttonRow}>
-            {!isSignedIn ? (
-              <TouchableOpacity
-                style={[styles.button, { backgroundColor: currentTheme.colors.primary }]}
-                onPress={() => navigation.navigate('Account')}
-              >
-                <Text style={styles.buttonText}>Sign In / Sign Up</Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                <TouchableOpacity
-                  style={[styles.button, { backgroundColor: currentTheme.colors.primary }]}
-                  onPress={() => navigation.navigate('AccountManage')}
-                >
-                  <Text style={styles.buttonText}>Manage Account</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  disabled={syncCodeLoading}
-                  style={[styles.button, { backgroundColor: currentTheme.colors.elevation2 }]}
-                  onPress={handleSignOut}
-                >
-                  <Text style={styles.buttonText}>Sign Out</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-
-        {!isSignedIn ? (
-          <View style={[styles.card, styles.preAuthCard, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
-            <View style={styles.sectionHeader}>
-              <MaterialIcons name="sync-lock" size={18} color={currentTheme.colors.highEmphasis} />
-              <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>Before You Sync</Text>
-            </View>
-            <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
-              Sign in to start cloud sync and keep your data consistent across devices.
-            </Text>
-            <View style={styles.preAuthList}>
-              <Text style={[styles.preAuthItem, { color: currentTheme.colors.mediumEmphasis }]}>• Addons and plugin settings</Text>
-              <Text style={[styles.preAuthItem, { color: currentTheme.colors.mediumEmphasis }]}>• Watch progress and library</Text>
-            </View>
-            {!supabaseSyncService.isConfigured() && (
-              <Text style={[styles.warning, { color: '#ffb454' }]}>
-                Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to enable sync.
-              </Text>
-            )}
-          </View>
-        ) : (
-          <>
-            <View style={[styles.card, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
-              <View style={styles.sectionHeader}>
-                <MaterialIcons name="link" size={18} color={currentTheme.colors.highEmphasis} />
-                <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>Connection</Text>
-              </View>
-              <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>{authLabel}</Text>
-              <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
-                Effective owner: {ownerId || 'Unavailable'}
-              </Text>
-              {!supabaseSyncService.isConfigured() && (
-                <Text style={[styles.warning, { color: '#ffb454' }]}>
-                  Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to enable sync.
-                </Text>
-              )}
-            </View>
-
-            <View style={[styles.card, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
-              <View style={styles.sectionHeader}>
-                <MaterialIcons name="storage" size={18} color={currentTheme.colors.highEmphasis} />
-                <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>Database Stats</Text>
-              </View>
-              {!remoteStats ? (
-                <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
-                  Sign in to load remote data counts.
-                </Text>
-              ) : (
-                <View style={styles.statsGrid}>
-                  {statItems.map((item) => (
-                    <View key={item.label} style={[styles.statTile, { backgroundColor: currentTheme.colors.darkBackground, borderColor: currentTheme.colors.elevation2 }]}>
-                      <Text style={[styles.statValue, { color: currentTheme.colors.highEmphasis }]}>{item.value}</Text>
-                      <Text style={[styles.statLabel, { color: currentTheme.colors.mediumEmphasis }]}>{item.label}</Text>
-                    </View>
-                  ))}
+          <ScrollView contentContainerStyle={[styles.content, isTablet ? styles.contentTablet : null, { paddingBottom: insets.bottom + 24 }]}>
+            <View style={[styles.heroCard, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
+              <View style={styles.heroTopRow}>
+                <View style={styles.heroTitleWrap}>
+                  <Text style={[styles.heroTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.hero_title')}</Text>
+                  <Text style={[styles.heroSubtitle, { color: currentTheme.colors.mediumEmphasis }]}>
+                    {t('settings.cloud_sync.hero_subtitle')}
+                  </Text>
                 </View>
-              )}
+              </View>
+            </View>
+
+            <View style={[styles.noteCard, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
+              <View style={styles.sectionHeader}>
+                <MaterialIcons name="info-outline" size={18} color={currentTheme.colors.highEmphasis} />
+                <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.external_sync.title')}</Text>
+              </View>
+              <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
+                {externalSyncActive
+                  ? t('settings.cloud_sync.external_sync.active_msg', {
+                    services: externalSyncServices.join(' + ')
+                  })
+                  : t('settings.cloud_sync.external_sync.inactive_msg')}
+              </Text>
             </View>
 
             <View style={[styles.card, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
               <View style={styles.sectionHeader}>
-                <MaterialIcons name="sync" size={18} color={currentTheme.colors.highEmphasis} />
-                <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>Actions</Text>
+                <MaterialIcons name="person-outline" size={18} color={currentTheme.colors.highEmphasis} />
+                <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.auth.account')}</Text>
               </View>
               <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
-                Pull to refresh this device from cloud, or upload this device as the latest source.
+                {user?.email
+                  ? t('settings.cloud_sync.auth.signed_in_as', { email: user.email })
+                  : t('settings.cloud_sync.auth.not_signed_in')
+                }
               </Text>
               <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  disabled={syncCodeLoading || !supabaseSyncService.isConfigured()}
-                  style={[
-                    styles.button,
-                    styles.primaryButton,
-                    { backgroundColor: currentTheme.colors.primary },
-                    (syncCodeLoading || !supabaseSyncService.isConfigured()) && styles.buttonDisabled,
-                  ]}
-                  onPress={handleManualSync}
-                >
-                  {syncCodeLoading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.buttonText}>Pull From Cloud</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  disabled={syncCodeLoading || !supabaseSyncService.isConfigured()}
-                  style={[
-                    styles.button,
-                    styles.secondaryButton,
-                    { backgroundColor: currentTheme.colors.elevation2, borderColor: currentTheme.colors.elevation2 },
-                    (syncCodeLoading || !supabaseSyncService.isConfigured()) && styles.buttonDisabled,
-                  ]}
-                  onPress={handleUploadLocalData}
-                >
-                  <Text style={styles.buttonText}>Upload This Device</Text>
-                </TouchableOpacity>
+                {!isSignedIn ? (
+                  <TouchableOpacity
+                    style={[styles.button, { backgroundColor: currentTheme.colors.primary }]}
+                    onPress={() => navigation.navigate('Account')}
+                  >
+                    <Text style={styles.buttonText}>{t('settings.cloud_sync.actions.sign_in_up')}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.button, { backgroundColor: currentTheme.colors.primary }]}
+                      onPress={() => navigation.navigate('AccountManage')}
+                    >
+                      <Text style={styles.buttonText}>{t('settings.cloud_sync.actions.manage_account')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      disabled={syncCodeLoading}
+                      style={[styles.button, { backgroundColor: currentTheme.colors.elevation2 }]}
+                      onPress={handleSignOut}
+                    >
+                      <Text style={styles.buttonText}>{t('settings.cloud_sync.actions.sign_out')}</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             </View>
-          </>
-        )}
-      </ScrollView>
-      </>
+
+            {!isSignedIn ? (
+              <View style={[styles.card, styles.preAuthCard, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
+                <View style={styles.sectionHeader}>
+                  <MaterialIcons name="sync-lock" size={18} color={currentTheme.colors.highEmphasis} />
+                  <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.pre_auth.title')}</Text>
+                </View>
+                <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
+                  {t('settings.cloud_sync.pre_auth.description')}
+                </Text>
+                <View style={styles.preAuthList}>
+                  <Text style={[styles.preAuthItem, { color: currentTheme.colors.mediumEmphasis }]}>{t('settings.cloud_sync.pre_auth.point_1')}</Text>
+                  <Text style={[styles.preAuthItem, { color: currentTheme.colors.mediumEmphasis }]}>{t('settings.cloud_sync.pre_auth.point_2')}</Text>
+                </View>
+                {!supabaseSyncService.isConfigured() && (
+                  <Text style={[styles.warning, { color: '#ffb454' }]}>
+                    {t('settings.cloud_sync.pre_auth.env_warning')}
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <>
+                <View style={[styles.card, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
+                  <View style={styles.sectionHeader}>
+                    <MaterialIcons name="link" size={18} color={currentTheme.colors.highEmphasis} />
+                    <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.connection')}</Text>
+                  </View>
+                  <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>{authLabel}</Text>
+                  <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
+                    {t('settings.cloud_sync.auth.effective_owner', { id: ownerId || 'Unavailable' })}
+                  </Text>
+                  {!supabaseSyncService.isConfigured() && (
+                    <Text style={[styles.warning, { color: '#ffb454' }]}>
+                      {t('settings.cloud_sync.pre_auth.env_warning')}
+                    </Text>
+                  )}
+                </View>
+
+                <View style={[styles.card, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
+                  <View style={styles.sectionHeader}>
+                    <MaterialIcons name="storage" size={18} color={currentTheme.colors.highEmphasis} />
+                    <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.stats.title')}</Text>
+                  </View>
+                  {!remoteStats ? (
+                    <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
+                      {t('settings.cloud_sync.stats.signin_required')}
+                    </Text>
+                  ) : (
+                    <View style={styles.statsGrid}>
+                      {statItems.map((item) => (
+                        <View key={item.label} style={[styles.statTile, { backgroundColor: currentTheme.colors.darkBackground, borderColor: currentTheme.colors.elevation2 }]}>
+                          <Text style={[styles.statValue, { color: currentTheme.colors.highEmphasis }]}>{item.value}</Text>
+                          <Text style={[styles.statLabel, { color: currentTheme.colors.mediumEmphasis }]}>{item.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                <View style={[styles.card, { backgroundColor: currentTheme.colors.elevation1, borderColor: currentTheme.colors.elevation2 }]}>
+                  <View style={styles.sectionHeader}>
+                    <MaterialIcons name="sync" size={18} color={currentTheme.colors.highEmphasis} />
+                    <Text style={[styles.cardTitle, { color: currentTheme.colors.highEmphasis }]}>{t('settings.cloud_sync.actions.title')}</Text>
+                  </View>
+                  <Text style={[styles.cardText, { color: currentTheme.colors.mediumEmphasis }]}>
+                    {t('settings.cloud_sync.actions.description')}
+                  </Text>
+                  <View style={styles.buttonRow}>
+                    <TouchableOpacity
+                      disabled={syncCodeLoading || !supabaseSyncService.isConfigured()}
+                      style={[
+                        styles.button,
+                        styles.primaryButton,
+                        { backgroundColor: currentTheme.colors.primary },
+                        (syncCodeLoading || !supabaseSyncService.isConfigured()) && styles.buttonDisabled,
+                      ]}
+                      onPress={handleManualSync}
+                    >
+                      {syncCodeLoading ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.buttonText}>{t('settings.cloud_sync.actions.pull_btn')}</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      disabled={syncCodeLoading || !supabaseSyncService.isConfigured()}
+                      style={[
+                        styles.button,
+                        styles.secondaryButton,
+                        { backgroundColor: currentTheme.colors.elevation2, borderColor: currentTheme.colors.elevation2 },
+                        (syncCodeLoading || !supabaseSyncService.isConfigured()) && styles.buttonDisabled,
+                      ]}
+                      onPress={handleUploadLocalData}
+                    >
+                      <Text style={styles.buttonText}>{t('settings.cloud_sync.actions.push_btn')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
+          </ScrollView>
+        </>
       )}
 
       <CustomAlert
