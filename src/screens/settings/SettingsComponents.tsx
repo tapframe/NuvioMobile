@@ -59,6 +59,7 @@ interface SettingItemProps {
     badge?: string | number;
     isTablet?: boolean;
     descriptionNumberOfLines?: number;
+    disabled?: boolean;
 }
 
 export const SettingItem: React.FC<SettingItemProps> = ({
@@ -71,20 +72,23 @@ export const SettingItem: React.FC<SettingItemProps> = ({
     onPress,
     badge,
     isTablet: isTabletProp = false,
-    descriptionNumberOfLines = 1
+    descriptionNumberOfLines = 1,
+    disabled = false
 }) => {
     const { currentTheme } = useTheme();
     const useTabletStyle = isTabletProp || isTablet;
 
     return (
         <TouchableOpacity
-            activeOpacity={0.6}
-            onPress={onPress}
+            activeOpacity={disabled ? 1 : 0.6}
+            onPress={disabled ? undefined : onPress}
+            disabled={disabled}
             style={[
                 styles.settingItem,
                 !isLast && styles.settingItemBorder,
                 { borderBottomColor: currentTheme.colors.elevation2 },
-                useTabletStyle && styles.tabletSettingItem
+                useTabletStyle && styles.tabletSettingItem,
+                disabled && { opacity: 0.4 }
             ]}
         >
             <View style={[

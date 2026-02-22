@@ -39,6 +39,7 @@ import UpdatePopup from './src/components/UpdatePopup';
 import MajorUpdateOverlay from './src/components/MajorUpdateOverlay';
 import { useGithubMajorUpdate } from './src/hooks/useGithubMajorUpdate';
 import { useUpdatePopup } from './src/hooks/useUpdatePopup';
+import { useSettings } from './src/hooks/useSettings';
 import * as Sentry from '@sentry/react-native';
 import UpdateService from './src/services/updateService';
 import { memoryMonitorService } from './src/services/memoryMonitorService';
@@ -48,6 +49,7 @@ import { ToastProvider } from './src/contexts/ToastContext';
 import { mmkvStorage } from './src/services/mmkvStorage';
 import { CampaignManager } from './src/components/promotions/CampaignManager';
 import { isErrorReportingEnabledSync } from './src/services/telemetryService';
+import { networkPrivacyService } from './src/services/networkPrivacyService';
 import { supabaseSyncService } from './src/services/supabaseSyncService';
 
 // Initialize Sentry with privacy-first defaults
@@ -118,6 +120,7 @@ const ThemedApp = () => {
     } catch { }
   }, []);
   const { currentTheme } = useTheme();
+  const { settings, isLoaded: isSettingsLoaded } = useSettings();
   const [isAppReady, setIsAppReady] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
 
@@ -210,6 +213,23 @@ const ThemedApp = () => {
 
     initializeApp();
   }, []);
+
+  // Sync persisted DoH preferences to the native Android networking stack.
+  useEffect(() => {
+    if (!isSettingsLoaded) return;
+    networkPrivacyService.applyConfig({
+      enabled: settings.dnsOverHttpsEnabled,
+      mode: settings.dnsOverHttpsMode,
+      provider: settings.dnsOverHttpsProvider,
+      customUrl: settings.dnsOverHttpsCustomUrl,
+    });
+  }, [
+    isSettingsLoaded,
+    settings.dnsOverHttpsEnabled,
+    settings.dnsOverHttpsMode,
+    settings.dnsOverHttpsProvider,
+    settings.dnsOverHttpsCustomUrl,
+  ]);
 
   // Create custom themes based on current theme
   const customDarkTheme = {

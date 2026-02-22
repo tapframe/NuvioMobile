@@ -9,12 +9,13 @@ import { RootStackParamList } from '../../navigation/AppNavigator';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { SettingsCard, SettingItem, CustomSwitch, ChevronRight } from './SettingsComponents';
 import { useRealtimeConfig } from '../../hooks/useRealtimeConfig';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { BottomSheetModal, BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useTranslation } from 'react-i18next';
 import { SvgXml } from 'react-native-svg';
 import { toastService } from '../../services/toastService';
 import { introService } from '../../services/introService';
+import { DoHMode, DoHProvider } from '../../services/networkPrivacyService';
 
 const { width } = Dimensions.get('window');
 
@@ -66,9 +67,21 @@ const AVAILABLE_LANGUAGES = [
 ];
 
 const SUBTITLE_SOURCE_OPTIONS = [
-    { value: 'internal', label: 'Internal First', description: 'Prefer embedded subtitles, then external' },
-    { value: 'external', label: 'External First', description: 'Prefer addon subtitles, then embedded' },
-    { value: 'any', label: 'Any Available', description: 'Use first available subtitle track' },
+  { value: 'internal', label: 'Internal First', description: 'Prefer embedded subtitles, then external' },
+  { value: 'external', label: 'External First', description: 'Prefer addon subtitles, then embedded' },
+  { value: 'any', label: 'Any Available', description: 'Use first available subtitle track' },
+];
+
+const DOH_MODE_OPTIONS: Array<{ value: DoHMode; labelKey: string; descKey: string }> = [
+    { value: 'auto', labelKey: 'settings.options.doh_mode_auto', descKey: 'settings.options.doh_mode_auto_desc' },
+    { value: 'strict', labelKey: 'settings.options.doh_mode_strict', descKey: 'settings.options.doh_mode_strict_desc' },
+];
+
+const DOH_PROVIDER_OPTIONS: Array<{ value: DoHProvider; labelKey: string; descKey: string }> = [
+    { value: 'cloudflare', labelKey: 'settings.options.doh_provider_cloudflare', descKey: 'settings.options.doh_provider_cloudflare_desc' },
+    { value: 'google', labelKey: 'settings.options.doh_provider_google', descKey: 'settings.options.doh_provider_google_desc' },
+    { value: 'quad9', labelKey: 'settings.options.doh_provider_quad9', descKey: 'settings.options.doh_provider_quad9_desc' },
+    { value: 'custom', labelKey: 'settings.options.doh_provider_custom', descKey: 'settings.options.doh_provider_custom_desc' },
 ];
 
 // Props for the reusable content component
@@ -78,7 +91,6 @@ interface PlaybackSettingsContentProps {
 
 /**
  * Reusable PlaybackSettingsContent component
- * Can be used inline (tablets) or wrapped in a screen (mobile)
  */
 export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = ({ isTablet = false }) => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -89,6 +101,7 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
 
     const [introDbLogoXml, setIntroDbLogoXml] = useState<string | null>(null);
     const [apiKeyInput, setApiKeyInput] = useState(settings?.introDbApiKey || '');
+    const [customDohUrlInput, setCustomDohUrlInput] = useState(settings?.dnsOverHttpsCustomUrl || '');
     const [isVerifyingKey, setIsVerifyingKey] = useState(false);
 
     const isMounted = useRef(true);
@@ -103,6 +116,10 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
     useEffect(() => {
         setApiKeyInput(settings?.introDbApiKey || '');
     }, [settings?.introDbApiKey]);
+
+    useEffect(() => {
+        setCustomDohUrlInput(settings?.dnsOverHttpsCustomUrl || '');
+    }, [settings?.dnsOverHttpsCustomUrl]);
 
     const handleApiKeySubmit = async () => {
         if (!apiKeyInput.trim()) {
@@ -131,13 +148,10 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
             try {
                 const res = await fetch(INTRODB_LOGO_URI);
                 let xml = await res.text();
-                // Inline CSS class-based styles because react-native-svg doesn't support <style> class selectors
-                // Map known classes from the IntroDB logo to equivalent inline attributes
                 xml = xml.replace(/class="cls-4"/g, 'fill="url(#linear-gradient)"');
                 xml = xml.replace(/class="cls-3"/g, 'fill="#141414" opacity=".38"');
                 xml = xml.replace(/class="cls-1"/g, 'fill="url(#linear-gradient-2)" opacity=".53"');
                 xml = xml.replace(/class="cls-2"/g, 'fill="url(#linear-gradient-3)" opacity=".53"');
-                // Remove the <style> block to avoid unsupported CSS
                 xml = xml.replace(/<style>[\s\S]*?<\/style>/, '');
                 if (!cancelled) setIntroDbLogoXml(xml);
             } catch {
@@ -160,28 +174,54 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
     const audioLanguageSheetRef = useRef<BottomSheetModal>(null);
     const subtitleLanguageSheetRef = useRef<BottomSheetModal>(null);
     const subtitleSourceSheetRef = useRef<BottomSheetModal>(null);
+    const dohModeSheetRef = useRef<BottomSheetModal>(null);
+    const dohProviderSheetRef = useRef<BottomSheetModal>(null);
 
     // Snap points
     const languageSnapPoints = useMemo(() => ['70%'], []);
     const sourceSnapPoints = useMemo(() => ['45%'], []);
+    const dohModeSnapPoints = useMemo(() => ['40%'], []);
+    const dohProviderSnapPoints = useMemo(() => ['52%'], []);
 
-    // Handlers to present sheets - ensure only one is open at a time
+    // Handlers
     const openAudioLanguageSheet = useCallback(() => {
         subtitleLanguageSheetRef.current?.dismiss();
         subtitleSourceSheetRef.current?.dismiss();
+        dohModeSheetRef.current?.dismiss();
+        dohProviderSheetRef.current?.dismiss();
         setTimeout(() => audioLanguageSheetRef.current?.present(), 100);
     }, []);
 
     const openSubtitleLanguageSheet = useCallback(() => {
         audioLanguageSheetRef.current?.dismiss();
         subtitleSourceSheetRef.current?.dismiss();
+        dohModeSheetRef.current?.dismiss();
+        dohProviderSheetRef.current?.dismiss();
         setTimeout(() => subtitleLanguageSheetRef.current?.present(), 100);
     }, []);
 
     const openSubtitleSourceSheet = useCallback(() => {
         audioLanguageSheetRef.current?.dismiss();
         subtitleLanguageSheetRef.current?.dismiss();
+        dohModeSheetRef.current?.dismiss();
+        dohProviderSheetRef.current?.dismiss();
         setTimeout(() => subtitleSourceSheetRef.current?.present(), 100);
+    }, []);
+
+    const openDoHModeSheet = useCallback(() => {
+        audioLanguageSheetRef.current?.dismiss();
+        subtitleLanguageSheetRef.current?.dismiss();
+        subtitleSourceSheetRef.current?.dismiss();
+        dohProviderSheetRef.current?.dismiss();
+        setTimeout(() => dohModeSheetRef.current?.present(), 100);
+    }, []);
+
+    const openDoHProviderSheet = useCallback(() => {
+        audioLanguageSheetRef.current?.dismiss();
+        subtitleLanguageSheetRef.current?.dismiss();
+        subtitleSourceSheetRef.current?.dismiss();
+        dohModeSheetRef.current?.dismiss();
+        setTimeout(() => dohProviderSheetRef.current?.present(), 100);
     }, []);
 
     const isItemVisible = (itemId: string) => {
@@ -205,6 +245,19 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
         if (value === 'external') return t('settings.options.external_first');
         if (value === 'any') return t('settings.options.any_available');
         return t('settings.options.internal_first');
+    };
+
+    const getDoHModeLabel = (value: DoHMode) => {
+        if (value === 'off') return t('settings.options.doh_mode_off', { defaultValue: 'Off' });
+        if (value === 'strict') return t('settings.options.doh_mode_strict', { defaultValue: 'Strict (DoH Only)' });
+        return t('settings.options.doh_mode_auto', { defaultValue: 'Auto (Fallback)' });
+    };
+
+    const getDoHProviderLabel = (value: DoHProvider) => {
+        if (value === 'google') return t('settings.options.doh_provider_google', { defaultValue: 'Google' });
+        if (value === 'quad9') return t('settings.options.doh_provider_quad9', { defaultValue: 'Quad9' });
+        if (value === 'custom') return t('settings.options.doh_provider_custom', { defaultValue: 'Custom URL' });
+        return t('settings.options.doh_provider_cloudflare', { defaultValue: 'Cloudflare' });
     };
 
     // Render backdrop for bottom sheets
@@ -233,6 +286,38 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
     const handleSelectSubtitleSource = (value: 'internal' | 'external' | 'any') => {
         updateSetting('subtitleSourcePreference', value);
         subtitleSourceSheetRef.current?.dismiss();
+    };
+
+    const handleSelectDoHMode = (value: DoHMode) => {
+        updateSetting('dnsOverHttpsMode', value);
+        dohModeSheetRef.current?.dismiss();
+    };
+
+    const handleSelectDoHProvider = (value: DoHProvider) => {
+        updateSetting('dnsOverHttpsProvider', value);
+        dohProviderSheetRef.current?.dismiss();
+    };
+
+    const handleSaveCustomDoHUrl = () => {
+        const trimmed = customDohUrlInput.trim();
+        if (!trimmed) {
+            updateSetting('dnsOverHttpsCustomUrl', '');
+            toastService.success(t('settings.items.doh_custom_url_cleared', { defaultValue: 'Custom DoH URL cleared' }));
+            return;
+        }
+
+        try {
+            const parsed = new URL(trimmed);
+            if (parsed.protocol !== 'https:') {
+                throw new Error('DoH URL must use HTTPS');
+            }
+        } catch {
+            toastService.error(t('settings.items.doh_custom_url_invalid', { defaultValue: 'Please enter a valid HTTPS DoH URL' }));
+            return;
+        }
+
+        updateSetting('dnsOverHttpsCustomUrl', trimmed);
+        toastService.success(t('settings.items.doh_custom_url_saved', { defaultValue: 'Custom DoH URL saved' }));
     };
 
     return (
@@ -356,9 +441,72 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                             onValueChange={(value) => updateSetting('enableSubtitleAutoSelect', value)}
                         />
                     )}
-                    isLast
+                    isLast={isTablet}
                     isTablet={isTablet}
                 />
+            </SettingsCard>
+
+            <SettingsCard title={t('settings.sections.network_privacy', { defaultValue: 'Network Privacy' })} isTablet={isTablet}>
+                <SettingItem
+                    title={t('settings.items.doh_enabled', { defaultValue: 'DNS over HTTPS' })}
+                    description={t('settings.items.doh_enabled_desc', { defaultValue: 'Encrypt DNS lookups for supported requests' })}
+                    icon="shield"
+                    renderControl={() => (
+                        <CustomSwitch
+                            value={settings?.dnsOverHttpsEnabled ?? false}
+                            onValueChange={(value) => updateSetting('dnsOverHttpsEnabled', value)}
+                        />
+                    )}
+                    isLast={!settings?.dnsOverHttpsEnabled}
+                    isTablet={isTablet}
+                />
+                
+                {settings?.dnsOverHttpsEnabled && (
+                    <>
+                        <SettingItem
+                            title={t('settings.items.doh_mode', { defaultValue: 'Mode' })}
+                            description={getDoHModeLabel((settings?.dnsOverHttpsMode || 'auto') as DoHMode)}
+                            icon="sliders"
+                            renderControl={() => <ChevronRight />}
+                            onPress={openDoHModeSheet}
+                            isTablet={isTablet}
+                        />
+                        <SettingItem
+                            title={t('settings.items.doh_provider', { defaultValue: 'Resolver Provider' })}
+                            description={getDoHProviderLabel((settings?.dnsOverHttpsProvider || 'cloudflare') as DoHProvider)}
+                            icon="globe"
+                            renderControl={() => <ChevronRight />}
+                            onPress={openDoHProviderSheet}
+                            isLast={settings?.dnsOverHttpsProvider !== 'custom'}
+                            isTablet={isTablet}
+                        />
+
+                        {settings?.dnsOverHttpsProvider === 'custom' && (
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>
+                                    {t('settings.items.doh_custom_url', { defaultValue: 'CUSTOM DOH URL' })}
+                                </Text>
+                                <View style={styles.apiKeyRow}>
+                                    <TextInput
+                                        style={[styles.input, { flex: 1, marginRight: 10, color: currentTheme.colors.highEmphasis }]}
+                                        value={customDohUrlInput}
+                                        onChangeText={setCustomDohUrlInput}
+                                        placeholder={t('settings.items.doh_custom_url_placeholder', { defaultValue: 'https://dns.example.com/dns-query' })}
+                                        placeholderTextColor={currentTheme.colors.mediumEmphasis}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.confirmButton}
+                                        onPress={handleSaveCustomDoHUrl}
+                                    >
+                                        <MaterialIcons name="check" size={24} color="black" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+                    </>
+                )}
             </SettingsCard>
 
             {hasVisibleItems(['show_trailers', 'enable_downloads']) && (
@@ -411,7 +559,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                 </SettingsCard>
             )}
 
-            {/* Audio Language Bottom Sheet */}
             <BottomSheetModal
                 ref={audioLanguageSheetRef}
                 index={0}
@@ -452,7 +599,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                 </BottomSheetScrollView>
             </BottomSheetModal>
 
-            {/* Subtitle Language Bottom Sheet */}
             <BottomSheetModal
                 ref={subtitleLanguageSheetRef}
                 index={0}
@@ -493,7 +639,6 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                 </BottomSheetScrollView>
             </BottomSheetModal>
 
-            {/* Subtitle Source Priority Bottom Sheet */}
             <BottomSheetModal
                 ref={subtitleSourceSheetRef}
                 index={0}
@@ -537,13 +682,98 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                     })}
                 </BottomSheetScrollView>
             </BottomSheetModal>
+
+            <BottomSheetModal
+                ref={dohModeSheetRef}
+                index={0}
+                snapPoints={dohModeSnapPoints}
+                enableDynamicSizing={false}
+                enablePanDownToClose={true}
+                backdropComponent={renderBackdrop}
+                backgroundStyle={{ backgroundColor: '#1a1a1a' }}
+                handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
+            >
+                <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>{t('settings.items.doh_mode', { defaultValue: 'Mode' })}</Text>
+                </View>
+                <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+                    {DOH_MODE_OPTIONS.map((option) => {
+                        const currentMode = (settings?.dnsOverHttpsMode === 'strict' ? 'strict' : 'auto') as DoHMode;
+                        const isSelected = option.value === currentMode;
+                        return (
+                            <TouchableOpacity
+                                key={option.value}
+                                style={[
+                                    styles.sourceItem,
+                                    isSelected && { backgroundColor: currentTheme.colors.primary + '20', borderColor: currentTheme.colors.primary }
+                                ]}
+                                onPress={() => handleSelectDoHMode(option.value)}
+                            >
+                                <View style={styles.sourceItemContent}>
+                                    <Text style={[styles.sourceLabel, { color: isSelected ? currentTheme.colors.primary : '#fff' }]}>
+                                        {t(option.labelKey, { defaultValue: option.value.toUpperCase() })}
+                                    </Text>
+                                    <Text style={styles.sourceDescription}>
+                                        {t(option.descKey, { defaultValue: '' })}
+                                    </Text>
+                                </View>
+                                {isSelected && (
+                                    <MaterialIcons name="check" size={20} color={currentTheme.colors.primary} />
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </BottomSheetScrollView>
+            </BottomSheetModal>
+
+            <BottomSheetModal
+                ref={dohProviderSheetRef}
+                index={0}
+                snapPoints={dohProviderSnapPoints}
+                enableDynamicSizing={false}
+                enablePanDownToClose={true}
+                backdropComponent={renderBackdrop}
+                backgroundStyle={{ backgroundColor: '#1a1a1a' }}
+                handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
+            >
+                <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>{t('settings.items.doh_provider', { defaultValue: 'Resolver Provider' })}</Text>
+                </View>
+                <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+                    {DOH_PROVIDER_OPTIONS.map((option) => {
+                        const currentProvider = (settings?.dnsOverHttpsProvider || 'cloudflare') as DoHProvider;
+                        const isSelected = option.value === currentProvider;
+                        return (
+                            <TouchableOpacity
+                                key={option.value}
+                                style={[
+                                    styles.sourceItem,
+                                    isSelected && { backgroundColor: currentTheme.colors.primary + '20', borderColor: currentTheme.colors.primary }
+                                ]}
+                                onPress={() => handleSelectDoHProvider(option.value)}
+                            >
+                                <View style={styles.sourceItemContent}>
+                                    <Text style={[styles.sourceLabel, { color: isSelected ? currentTheme.colors.primary : '#fff' }]}>
+                                        {t(option.labelKey, { defaultValue: option.value })}
+                                    </Text>
+                                    <Text style={styles.sourceDescription}>
+                                        {t(option.descKey, { defaultValue: '' })}
+                                    </Text>
+                                </View>
+                                {isSelected && (
+                                    <MaterialIcons name="check" size={20} color={currentTheme.colors.primary} />
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </BottomSheetScrollView>
+            </BottomSheetModal>
         </>
     );
 };
 
 /**
  * PlaybackSettingsScreen - Wrapper for mobile navigation
- * Uses PlaybackSettingsContent internally
  */
 const PlaybackSettingsScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
