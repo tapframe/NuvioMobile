@@ -104,11 +104,21 @@ const TraktItem = React.memo(({
   currentTheme: any;
   showTitles: boolean;
 }) => {
-  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  const inlinePoster =
+    typeof item.poster === 'string' &&
+      item.poster.length > 0 &&
+      item.poster !== 'placeholder'
+      ? item.poster
+      : null;
+  const [posterUrl, setPosterUrl] = useState<string | null>(inlinePoster);
 
   useEffect(() => {
     let isMounted = true;
     const fetchPoster = async () => {
+      if (isMounted) {
+        setPosterUrl(inlinePoster);
+      }
+
       if (item.images) {
         const url = TraktService.getTraktPosterUrl(item.images);
         if (isMounted && url) {
@@ -153,7 +163,7 @@ const TraktItem = React.memo(({
     };
     fetchPoster();
     return () => { isMounted = false; };
-  }, [item.images, item.imdbId, item.traktId, item.type]);
+  }, [item.images, item.imdbId, item.poster, item.traktId, item.type, inlinePoster]);
 
   const handlePress = useCallback(() => {
     if (item.imdbId) {
@@ -315,6 +325,10 @@ const LibraryScreen = () => {
     loadAllCollections: loadSimklCollections
   } = useSimklContext();
 
+  // Show only one provider tab to reduce clutter: prefer SIMKL when available.
+  const showSimklTab = simklAuthenticated;
+  const showTraktTab = traktAuthenticated && !showSimklTab;
+
   useEffect(() => {
     const applyStatusBarConfig = () => {
       StatusBar.setBarStyle('light-content');
@@ -353,6 +367,17 @@ const LibraryScreen = () => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
   }, [showTraktContent, showSimklContent, selectedTraktFolder, selectedSimklFolder]);
+
+  useEffect(() => {
+    if (!showTraktTab && showTraktContent) {
+      setShowTraktContent(false);
+      setSelectedTraktFolder(null);
+    }
+    if (!showSimklTab && showSimklContent) {
+      setShowSimklContent(false);
+      setSelectedSimklFolder(null);
+    }
+  }, [showTraktTab, showSimklTab, showTraktContent, showSimklContent]);
 
   useEffect(() => {
     const loadLibrary = async () => {
@@ -894,232 +919,144 @@ const LibraryScreen = () => {
     });
   }, [watchedMovies, watchedShows, watchlistMovies, watchlistShows, collectionMovies, collectionShows, continueWatching, ratedContent]);
 
-  const getSimklFolderItems = useCallback((folderId: string): TraktDisplayItem[] => {
-    const items: TraktDisplayItem[] = [];
+  const normalizeImdbId = useCallback((imdbId?: string): string | undefined => {
+    if (!imdbId) return undefined;
+    const trimmed = String(imdbId).trim();
+    if (!trimmed) return undefined;
+    return trimmed.startsWith('tt') ? trimmed : `tt${trimmed}`;
+  }, []);
 
-    switch (folderId) {
-      case 'continue-watching':
-        return (simklContinueWatching || []).map(item => {
-          const content = item.show || item.movie;
-          return {
-            id: String(content?.ids?.simkl || Math.random()),
-            name: content?.title || 'Unknown',
-            type: item.show ? 'series' : 'movie',
-            poster: '',
-            year: content?.year,
-            lastWatched: item.paused_at,
-            imdbId: content?.ids?.imdb,
-            traktId: content?.ids?.simkl || 0,
-          };
-        });
+  const getSimklContent = useCallback((item: any) => {
+    return item?.anime || item?.show || item?.movie || item || null;
+  }, []);
 
-      case 'watching-shows':
-        return (watchingShows || []).map(item => ({
-          id: String(item.show?.ids?.simkl || Math.random()),
-          name: item.show?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.show?.year,
-          lastWatched: item.last_watched_at,
-          rating: item.user_rating,
-          imdbId: item.show?.ids?.imdb,
-          traktId: item.show?.ids?.simkl || 0,
-        }));
+  const buildSimklDisplayItem = useCallback((
+    item: any,
+    fallbackType: 'series' | 'movie',
+    lastWatched?: string,
+    rating?: number
+  ): TraktDisplayItem => {
+    const content = getSimklContent(item);
+    const ids = content?.ids || {};
+    const name = typeof content?.title === 'string' && content.title.trim().length > 0
+      ? content.title
+      : 'Unknown';
+    const fallbackId = `simkl-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${content?.year || 'na'}`;
+    const simklId = ids.simkl ?? ids.tmdb ?? ids.imdb ?? fallbackId;
+    const poster = typeof content?.poster === 'string' ? content.poster : '';
+    const type = item?.movie ? 'movie' : fallbackType;
 
-      case 'watching-movies':
-        return (watchingMovies || []).map(item => ({
-          id: String(item.movie?.ids?.simkl || Math.random()),
-          name: item.movie?.title || 'Unknown',
-          type: 'movie' as const,
-          poster: '',
-          year: item.movie?.year,
-          lastWatched: item.last_watched_at,
-          rating: item.user_rating,
-          imdbId: item.movie?.ids?.imdb,
-          traktId: item.movie?.ids?.simkl || 0,
-        }));
+    return {
+      id: String(simklId),
+      name,
+      type,
+      poster,
+      year: content?.year,
+      lastWatched,
+      rating,
+      imdbId: normalizeImdbId(ids.imdb),
+      traktId: typeof ids.simkl === 'number' ? ids.simkl : 0,
+    };
+  }, [getSimklContent, normalizeImdbId]);
 
-      case 'watching-anime':
-        return (watchingAnime || []).map(item => ({
-          id: String(item.anime?.ids?.simkl || Math.random()),
-          name: item.anime?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.anime?.year,
-          lastWatched: item.last_watched_at,
-          rating: item.user_rating,
-          imdbId: item.anime?.ids?.imdb,
-          traktId: item.anime?.ids?.simkl || 0,
-        }));
-
-      case 'plantowatch-shows':
-        return (planToWatchShows || []).map(item => ({
-          id: String(item.show?.ids?.simkl || Math.random()),
-          name: item.show?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.show?.year,
-          lastWatched: item.added_to_watchlist_at,
-          imdbId: item.show?.ids?.imdb,
-          traktId: item.show?.ids?.simkl || 0,
-        }));
-
-      case 'plantowatch-movies':
-        return (planToWatchMovies || []).map(item => ({
-          id: String(item.movie?.ids?.simkl || Math.random()),
-          name: item.movie?.title || 'Unknown',
-          type: 'movie' as const,
-          poster: '',
-          year: item.movie?.year,
-          lastWatched: item.added_to_watchlist_at,
-          imdbId: item.movie?.ids?.imdb,
-          traktId: item.movie?.ids?.simkl || 0,
-        }));
-
-      case 'plantowatch-anime':
-        return (planToWatchAnime || []).map(item => ({
-          id: String(item.anime?.ids?.simkl || Math.random()),
-          name: item.anime?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.anime?.year,
-          lastWatched: item.added_to_watchlist_at,
-          imdbId: item.anime?.ids?.imdb,
-          traktId: item.anime?.ids?.simkl || 0,
-        }));
-
-      case 'completed-shows':
-        return (completedShows || []).map(item => ({
-          id: String(item.show?.ids?.simkl || Math.random()),
-          name: item.show?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.show?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.show?.ids?.imdb,
-          traktId: item.show?.ids?.simkl || 0,
-        }));
-
-      case 'completed-movies':
-        return (completedMovies || []).map(item => ({
-          id: String(item.movie?.ids?.simkl || Math.random()),
-          name: item.movie?.title || 'Unknown',
-          type: 'movie' as const,
-          poster: '',
-          year: item.movie?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.movie?.ids?.imdb,
-          traktId: item.movie?.ids?.simkl || 0,
-        }));
-
-      case 'completed-anime':
-        return (completedAnime || []).map(item => ({
-          id: String(item.anime?.ids?.simkl || Math.random()),
-          name: item.anime?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.anime?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.anime?.ids?.imdb,
-          traktId: item.anime?.ids?.simkl || 0,
-        }));
-
-      case 'onhold-shows':
-        return (onHoldShows || []).map(item => ({
-          id: String(item.show?.ids?.simkl || Math.random()),
-          name: item.show?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.show?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.show?.ids?.imdb,
-          traktId: item.show?.ids?.simkl || 0,
-        }));
-
-      case 'onhold-movies':
-        return (onHoldMovies || []).map(item => ({
-          id: String(item.movie?.ids?.simkl || Math.random()),
-          name: item.movie?.title || 'Unknown',
-          type: 'movie' as const,
-          poster: '',
-          year: item.movie?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.movie?.ids?.imdb,
-          traktId: item.movie?.ids?.simkl || 0,
-        }));
-
-      case 'onhold-anime':
-        return (onHoldAnime || []).map(item => ({
-          id: String(item.anime?.ids?.simkl || Math.random()),
-          name: item.anime?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.anime?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.anime?.ids?.imdb,
-          traktId: item.anime?.ids?.simkl || 0,
-        }));
-
-      case 'dropped-shows':
-        return (droppedShows || []).map(item => ({
-          id: String(item.show?.ids?.simkl || Math.random()),
-          name: item.show?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.show?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.show?.ids?.imdb,
-          traktId: item.show?.ids?.simkl || 0,
-        }));
-
-      case 'dropped-movies':
-        return (droppedMovies || []).map(item => ({
-          id: String(item.movie?.ids?.simkl || Math.random()),
-          name: item.movie?.title || 'Unknown',
-          type: 'movie' as const,
-          poster: '',
-          year: item.movie?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.movie?.ids?.imdb,
-          traktId: item.movie?.ids?.simkl || 0,
-        }));
-
-      case 'dropped-anime':
-        return (droppedAnime || []).map(item => ({
-          id: String(item.anime?.ids?.simkl || Math.random()),
-          name: item.anime?.title || 'Unknown',
-          type: 'series' as const,
-          poster: '',
-          year: item.anime?.year,
-          lastWatched: item.last_watched_at,
-          imdbId: item.anime?.ids?.imdb,
-          traktId: item.anime?.ids?.simkl || 0,
-        }));
-
-      case 'ratings':
-        return (simklRatedContent || []).map(item => {
-          const content = item.show || item.movie || item.anime;
-          const type = item.show ? 'series' : item.movie ? 'movie' : 'series';
-          return {
-            id: String(content?.ids?.simkl || Math.random()),
-            name: content?.title || 'Unknown',
-            type,
-            poster: '',
-            year: content?.year,
-            lastWatched: item.rated_at,
-            rating: item.rating,
-            imdbId: content?.ids?.imdb,
-            traktId: content?.ids?.simkl || 0,
-          };
-        });
-    }
-
-    return items.sort((a, b) => {
+  const sortDisplayItems = useCallback((items: TraktDisplayItem[]) => {
+    return [...items].sort((a, b) => {
       const dateA = a.lastWatched ? new Date(a.lastWatched).getTime() : 0;
       const dateB = b.lastWatched ? new Date(b.lastWatched).getTime() : 0;
       return dateB - dateA;
     });
-  }, [simklContinueWatching, watchingShows, watchingMovies, watchingAnime, planToWatchShows, planToWatchMovies, planToWatchAnime, completedShows, completedMovies, completedAnime, onHoldShows, onHoldMovies, onHoldAnime, droppedShows, droppedMovies, droppedAnime, simklRatedContent]);
+  }, []);
+
+  const getSimklFolderItems = useCallback((folderId: string): TraktDisplayItem[] => {
+    switch (folderId) {
+      case 'continue-watching':
+        return sortDisplayItems((simklContinueWatching || []).map(item => (
+          buildSimklDisplayItem(item, item.show ? 'series' : 'movie', item.paused_at)
+        )));
+
+      case 'watching-shows':
+        return sortDisplayItems((watchingShows || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at, item.user_rating)
+        )));
+
+      case 'watching-movies':
+        return sortDisplayItems((watchingMovies || []).map(item => (
+          buildSimklDisplayItem(item, 'movie', item.last_watched_at, item.user_rating)
+        )));
+
+      case 'watching-anime':
+        return sortDisplayItems((watchingAnime || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at, item.user_rating)
+        )));
+
+      case 'plantowatch-shows':
+        return sortDisplayItems((planToWatchShows || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.added_to_watchlist_at)
+        )));
+
+      case 'plantowatch-movies':
+        return sortDisplayItems((planToWatchMovies || []).map(item => (
+          buildSimklDisplayItem(item, 'movie', item.added_to_watchlist_at)
+        )));
+
+      case 'plantowatch-anime':
+        return sortDisplayItems((planToWatchAnime || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.added_to_watchlist_at)
+        )));
+
+      case 'completed-shows':
+        return sortDisplayItems((completedShows || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at)
+        )));
+
+      case 'completed-movies':
+        return sortDisplayItems((completedMovies || []).map(item => (
+          buildSimklDisplayItem(item, 'movie', item.last_watched_at)
+        )));
+
+      case 'completed-anime':
+        return sortDisplayItems((completedAnime || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at)
+        )));
+
+      case 'onhold-shows':
+        return sortDisplayItems((onHoldShows || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at)
+        )));
+
+      case 'onhold-movies':
+        return sortDisplayItems((onHoldMovies || []).map(item => (
+          buildSimklDisplayItem(item, 'movie', item.last_watched_at)
+        )));
+
+      case 'onhold-anime':
+        return sortDisplayItems((onHoldAnime || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at)
+        )));
+
+      case 'dropped-shows':
+        return sortDisplayItems((droppedShows || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at)
+        )));
+
+      case 'dropped-movies':
+        return sortDisplayItems((droppedMovies || []).map(item => (
+          buildSimklDisplayItem(item, 'movie', item.last_watched_at)
+        )));
+
+      case 'dropped-anime':
+        return sortDisplayItems((droppedAnime || []).map(item => (
+          buildSimklDisplayItem(item, 'series', item.last_watched_at)
+        )));
+
+      case 'ratings':
+        return sortDisplayItems((simklRatedContent || []).map(item => (
+          buildSimklDisplayItem(item, item.movie ? 'movie' : 'series', item.rated_at, item.rating)
+        )));
+    }
+
+    return [];
+  }, [buildSimklDisplayItem, completedAnime, completedMovies, completedShows, droppedAnime, droppedMovies, droppedShows, onHoldAnime, onHoldMovies, onHoldShows, planToWatchAnime, planToWatchMovies, planToWatchShows, simklContinueWatching, simklRatedContent, sortDisplayItems, watchingAnime, watchingMovies, watchingShows]);
 
   const renderTraktContent = () => {
     if (traktLoading) {
@@ -1476,8 +1413,8 @@ const LibraryScreen = () => {
       <View style={[styles.contentContainer, { backgroundColor: currentTheme.colors.darkBackground }]}>
         {!showTraktContent && !showSimklContent && (
           <View style={styles.filtersContainer}>
-            {renderFilter('trakt', 'Trakt')}
-            {renderFilter('simkl', 'SIMKL')}
+            {showTraktTab && renderFilter('trakt', 'Trakt')}
+            {showSimklTab && renderFilter('simkl', 'SIMKL')}
             {renderFilter('movies', t('search.movies'))}
             {renderFilter('series', t('search.tv_shows'))}
           </View>

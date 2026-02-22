@@ -753,6 +753,16 @@ export class SimklService {
                 }
                 return response.anime || [];
             }
+            if (type === 'anime' && response.shows && Array.isArray(response.shows) && response.shows.length > 0) {
+                logger.log(`[SimklService] getAllItems: Anime fallback using ${response.shows.length} shows entries`);
+                return response.shows.map((item: any) => {
+                    if (item?.anime) return item;
+                    if (item?.show) {
+                        return { ...item, anime: item.show };
+                    }
+                    return item;
+                });
+            }
 
             // If no type specified, return all
             if (!type) {

@@ -289,10 +289,36 @@ export const useSettings = () => {
     value: AppSettings[K],
     emitEvent: boolean = true
   ) => {
-    const newSettings = { ...settings, [key]: value };
     try {
       const scope = (await mmkvStorage.getItem('@user:current')) || 'local';
       const scopedKey = `@user:${scope}:${SETTINGS_STORAGE_KEY}`;
+
+      const parseSettings = (json: string | null): Partial<AppSettings> | null => {
+        if (!json) return null;
+        try {
+          return JSON.parse(json) as Partial<AppSettings>;
+        } catch {
+          return null;
+        }
+      };
+
+      // Merge from persisted values first to avoid overwriting unrelated keys with defaults
+      // when an update occurs before initial settings hydration completes.
+      const [scopedJson, legacyJson] = await Promise.all([
+        mmkvStorage.getItem(scopedKey),
+        mmkvStorage.getItem(SETTINGS_STORAGE_KEY),
+      ]);
+      const persistedScoped = parseSettings(scopedJson) || {};
+      const persistedLegacy = parseSettings(legacyJson) || {};
+      const memorySettings = isLoaded ? settings : {};
+      const newSettings = {
+        ...DEFAULT_SETTINGS,
+        ...persistedLegacy,
+        ...persistedScoped,
+        ...memorySettings,
+        [key]: value,
+      };
+
       // Write to both scoped key (multi-user aware) and legacy key for backward compatibility
       await Promise.all([
         mmkvStorage.setItem(scopedKey, JSON.stringify(newSettings)),
@@ -317,7 +343,7 @@ export const useSettings = () => {
     } catch (error) {
       if (__DEV__) console.error('Failed to save settings:', error);
     }
-  }, [settings]);
+  }, [isLoaded, settings]);
 
   return {
     settings,

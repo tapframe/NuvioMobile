@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dimensions, Platform, Linking } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { RouteProp } from '@react-navigation/native';
+import NetInfo from '@react-native-community/netinfo';
 
 import { RootStackParamList, RootStackNavigationProp } from '../../navigation/AppNavigator';
 import { useMetadata } from '../../hooks/useMetadata';
@@ -17,6 +18,7 @@ import { localScraperService } from '../../services/pluginService';
 import { VideoPlayerService } from '../../services/videoPlayerService';
 import { streamCacheService } from '../../services/streamCacheService';
 import { tmdbService } from '../../services/tmdbService';
+import { torrentStreamingService } from '../../services/torrentStreamingService';
 import { logger } from '../../utils/logger';
 import { TABLET_BREAKPOINT } from './constants';
 import {
@@ -24,6 +26,10 @@ import {
   filterStreamsByLanguage,
   getQualityNumeric,
   inferVideoTypeFromUrl,
+  estimateNetworkProfile,
+  getNetworkClassForMbps,
+  getPlaybackViabilityFromStream,
+  rankStreamsByPlaybackViability,
   sortStreamsByQuality,
 } from './utils';
 import {
@@ -54,6 +60,7 @@ export const useStreamsScreen = () => {
   // Dimension tracking
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
   const prevDimensionsRef = useRef({ width: dimensions.width, height: dimensions.height });
+  const [networkProfile, setNetworkProfile] = useState(() => estimateNetworkProfile(null));
 
   const deviceWidth = dimensions.width;
   const isTablet = useMemo(() => deviceWidth >= TABLET_BREAKPOINT, [deviceWidth]);
@@ -135,6 +142,25 @@ export const useStreamsScreen = () => {
       }
     });
     return () => subscription?.remove();
+  }, []);
+
+  // Network profile updates used for stream viability ranking.
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setNetworkProfile(estimateNetworkProfile(state as any));
+    });
+
+    NetInfo.fetch()
+      .then(state => {
+        setNetworkProfile(estimateNetworkProfile(state as any));
+      })
+      .catch(() => {
+        // Keep default profile on failure.
+      });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Pause trailer on mount
@@ -231,35 +257,68 @@ export const useStreamsScreen = () => {
         return 0;
       };
 
-      const allStreams: Array<{ stream: Stream; quality: number; providerPriority: number; originalIndex: number }> = [];
+      const allStreams: Array<{
+        stream: Stream;
+        quality: number;
+        providerPriority: number;
+        originalIndex: number;
+        viabilityScore: number;
+        requiredMbps: number;
+        seeders?: number;
+      }> = [];
+
+      const networkClass = getNetworkClassForMbps(networkProfile.estimatedDownlinkMbps);
+      const prefersLowerBitrate =
+        networkClass === 'very-slow' || networkClass === 'slow' || networkClass === 'medium';
 
       Object.entries(streamsData).forEach(([addonId, { streams }]) => {
         const qualityFiltered = filterByQuality(streams);
         const filteredStreams = filterByLanguage(qualityFiltered);
+        const rankedStreams = rankStreamsByPlaybackViability(
+          filteredStreams,
+          networkProfile.estimatedDownlinkMbps
+        );
 
-        filteredStreams.forEach((stream, index) => {
+        rankedStreams.forEach((stream, index) => {
           const quality = getQualityNumeric(stream.name || stream.title);
           const providerPriority = getProviderPriority(addonId);
-          allStreams.push({ stream, quality, providerPriority, originalIndex: index });
+          const viability = getPlaybackViabilityFromStream(stream);
+          allStreams.push({
+            stream,
+            quality,
+            providerPriority,
+            originalIndex: index,
+            viabilityScore: viability?.score ?? 0,
+            requiredMbps: viability?.requiredMbps ?? 0,
+            seeders: viability?.seeders,
+          });
         });
       });
 
       if (allStreams.length === 0) return null;
 
-      // Sort primarily by provider priority, then respect the addon's internal order (originalIndex)
-      // This ensures if an addon lists 1080p before 4K, we pick 1080p
+      // Prefer streams that are most likely to play smoothly on the current connection.
       allStreams.sort((a, b) => {
+        if (a.viabilityScore !== b.viabilityScore) return b.viabilityScore - a.viabilityScore;
+        const aSeeders = typeof a.seeders === 'number' ? a.seeders : -1;
+        const bSeeders = typeof b.seeders === 'number' ? b.seeders : -1;
+        if (aSeeders !== bSeeders) return bSeeders - aSeeders;
         if (a.providerPriority !== b.providerPriority) return b.providerPriority - a.providerPriority;
+        if (prefersLowerBitrate && a.requiredMbps !== b.requiredMbps) {
+          return a.requiredMbps - b.requiredMbps;
+        }
+        if (a.quality !== b.quality) return b.quality - a.quality;
         return a.originalIndex - b.originalIndex;
       });
 
+      const bestViability = getPlaybackViabilityFromStream(allStreams[0].stream);
       logger.log(
-        `🎯 Best stream selected: ${allStreams[0].stream.name || allStreams[0].stream.title} (Quality: ${allStreams[0].quality}p)`
+        `🎯 Best stream selected: ${allStreams[0].stream.name || allStreams[0].stream.title} (Quality: ${allStreams[0].quality}p, Viability: ${bestViability?.label || 'Unknown'})`
       );
 
       return allStreams[0].stream;
     },
-    [filterByQuality, filterByLanguage]
+    [filterByQuality, filterByLanguage, networkProfile.estimatedDownlinkMbps]
   );
 
   // Current episode
@@ -352,43 +411,59 @@ export const useStreamsScreen = () => {
 
   // Navigate to player
   const navigateToPlayer = useCallback(
-    async (stream: Stream, options?: { headers?: Record<string, string> }) => {
+    async (
+      stream: Stream,
+      options?: {
+        headers?: Record<string, string>;
+        overrideUri?: string;
+        overrideHeaders?: Record<string, string>;
+        torrentStreamId?: string;
+        skipCache?: boolean;
+      }
+    ) => {
       const optionHeaders = options?.headers;
       const streamHeaders = (stream.headers as any) as Record<string, string> | undefined;
       const proxyHeaders = ((stream as any)?.behaviorHints?.proxyHeaders?.request || undefined) as
         | Record<string, string>
         | undefined;
+      const targetUri = options?.overrideUri || stream.url;
       const streamProvider = stream.addonId || (stream as any).addonName || stream.name;
-      const finalHeaders = optionHeaders || streamHeaders || proxyHeaders;
+      const finalHeaders = options?.overrideHeaders ?? optionHeaders ?? streamHeaders ?? proxyHeaders;
+
+      if (!targetUri) {
+        return;
+      }
 
       const streamsToPass = selectedEpisode ? episodeStreams : groupedStreams;
       const streamName = stream.name || stream.title || 'Unnamed Stream';
       const resolvedStreamProvider = streamProvider;
 
       // Save stream to cache
-      try {
-        const epId = (type === 'series' || type === 'other') && selectedEpisode ? selectedEpisode : undefined;
-        const season = (type === 'series' || type === 'other') ? currentEpisode?.season_number : undefined;
-        const episode = (type === 'series' || type === 'other') ? currentEpisode?.episode_number : undefined;
-        const episodeTitle = (type === 'series' || type === 'other') ? currentEpisode?.name : undefined;
+      if (!options?.skipCache) {
+        try {
+          const epId = (type === 'series' || type === 'other') && selectedEpisode ? selectedEpisode : undefined;
+          const season = (type === 'series' || type === 'other') ? currentEpisode?.season_number : undefined;
+          const episode = (type === 'series' || type === 'other') ? currentEpisode?.episode_number : undefined;
+          const episodeTitle = (type === 'series' || type === 'other') ? currentEpisode?.name : undefined;
 
-        await streamCacheService.saveStreamToCache(
-          id,
-          type,
-          stream,
-          metadata,
-          epId,
-          season,
-          episode,
-          episodeTitle,
-          imdbId || undefined,
-          settings.streamCacheTTL
-        );
-      } catch (error) {
-        logger.warn('[StreamsScreen] Failed to save stream to cache:', error);
+          await streamCacheService.saveStreamToCache(
+            id,
+            type,
+            stream,
+            metadata,
+            epId,
+            season,
+            episode,
+            episodeTitle,
+            imdbId || undefined,
+            settings.streamCacheTTL
+          );
+        } catch (error) {
+          logger.warn('[StreamsScreen] Failed to save stream to cache:', error);
+        }
       }
 
-      let videoType = inferVideoTypeFromUrl(stream.url);
+      let videoType = inferVideoTypeFromUrl(targetUri);
       try {
         const providerId = stream.addonId || (stream as any).addon || '';
         if (!videoType && /xprime/i.test(providerId)) {
@@ -400,7 +475,7 @@ export const useStreamsScreen = () => {
         const finalHeaderKeys = Object.keys(finalHeaders || {});
 
         logger.log('[StreamsScreen][navigateToPlayer] stream selection', {
-          url: typeof stream.url === 'string' ? stream.url.slice(0, 240) : stream.url,
+          url: typeof targetUri === 'string' ? targetUri.slice(0, 240) : targetUri,
           addonId: stream.addonId,
           addonName: (stream as any).addonName,
           name: stream.name,
@@ -415,7 +490,7 @@ export const useStreamsScreen = () => {
       const playerRoute = Platform.OS === 'ios' ? 'PlayerIOS' : 'PlayerAndroid';
 
       navigation.navigate(playerRoute as any, {
-        uri: stream.url as any,
+        uri: targetUri as any,
         title: metadata?.name || '',
         episodeTitle: (type === 'series' || type === 'other') ? currentEpisode?.name : undefined,
         season: (type === 'series' || type === 'other') ? currentEpisode?.season_number : undefined,
@@ -432,6 +507,7 @@ export const useStreamsScreen = () => {
         availableStreams: streamsToPass,
         backdrop: metadata?.banner || bannerImage,
         videoType,
+        torrentStreamId: options?.torrentStreamId,
       } as any);
     },
     [metadata, type, currentEpisode, navigation, id, selectedEpisode, imdbId, episodeStreams, groupedStreams, bannerImage, settings.streamCacheTTL]
@@ -461,9 +537,15 @@ export const useStreamsScreen = () => {
           });
         }
 
-        // Block magnet links
-        if (typeof stream.url === 'string' && stream.url.startsWith('magnet:')) {
-          openAlert('Not supported', 'Torrent streaming is not supported yet.');
+        const isMagnet = typeof stream.url === 'string' && stream.url.startsWith('magnet:');
+
+        if (
+          isMagnet &&
+          Platform.OS === 'ios' &&
+          settings.preferredPlayer === 'internal' &&
+          !torrentStreamingService.isNativeSupported()
+        ) {
+          openAlert('Not supported', 'Native torrent streaming is not available on this iOS build yet.');
           return;
         }
 
@@ -521,7 +603,6 @@ export const useStreamsScreen = () => {
         // Android external player
         else if (Platform.OS === 'android' && settings.useExternalPlayer) {
           try {
-            const isMagnet = typeof stream.url === 'string' && stream.url.startsWith('magnet:');
             if (isMagnet) {
               Linking.openURL(stream.url).catch(() => navigateToPlayer(stream));
             } else {
@@ -540,13 +621,43 @@ export const useStreamsScreen = () => {
             navigateToPlayer(stream);
           }
         } else {
-          navigateToPlayer(stream);
+          if (torrentStreamingService.isNativeSupported() && torrentStreamingService.isTorrentStream(stream)) {
+            try {
+              showInfo('Preparing torrent stream...');
+              const prepared = await torrentStreamingService.preparePlayback(
+                stream,
+                metadata?.name || stream.title || stream.name,
+                { networkMbps: networkProfile.estimatedDownlinkMbps }
+              );
+
+              await navigateToPlayer(stream, {
+                overrideUri: prepared.playbackUrl,
+                overrideHeaders: {},
+                torrentStreamId: prepared.streamId,
+              });
+            } catch (error: any) {
+              const message = error?.message || 'Failed to initialize torrent playback.';
+              openAlert('Playback error', message);
+            }
+          } else {
+            navigateToPlayer(stream);
+          }
         }
       } catch {
         navigateToPlayer(stream);
       }
     },
-    [settings.preferredPlayer, settings.useExternalPlayer, navigateToPlayer, openAlert, metadata, type, currentEpisode]
+    [
+      settings.preferredPlayer,
+      settings.useExternalPlayer,
+      navigateToPlayer,
+      openAlert,
+      metadata,
+      type,
+      currentEpisode,
+      showInfo,
+      networkProfile.estimatedDownlinkMbps,
+    ]
   );
 
   // Update providers when streams change
@@ -900,11 +1011,19 @@ export const useStreamsScreen = () => {
 
       sortedEntries.forEach(([key, { streams: providerStreams }]) => {
         const isInstalledAddon = installedAddons.some(addon => addon.installationId === key || addon.id === key);
+        const providerSortedByQuality =
+          settings.streamSortMode === 'quality-then-scraper'
+            ? sortStreamsByQuality(providerStreams)
+            : providerStreams;
+        const providerRankedStreams = rankStreamsByPlaybackViability(
+          providerSortedByQuality,
+          networkProfile.estimatedDownlinkMbps
+        );
 
         if (isInstalledAddon) {
-          addonStreams.push(...providerStreams);
+          addonStreams.push(...providerRankedStreams);
         } else {
-          const qualityFiltered = filterByQuality(providerStreams);
+          const qualityFiltered = filterByQuality(providerRankedStreams);
           const filteredStreams = filterByLanguage(qualityFiltered);
           if (filteredStreams.length > 0) {
             pluginStreams.push(...filteredStreams);
@@ -913,12 +1032,7 @@ export const useStreamsScreen = () => {
       });
 
       let combinedStreams = [...addonStreams];
-
-      if (settings.streamSortMode === 'quality-then-scraper' && pluginStreams.length > 0) {
-        combinedStreams.push(...sortStreamsByQuality(pluginStreams));
-      } else {
-        combinedStreams.push(...pluginStreams);
-      }
+      combinedStreams.push(...pluginStreams);
 
       let sectionId = 'grouped-all';
       let sectionTitle = 'Available Streams';
@@ -957,10 +1071,14 @@ export const useStreamsScreen = () => {
 
         if (filteredStreams.length === 0) return null;
 
-        let processedStreams = filteredStreams;
-        if (!isInstalledAddon && settings.streamSortMode === 'quality-then-scraper') {
-          processedStreams = sortStreamsByQuality(filteredStreams);
-        }
+        const sortedByQuality =
+          settings.streamSortMode === 'quality-then-scraper'
+            ? sortStreamsByQuality(filteredStreams)
+            : filteredStreams;
+        const processedStreams = rankStreamsByPlaybackViability(
+          sortedByQuality,
+          networkProfile.estimatedDownlinkMbps
+        );
 
         // For multiple installations of same addon, add # to section title
         let sectionTitle = addonName;
@@ -991,6 +1109,7 @@ export const useStreamsScreen = () => {
     filterByLanguage,
     addonResponseOrder,
     settings.streamSortMode,
+    networkProfile.estimatedDownlinkMbps,
     selectedEpisode,
     metadata,
   ]);

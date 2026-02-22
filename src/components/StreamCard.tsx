@@ -12,7 +12,6 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import FastImage from '@d11/react-native-fast-image';
 import { Stream } from '../types/metadata';
-import QualityBadge from './metadata/QualityBadge';
 import { useSettings } from '../hooks/useSettings';
 import { useDownloads } from '../contexts/DownloadsContext';
 import { useToast } from '../contexts/ToastContext';
@@ -90,9 +89,28 @@ const StreamCard = memo(({
 
   const styles = React.useMemo(() => createStyles(theme.colors), [theme.colors]);
 
+  const getViabilityColor = useCallback((label?: string): string => {
+    switch (label) {
+      case 'Excellent':
+        return theme.colors.success;
+      case 'Good':
+        return theme.colors.primary;
+      case 'Fair':
+        return theme.colors.warning || '#C9A227';
+      case 'Risky':
+        return theme.colors.error || '#C23C3C';
+      default:
+        return theme.colors.darkGray;
+    }
+  }, [theme.colors]);
+
   const streamInfo = useMemo(() => {
     const title = stream.title || '';
     const name = stream.name || '';
+    const hints = (stream.behaviorHints || {}) as any;
+    const playbackViability = hints.playbackViability as
+      | { label?: string; availableMbps?: number; requiredMbps?: number; seeders?: number; peers?: number }
+      | undefined;
 
     // Helper function to format size from bytes
     const formatSize = (bytes: number): string => {
@@ -118,10 +136,24 @@ const StreamCard = memo(({
       isDolby: title.toLowerCase().includes('dolby') || title.includes('DV'),
       size: sizeDisplay,
       isDebrid: stream.behaviorHints?.cached,
+      isTorrent:
+        (stream.url || '').startsWith('magnet:') ||
+        !!stream.infoHash ||
+        hints.type === 'torrent' ||
+        !!hints.infoHash,
+      viabilityLabel: playbackViability?.label,
+      viabilityAvailableMbps: playbackViability?.availableMbps,
+      viabilityRequiredMbps: playbackViability?.requiredMbps,
+      seeders:
+        typeof hints.seeders === 'number'
+          ? hints.seeders
+          : typeof playbackViability?.seeders === 'number'
+            ? playbackViability.seeders
+            : undefined,
       displayName: name || 'Unnamed Stream',
       subTitle: title && title !== name ? title : null
     };
-  }, [stream.name, stream.title, stream.behaviorHints, stream.size]);
+  }, [stream.name, stream.title, stream.behaviorHints, stream.size, stream.url, stream.infoHash]);
 
   const handleDownload = useCallback(async () => {
     try {
@@ -241,8 +273,46 @@ const StreamCard = memo(({
         </View>
 
         <View style={styles.streamMetaRow}>
+          {streamInfo.viabilityLabel && (
+            <View style={[styles.chip, { backgroundColor: getViabilityColor(streamInfo.viabilityLabel) }]}>
+              <Text style={[styles.chipText, { color: theme.colors.white }]}>
+                {streamInfo.viabilityLabel.toUpperCase()}
+              </Text>
+            </View>
+          )}
+
+          {streamInfo.isTorrent && (
+            <View style={[styles.chip, { backgroundColor: theme.colors.elevation2 }]}>
+              <Text style={[styles.chipText, { color: theme.colors.highEmphasis }]}>TORRENT</Text>
+            </View>
+          )}
+
+          {streamInfo.isHDR && (
+            <View style={[styles.chip, { backgroundColor: theme.colors.elevation2 }]}>
+              <Text style={[styles.chipText, { color: theme.colors.highEmphasis }]}>HDR</Text>
+            </View>
+          )}
+
           {streamInfo.isDolby && (
-            <QualityBadge type="VISION" />
+            <View style={[styles.chip, { backgroundColor: theme.colors.elevation2 }]}>
+              <Text style={[styles.chipText, { color: theme.colors.highEmphasis }]}>DOLBY</Text>
+            </View>
+          )}
+
+          {typeof streamInfo.seeders === 'number' && (
+            <View style={[styles.chip, { backgroundColor: theme.colors.elevation2 }]}>
+              <Text style={[styles.chipText, { color: theme.colors.highEmphasis }]}>
+                SEEDS {streamInfo.seeders}
+              </Text>
+            </View>
+          )}
+
+          {typeof streamInfo.viabilityRequiredMbps === 'number' && typeof streamInfo.viabilityAvailableMbps === 'number' && (
+            <View style={[styles.chip, { backgroundColor: theme.colors.darkGray }]}>
+              <Text style={[styles.chipText, { color: theme.colors.white }]}>
+                {`${streamInfo.viabilityRequiredMbps.toFixed(1)} / ${streamInfo.viabilityAvailableMbps.toFixed(0)} Mbps`}
+              </Text>
+            </View>
           )}
 
           {streamInfo.size && (

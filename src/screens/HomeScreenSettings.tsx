@@ -110,7 +110,7 @@ const SectionHeader: React.FC<{ title: string; isDarkMode: boolean; colors: any 
 
 const HomeScreenSettings: React.FC = () => {
   const { t } = useTranslation();
-  const { settings, updateSetting } = useSettings();
+  const { settings, updateSetting, isLoaded } = useSettings();
   const systemColorScheme = useColorScheme();
   const { currentTheme } = useTheme();
   const colors = currentTheme.colors;
@@ -168,12 +168,16 @@ const HomeScreenSettings: React.FC = () => {
 
   // Ensure carousel is the default hero layout on tablets for all users
   useEffect(() => {
+    if (!isLoaded || !isTabletDevice) {
+      return;
+    }
+
     try {
-      if (isTabletDevice && settings.heroStyle !== 'carousel') {
+      if (settings.heroStyle !== 'carousel') {
         updateSetting('heroStyle', 'carousel' as any);
       }
     } catch { }
-  }, [isTabletDevice, settings.heroStyle, updateSetting]);
+  }, [isLoaded, isTabletDevice, settings.heroStyle, updateSetting]);
 
   const CustomSwitch = ({ value, onValueChange }: { value: boolean, onValueChange: (value: boolean) => void }) => (
     <Switch
@@ -713,4 +717,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreenSettings; 
+export default HomeScreenSettings;

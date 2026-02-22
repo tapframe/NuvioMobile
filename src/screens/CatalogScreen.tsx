@@ -607,7 +607,14 @@ const CatalogScreen: React.FC<CatalogScreenProps> = ({ route, navigation }) => {
         const addon = manifests.find(a => a.id === addonId);
         if (!addon) throw new Error(`Addon ${addonId} not found`);
 
-        const filters = effectiveGenreFilter ? [{ title: 'genre', value: effectiveGenreFilter }] : [];
+        const filters = Object.entries(selectedFilters)
+          .filter(([, value]) => !!value)
+          .map(([name, value]) => ({ title: name, value }));
+
+        if (effectiveGenreFilter) {
+          filters.push({ title: 'genre', value: effectiveGenreFilter });
+        }
+
         const catalogItems = await stremioService.getCatalog(addon, type, id, pageParam, filters);
 
         logger.log('[CatalogScreen] Fetched addon catalog page', {
@@ -705,7 +712,7 @@ const CatalogScreen: React.FC<CatalogScreenProps> = ({ route, navigation }) => {
         logger.log('[CatalogScreen] loadItems finished');
       });
     }
-  }, [addonId, type, id, activeGenreFilter, dataSource]);
+  }, [addonId, type, id, activeGenreFilter, selectedFilters, dataSource]);
 
   useEffect(() => {
     loadItems(true, 1);

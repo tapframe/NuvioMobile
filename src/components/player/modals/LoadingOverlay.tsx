@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, TouchableOpacity, Animated, ActivityIndicator, StyleSheet, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, TouchableOpacity, Animated, ActivityIndicator, StyleSheet, Image, Text } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Reanimated, {
@@ -18,6 +18,8 @@ interface LoadingOverlayProps {
   backdrop: string | null | undefined;
   hasLogo: boolean;
   logo: string | null | undefined;
+  loadingTitle?: string;
+  loadingProgress?: number;
   backgroundFadeAnim: Animated.Value;
   backdropImageOpacityAnim: Animated.Value;
   onClose: () => void;
@@ -30,6 +32,8 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   backdrop,
   hasLogo,
   logo,
+  loadingTitle,
+  loadingProgress = 0,
   backgroundFadeAnim,
   backdropImageOpacityAnim,
   onClose,
@@ -38,6 +42,9 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
 }) => {
   const logoOpacity = useSharedValue(0);
   const logoScale = useSharedValue(1);
+  const titleScale = useSharedValue(1);
+  const titleOpacity = useSharedValue(1);
+  const [titleWidth, setTitleWidth] = useState(0);
 
   useEffect(() => {
     if (visible && hasLogo && logo) {
@@ -74,12 +81,52 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
     }
   }, [visible, hasLogo, logo]);
 
+  useEffect(() => {
+    if (!visible) return;
+
+    titleScale.value = 1;
+    titleOpacity.value = 0.9;
+
+    titleScale.value = withRepeat(
+      withSequence(
+        withTiming(1.03, {
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        withTiming(1, {
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+        })
+      ),
+      -1,
+      false
+    );
+
+    titleOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.95, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.75, { duration: 900, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  }, [visible]);
+
   const logoAnimatedStyle = useAnimatedStyle(() => ({
     opacity: logoOpacity.value,
     transform: [{ scale: logoScale.value }],
   }));
 
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ scale: titleScale.value }],
+  }));
+
   if (!visible) return null;
+
+  const clampedProgress = Math.max(0, Math.min(1, loadingProgress));
+  const progressPercent = `${Math.round(clampedProgress * 100)}%` as `${number}%`;
+  const progressWidth = titleWidth > 0 ? titleWidth * clampedProgress : 0;
 
   return (
     <Animated.View
@@ -126,7 +173,27 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       </TouchableOpacity>
 
       <View style={styles.openingContent}>
-        {hasLogo && logo ? (
+        {loadingTitle ? (
+          <Reanimated.View style={[localStyles.titleLoaderContainer, titleAnimatedStyle]}>
+            <View style={[localStyles.titleTrack, titleWidth > 0 ? { width: titleWidth } : null]}>
+              <Text
+                numberOfLines={1}
+                style={localStyles.titleGhostText}
+                onLayout={event => setTitleWidth(event.nativeEvent.layout.width)}
+              >
+                {loadingTitle}
+              </Text>
+              <View style={[localStyles.titleFillMask, { width: progressWidth }]}>
+                <Text numberOfLines={1} style={[localStyles.titleFillText, titleWidth > 0 ? { width: titleWidth } : null]}>
+                  {loadingTitle}
+                </Text>
+              </View>
+            </View>
+            <View style={localStyles.progressTrack}>
+              <View style={[localStyles.progressFill, { width: progressPercent }]} />
+            </View>
+          </Reanimated.View>
+        ) : hasLogo && logo ? (
           <Reanimated.View style={[
             {
               alignItems: 'center',
@@ -149,5 +216,56 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
     </Animated.View>
   );
 };
+
+const localStyles = StyleSheet.create({
+  titleLoaderContainer: {
+    width: '82%',
+    maxWidth: 680,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleTrack: {
+    width: '100%',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleGhostText: {
+    color: 'rgba(255,255,255,0.38)',
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    textAlign: 'center',
+  },
+  titleFillMask: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  titleFillText: {
+    color: 'rgba(255,255,255,0.98)',
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    textAlign: 'center',
+    width: '100%',
+  },
+  progressTrack: {
+    width: '78%',
+    marginTop: 18,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.24)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+});
 
 export default LoadingOverlay;

@@ -240,6 +240,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Keep active native background tasks in memory (not persisted)
   const tasksRef = useRef<Map<string, any>>(new Map());
   const lastBytesRef = useRef<Map<string, { bytes: number; time: number }>>(new Map());
+  const lastProgressUiUpdateRef = useRef<Map<string, { time: number; progress: number; bytes: number }>>(new Map());
 
   // Persist and restore
   useEffect(() => {
@@ -438,18 +439,36 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           lastBytesRef.current.set(taskId, { bytes: bytesDownloaded, time: now });
         }
 
-        updateDownload(taskId, (d) => ({
-          ...d,
-          downloadedBytes: typeof bytesDownloaded === 'number' ? bytesDownloaded : d.downloadedBytes,
-          totalBytes: typeof bytesTotal === 'number' && bytesTotal > 0 ? bytesTotal : d.totalBytes,
-          progress:
-            typeof bytesDownloaded === 'number' && typeof bytesTotal === 'number' && bytesTotal > 0
-              ? Math.floor((bytesDownloaded / bytesTotal) * 100)
-              : d.progress,
-          speedBps,
-          status: 'downloading',
-          updatedAt: now,
-        }));
+        const computedTotalBytes = typeof bytesTotal === 'number' && bytesTotal > 0 ? bytesTotal : undefined;
+        const computedProgress =
+          typeof bytesDownloaded === 'number' && computedTotalBytes && computedTotalBytes > 0
+            ? Math.floor((bytesDownloaded / computedTotalBytes) * 100)
+            : undefined;
+
+        // Throttle state updates during active downloads to prevent UI jank.
+        const prevUi = lastProgressUiUpdateRef.current.get(taskId);
+        const shouldUpdateUi = !prevUi
+          || now - prevUi.time >= 500
+          || (typeof computedProgress === 'number' && computedProgress !== prevUi.progress)
+          || (typeof bytesDownloaded === 'number' && Math.abs(bytesDownloaded - prevUi.bytes) >= 2 * 1024 * 1024);
+
+        if (shouldUpdateUi) {
+          updateDownload(taskId, (d) => ({
+            ...d,
+            downloadedBytes: typeof bytesDownloaded === 'number' ? bytesDownloaded : d.downloadedBytes,
+            totalBytes: computedTotalBytes ?? d.totalBytes,
+            progress: typeof computedProgress === 'number' ? computedProgress : d.progress,
+            speedBps,
+            status: 'downloading',
+            updatedAt: now,
+          }));
+
+          lastProgressUiUpdateRef.current.set(taskId, {
+            time: now,
+            progress: computedProgress ?? prevUi?.progress ?? 0,
+            bytes: typeof bytesDownloaded === 'number' ? bytesDownloaded : prevUi?.bytes ?? 0,
+          });
+        }
 
         const current = downloadsRef.current.find(x => x.id === taskId);
         if (current && typeof bytesDownloaded === 'number') {
@@ -489,6 +508,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         tasksRef.current.delete(taskId);
         lastBytesRef.current.delete(taskId);
+        lastProgressUiUpdateRef.current.delete(taskId);
       })
       .error(({ error }: any) => {
         updateDownload(taskId, (d) => ({
@@ -501,6 +521,9 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         stopLiveActivityForDownload(taskId, { title: current?.title, subtitle: 'Error', progressPercent: current?.progress });
 
         console.log(`[DownloadsContext] Background download error: ${taskId}`, error);
+        tasksRef.current.delete(taskId);
+        lastBytesRef.current.delete(taskId);
+        lastProgressUiUpdateRef.current.delete(taskId);
       });
   }, [maybeNotifyProgress, maybeUpdateLiveActivity, notifyCompleted, stopLiveActivityForDownload, updateDownload]);
 
@@ -602,6 +625,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               }
               tasksRef.current.delete(d.id);
               lastBytesRef.current.delete(d.id);
+              lastProgressUiUpdateRef.current.delete(d.id);
             }
           } catch {
             // Ignore per-item refresh failures
@@ -820,6 +844,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       tasksRef.current.delete(id);
       lastBytesRef.current.delete(id);
+      lastProgressUiUpdateRef.current.delete(id);
     }
 
     const item = downloadsRef.current.find(d => d.id === id);
@@ -832,6 +857,9 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const removeDownload = useCallback(async (id: string) => {
     const item = downloadsRef.current.find(d => d.id === id);
     await stopLiveActivityForDownload(id, { title: item?.title, subtitle: 'Removed', progressPercent: item?.progress });
+    tasksRef.current.delete(id);
+    lastBytesRef.current.delete(id);
+    lastProgressUiUpdateRef.current.delete(id);
     if (item?.fileUri && item.status === 'completed') {
       await FileSystem.deleteAsync(item.fileUri, { idempotent: true }).catch(() => { });
     }
@@ -862,5 +890,3 @@ export function useDownloads(): DownloadsContextValue {
   if (!ctx) throw new Error('useDownloads must be used within DownloadsProvider');
   return ctx;
 }
-
-

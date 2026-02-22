@@ -1062,12 +1062,28 @@ class CatalogService {
   async getDiscoverFilters(): Promise<{
     genres: string[];
     types: string[];
-    catalogsByType: Record<string, { addonId: string; addonName: string; catalogId: string; catalogName: string; genres: string[] }[]>;
+    catalogsByType: Record<string, {
+      addonId: string;
+      addonName: string;
+      catalogId: string;
+      catalogName: string;
+      genres: string[];
+      filterKey: string | null;
+      filterLabel: 'genre' | 'year' | 'filter';
+    }[]>;
   }> {
     const addons = await this.getAllAddons();
     const allGenres = new Set<string>();
     const allTypes = new Set<string>();
-    const catalogsByType: Record<string, { addonId: string; addonName: string; catalogId: string; catalogName: string; genres: string[] }[]> = {};
+    const catalogsByType: Record<string, {
+      addonId: string;
+      addonName: string;
+      catalogId: string;
+      catalogName: string;
+      genres: string[];
+      filterKey: string | null;
+      filterLabel: 'genre' | 'year' | 'filter';
+    }[]> = {};
 
     for (const addon of addons) {
       if (!addon.catalogs) continue;
@@ -1078,15 +1094,32 @@ class CatalogService {
           allTypes.add(catalog.type);
         }
 
-        // Get genres from catalog extras
+        // Get primary filter options (genre/year/etc.) from catalog extras
         const catalogGenres: string[] = [];
+        let filterKey: string | null = null;
+        let filterLabel: 'genre' | 'year' | 'filter' = 'genre';
+
         if (catalog.extra && Array.isArray(catalog.extra)) {
-          for (const extra of catalog.extra) {
-            if (extra.name === 'genre' && extra.options && Array.isArray(extra.options)) {
-              for (const genre of extra.options) {
-                allGenres.add(genre);
-                catalogGenres.push(genre);
-              }
+          const primaryFilter = catalog.extra.find(extra =>
+            !!extra?.name &&
+            Array.isArray(extra.options) &&
+            extra.options.length > 0
+          );
+
+          if (primaryFilter && Array.isArray(primaryFilter.options)) {
+            filterKey = primaryFilter.name;
+            const options = primaryFilter.options
+              .map(option => (typeof option === 'string' ? option : String(option)))
+              .filter(Boolean);
+
+            const looksLikeYears = options.length > 0 && options.every(option => /^\d{4}$/.test(option));
+            filterLabel = looksLikeYears
+              ? 'year'
+              : (filterKey === 'genre' ? 'genre' : 'filter');
+
+            for (const option of options) {
+              allGenres.add(option);
+              catalogGenres.push(option);
             }
           }
         }
@@ -1101,7 +1134,9 @@ class CatalogService {
             addonName: addon.name,
             catalogId: catalog.id,
             catalogName: catalog.name || catalog.id,
-            genres: catalogGenres
+            genres: catalogGenres,
+            filterKey,
+            filterLabel
           });
         }
       }
@@ -1216,7 +1251,8 @@ class CatalogService {
     catalogId: string,
     type: string,
     genre?: string,
-    page: number = 1
+    page: number = 1,
+    filterKey: string = 'genre'
   ): Promise<StreamingContent[]> {
     try {
       const manifests = await stremioService.getInstalledAddonsAsync();
@@ -1227,7 +1263,7 @@ class CatalogService {
         return [];
       }
 
-      const filters = genre ? [{ title: 'genre', value: genre }] : [];
+      const filters = genre && filterKey ? [{ title: filterKey, value: genre }] : [];
       const metas = await stremioService.getCatalog(manifest, type, catalogId, page, filters);
 
       if (metas && metas.length > 0) {

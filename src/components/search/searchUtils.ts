@@ -10,6 +10,8 @@ export interface DiscoverCatalog {
     catalogName: string;
     type: string;
     genres: string[];
+    filterKey?: string | null;
+    filterLabel?: 'genre' | 'year' | 'filter';
 }
 
 // Enhanced responsive breakpoints
