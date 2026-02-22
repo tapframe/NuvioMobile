@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ import { useSimklIntegration } from '../hooks/useSimklIntegration';
 import { colors } from '../styles';
 import CustomAlert from '../components/CustomAlert';
 import { useTranslation } from 'react-i18next';
+import { BottomSheetModal, BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { mmkvStorage } from '../services/mmkvStorage';
 
 const ANDROID_STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
@@ -36,6 +38,7 @@ const TRAKT_CLIENT_ID = process.env.EXPO_PUBLIC_TRAKT_CLIENT_ID as string;
 if (!TRAKT_CLIENT_ID) {
   throw new Error('Missing EXPO_PUBLIC_TRAKT_CLIENT_ID environment variable');
 }
+
 const discovery = {
   authorizationEndpoint: 'https://trakt.tv/oauth/authorize',
   tokenEndpoint: 'https://api.trakt.tv/oauth/token',
@@ -46,6 +49,15 @@ const redirectUri = makeRedirectUri({
   scheme: 'nuvio',
   path: 'auth/trakt',
 });
+
+// Library Sync Mode constants
+const TRAKT_LIBRARY_SYNC_MODE_KEY = 'trakt_library_sync_mode';
+
+const LIBRARY_SYNC_MODE_OPTIONS = [
+  { value: 'off', label: 'Off', description: 'Disable Trakt library sync completely' },
+  { value: 'manual', label: 'Manual', description: 'Sync only when you tap the sync button' },
+  { value: 'automatic', label: 'Automatic', description: 'Sync automatically when you open Library' },
+];
 
 const TraktSettingsScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -79,6 +91,11 @@ const TraktSettingsScreen: React.FC = () => {
   const [alertActions, setAlertActions] = useState<Array<{ label: string; onPress: () => void; style?: object }>>([
     { label: t('common.ok'), onPress: () => setAlertVisible(false) },
   ]);
+
+  // Library Sync Mode state
+  const [librarySyncMode, setLibrarySyncMode] = useState<'off' | 'manual' | 'automatic'>('off');
+  const librarySyncSheetRef = useRef<BottomSheetModal>(null);
+  const librarySyncSnapPoints = useMemo(() => ['45%'], []);
 
   const openAlert = (
     title: string,
@@ -131,6 +148,26 @@ const TraktSettingsScreen: React.FC = () => {
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
+
+  // Load library sync mode on mount
+  useEffect(() => {
+    const loadLibrarySyncMode = async () => {
+      if (isAuthenticated) {
+        try {
+          const mode = await mmkvStorage.getItem(TRAKT_LIBRARY_SYNC_MODE_KEY);
+          if (mode === 'manual' || mode === 'automatic') {
+            setLibrarySyncMode(mode);
+          } else {
+            setLibrarySyncMode('off');
+          }
+        } catch (error) {
+          logger.error('[TraktSettingsScreen] Failed to load library sync mode:', error);
+        }
+      }
+    };
+    
+    loadLibrarySyncMode();
+  }, [isAuthenticated]);
 
   // Setup expo-auth-session hook with PKCE
   const [request, response, promptAsync] = useAuthRequest(
@@ -228,6 +265,42 @@ const TraktSettingsScreen: React.FC = () => {
         }
       ]
     );
+  };
+
+  // Library Sync Mode handlers
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
+
+  const handleSelectLibrarySyncMode = async (mode: 'off' | 'manual' | 'automatic') => {
+    try {
+      setLibrarySyncMode(mode);
+      await mmkvStorage.setItem(TRAKT_LIBRARY_SYNC_MODE_KEY, mode);
+      librarySyncSheetRef.current?.dismiss();
+      
+      // Show confirmation
+      const modeLabel = LIBRARY_SYNC_MODE_OPTIONS.find(o => o.value === mode)?.label || mode;
+      openAlert(
+        'Library Sync Mode Updated',
+        `Trakt library sync is now set to: ${modeLabel}`
+      );
+    } catch (error) {
+      logger.error('[TraktSettingsScreen] Failed to save library sync mode:', error);
+      openAlert('Error', 'Failed to update library sync mode');
+    }
+  };
+
+  const getLibrarySyncModeLabel = (mode: string): string => {
+    const option = LIBRARY_SYNC_MODE_OPTIONS.find(o => o.value === mode);
+    return option?.label || 'Off';
   };
 
   return (
@@ -502,6 +575,35 @@ const TraktSettingsScreen: React.FC = () => {
                   </View>
                 </View>
               </View>
+
+              {/* Library Sync Mode Setting */}
+              <View style={styles.settingItem}>
+                <TouchableOpacity
+                  style={styles.settingContent}
+                  onPress={() => librarySyncSheetRef.current?.present()}
+                >
+                  <View style={styles.settingTextContainer}>
+                    <Text style={[
+                      styles.settingLabel,
+                      { color: currentTheme.colors.highEmphasis }
+                    ]}>
+                      Library Sync Mode
+                    </Text>
+                    <Text style={[
+                      styles.settingDescription,
+                      { color: currentTheme.colors.mediumEmphasis }
+                    ]}>
+                      {getLibrarySyncModeLabel(librarySyncMode)} - Sync your Trakt watchlist to local library
+                    </Text>
+                  </View>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={24}
+                    color={currentTheme.colors.mediumEmphasis}
+                  />
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.settingItem}>
                 <View style={styles.settingContent}>
                   <View style={styles.settingTextContainer}>
@@ -589,8 +691,6 @@ const TraktSettingsScreen: React.FC = () => {
                   </View>
                 </View>
               </View>
-
-
             </View>
           </View>
         )}
@@ -606,6 +706,64 @@ const TraktSettingsScreen: React.FC = () => {
         onClose={() => setAlertVisible(false)}
         actions={alertActions}
       />
+
+      {/* Library Sync Mode Bottom Sheet */}
+      <BottomSheetModal
+        ref={librarySyncSheetRef}
+        index={0}
+        snapPoints={librarySyncSnapPoints}
+        enableDynamicSizing={false}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: '#1a1a1a' }}
+        handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.3)' }}
+      >
+        <View style={styles.sheetHeader}>
+          <Text style={[styles.sheetTitle, { color: currentTheme.colors.highEmphasis }]}>
+            Library Sync Mode
+          </Text>
+        </View>
+        <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+          {LIBRARY_SYNC_MODE_OPTIONS.map((option) => {
+            const isSelected = option.value === librarySyncMode;
+            return (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.sourceItem,
+                  isSelected && {
+                    backgroundColor: currentTheme.colors.primary + '20',
+                    borderColor: currentTheme.colors.primary
+                  }
+                ]}
+                onPress={() => handleSelectLibrarySyncMode(option.value as 'off' | 'manual' | 'automatic')}
+              >
+                <View style={styles.sourceItemContent}>
+                  <Text style={[
+                    styles.sourceLabel,
+                    { color: isSelected ? currentTheme.colors.primary : currentTheme.colors.highEmphasis }
+                  ]}>
+                    {option.label}
+                  </Text>
+                  <Text style={[
+                    styles.sourceDescription,
+                    { color: currentTheme.colors.mediumEmphasis }
+                  ]}>
+                    {option.description}
+                  </Text>
+                </View>
+                {isSelected && (
+                  <MaterialIcons
+                    name="check"
+                    size={20}
+                    color={currentTheme.colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </BottomSheetScrollView>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 };
@@ -856,6 +1014,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 20,
     paddingHorizontal: 20,
+  },
+  // Bottom Sheet styles
+  sheetHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  sheetContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  sourceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 12,
+  },
+  sourceItemContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  sourceLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sourceDescription: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
 
