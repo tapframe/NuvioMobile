@@ -653,6 +653,7 @@
         "dutch_nl": "Dutch (Netherlands)",
         "romanian": "Romanyano",
         "albanian": "Albano",
+        "catalan": "Katalan",
         "account": "Account",
         "content_discovery": "Content at Discovery",
         "appearance": "Appearance",
@@ -1427,4 +1428,5 @@
             "no_logs_captured": "Walang logs na nakuha."
         }
     }
+
 }

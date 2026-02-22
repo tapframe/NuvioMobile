@@ -653,6 +653,7 @@
         "dutch_nl": "Holenderski (Niderlandy)",
         "romanian": "Rumuński",
         "albanian": "Albański",
+        "catalan": "Kataloński",
         "account": "Konto",
         "content_discovery": "Treści i odkrywanie",
         "appearance": "Wygląd",
@@ -1430,3 +1431,4 @@
         }
     }
 }
+

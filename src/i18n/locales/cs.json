@@ -643,6 +643,7 @@
         "dutch_nl": "Nizozemština (Nizozemsko)",
         "romanian": "Rumanština",
         "albanian": "Albánština",
+        "catalan": "Katalánština",
         "account": "Účet",
         "content_discovery": "Obsah a objevování",
         "appearance": "Vzhled",
@@ -1417,4 +1418,5 @@
             "no_logs_captured": "Nebyly zachyceny žádné logy."
         }
     }
+
 }
