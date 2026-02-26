@@ -1453,7 +1453,7 @@
             "url_label": "URL: {{url}}",
             "headers_info": "Zaglavlja: {{count}} prilagođenih zaglavlja",
             "find_placeholder": "Pronađi u kodu…",
-            "edit_code_title": "Uredi kôd",
+            "edit_code_title": "Uredi kod",
             "no_url_stream_error": "Nije pronađena poveznica za ovaj prijenos"
         },
         "repo": {
