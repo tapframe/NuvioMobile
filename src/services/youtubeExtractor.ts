@@ -70,17 +70,17 @@ export interface YouTubeExtractionResult {
 
 // Innertube client configs — we use Android (no cipher, direct URLs)
 // and web as fallback (may need cipher decode)
-const INNERTUBE_API_KEY = 'AIzaSyA8ggJvXiQHQFN-YMEoM30s0s3RlxEYJuA';
+// Note: ?key= param was deprecated by YouTube in mid-2023 and is no longer sent.
 const INNERTUBE_URL = 'https://www.youtube.com/youtubei/v1/player';
 
 // Android client gives direct URLs without cipher obfuscation
 const ANDROID_CLIENT_CONTEXT = {
   client: {
     clientName: 'ANDROID',
-    clientVersion: '19.09.37',
+    clientVersion: '19.44.41',
     androidSdkVersion: 30,
     userAgent:
-      'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+      'com.google.android.youtube/19.44.41 (Linux; U; Android 11) gzip',
     hl: 'en',
     gl: 'US',
   },
@@ -90,10 +90,10 @@ const ANDROID_CLIENT_CONTEXT = {
 const IOS_CLIENT_CONTEXT = {
   client: {
     clientName: 'IOS',
-    clientVersion: '19.09.3',
-    deviceModel: 'iPhone14,3',
+    clientVersion: '19.45.4',
+    deviceModel: 'iPhone16,2',
     userAgent:
-      'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iPhone OS 15_6 like Mac OS X)',
+      'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)',
     hl: 'en',
     gl: 'US',
   },
@@ -359,7 +359,8 @@ async function writeDashManifestToFile(
 async function fetchPlayerResponse(
   videoId: string,
   context: object,
-  userAgent: string
+  userAgent: string,
+  clientNameId: string = '3'
 ): Promise<InnertubePlayerResponse | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -373,13 +374,13 @@ async function fetchPlayerResponse(
     };
 
     const response = await fetch(
-      `${INNERTUBE_URL}?key=${INNERTUBE_API_KEY}&prettyPrint=false`,
+      `${INNERTUBE_URL}?prettyPrint=false`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': userAgent,
-          'X-YouTube-Client-Name': '3',
+          'X-YouTube-Client-Name': clientNameId,
           'Origin': 'https://www.youtube.com',
           'Referer': `https://www.youtube.com/watch?v=${videoId}`,
         },
@@ -500,24 +501,28 @@ export class YouTubeExtractor {
 
     logger.info('YouTubeExtractor', `Extracting for videoId=${videoId} platform=${platform ?? 'unknown'}`);
 
-    const clients: Array<{ context: object; userAgent: string; name: string }> = [
+    const clients: Array<{ context: object; userAgent: string; name: string; clientNameId: string }> = [
       {
         name: 'ANDROID',
+        clientNameId: '3',
         context: ANDROID_CLIENT_CONTEXT,
-        userAgent: 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+        userAgent: 'com.google.android.youtube/19.44.41 (Linux; U; Android 11) gzip',
       },
       {
         name: 'IOS',
+        clientNameId: '5',
         context: IOS_CLIENT_CONTEXT,
-        userAgent: 'com.google.ios.youtube/19.09.3 (iPhone14,3; U; CPU iPhone OS 15_6 like Mac OS X)',
+        userAgent: 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)',
       },
       {
         name: 'TVHTML5_EMBEDDED',
+        clientNameId: '85',
         context: TVHTML5_EMBEDDED_CONTEXT,
         userAgent: 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0)',
       },
       {
         name: 'WEB_EMBEDDED',
+        clientNameId: '56',
         context: WEB_EMBEDDED_CONTEXT,
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
       },
@@ -529,7 +534,7 @@ export class YouTubeExtractor {
 
     for (const client of clients) {
       logger.info('YouTubeExtractor', `Trying ${client.name} client...`);
-      const resp = await fetchPlayerResponse(videoId, client.context, client.userAgent);
+      const resp = await fetchPlayerResponse(videoId, client.context, client.userAgent, client.clientNameId);
       if (!resp) continue;
 
       const status = resp.playabilityStatus?.status;
