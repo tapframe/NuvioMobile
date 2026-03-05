@@ -509,7 +509,8 @@
 		"no_description": "Nessuna descrizione disponibile",
 		"overview": "PANORAMICA",
 		"no_categories": "Nessuna categoria",
-		"pre_installed": "PRE-INSTALLATO"
+		"pre_installed": "PRE-INSTALLATO",
+        "already_installed":"Questo addon è già installato. Installazioni multiple sono permesse solo per addon che aggiungono provider di flussi video."
 	},
 	"trakt": {
 		"title": "Impostazioni Trakt",

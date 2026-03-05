@@ -494,7 +494,8 @@
 		"no_description": "No description available",
 		"overview": "OVERVIEW",
 		"no_categories": "No categories",
-		"pre_installed": "PRE-INSTALLED"
+		"pre_installed": "PRE-INSTALLED",
+        "already_installed":"This addon is already installed. Multiple installations are only allowed for stream providers."
 	},
 	"trakt": {
 		"title": "Trakt Settings",

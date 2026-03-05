@@ -643,7 +643,7 @@ const AddonsScreen = () => {
       
       if (isAlreadyInstalled && !providesStreams) {
         setAlertTitle(t('common.error'));
-        setAlertMessage('This addon is already installed. Multiple installations are only allowed for stream providers.');
+        setAlertMessage(t('addons.already_installed'));
         setAlertActions([{ label: t('common.ok'), onPress: () => setAlertVisible(false) }]);
         setAlertVisible(true);
         return;
