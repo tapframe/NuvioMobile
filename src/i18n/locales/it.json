@@ -1535,5 +1535,12 @@
 			"provider_logs": "Log Provider",
 			"no_logs_captured": "Nessun log catturato."
 		}
-	}
+	},
+    "account_manager":{
+        "sign_out":"Esci",
+        "sign_out_desc":"",
+        "user_id":"ID Utente",
+        "display_name":"Nickname",
+        "display_name_placeholder":"Aggiungi un nickname"
+    }
 }
