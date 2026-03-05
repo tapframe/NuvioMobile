@@ -15,6 +15,7 @@
 		"go_back": "Torna indietro",
 		"settings": "Impostazioni",
 		"close": "Chiudi",
+        "remove":"Rimuovi",
 		"enable": "Abilita",
 		"disable": "Disabilita",
 		"show_more": "Mostra altro",
@@ -510,7 +511,7 @@
 		"overview": "PANORAMICA",
 		"no_categories": "Nessuna categoria",
 		"pre_installed": "PRE-INSTALLATO",
-        "already_installed":"Questo addon è già installato. Installazioni multiple sono permesse solo per addon che aggiungono provider di flussi video."
+		"already_installed": "Questo addon è già installato. Installazioni multiple sono permesse solo per addon che aggiungono provider di flussi video."
 	},
 	"trakt": {
 		"title": "Impostazioni Trakt",
@@ -946,7 +947,11 @@
 		"confirm_remove_title": "Rimuovi Chiave API",
 		"confirm_remove_msg": "Sei sicuro di voler rimuovere la tua chiave API OpenRouter? Questo disabiliterà le funzioni di chat IA.",
 		"success_removed": "Chiave API rimossa con successo",
-		"error_remove": "Impossibile rimuovere la chiave API"
+		"error_remove": "Impossibile rimuovere la chiave API",
+        "model":"Modello",
+        "using":"Usando",
+        "free_routing":"(Routing automatico gratuito)",
+        "paid_routing":"Usa un ID di modello Openrouter (utile per piani a pagamento)."
 	},
 	"catalog_settings": {
 		"title": "Cataloghi",
@@ -1537,11 +1542,14 @@
 			"no_logs_captured": "Nessun log catturato."
 		}
 	},
-    "account_manager":{
-        "sign_out":"Esci",
-        "sign_out_desc":"",
-        "user_id":"ID Utente",
-        "display_name":"Nickname",
-        "display_name_placeholder":"Aggiungi un nickname"
-    }
+	"account_manager": {
+		"sign_out": "Esci",
+		"sign_out_desc": "",
+		"user_id": "ID Utente",
+		"display_name": "Nickname",
+		"display_name_placeholder": "Aggiungi un nickname"
+	},
+	"ai_chat_screen": {
+		"loading": "Caricamento contesto AI in corso..."
+	}
 }

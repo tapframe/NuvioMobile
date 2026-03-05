@@ -14,6 +14,7 @@
 		"try_again": "Try Again",
 		"go_back": "Go Back",
 		"settings": "Settings",
+        "remove":"Remove",
 		"close": "Close",
 		"enable": "Enable",
 		"disable": "Disable",
@@ -926,7 +927,11 @@
 		"confirm_remove_title": "Remove API Key",
 		"confirm_remove_msg": "Are you sure you want to remove your OpenRouter API key? This will disable AI chat features.",
 		"success_removed": "API key removed successfully",
-		"error_remove": "Failed to remove API key"
+		"error_remove": "Failed to remove API key",
+        "model":"Model",
+        "using": "Using",
+        "free_routing":"(free automatic routing)",
+        "paid_routing":"Use a custom OpenRouter model ID (useful for paid plans)."
 	},
 	"catalog_settings": {
 		"title": "Catalogs",
@@ -1523,5 +1528,8 @@
 		"user_id": "User ID",
 		"display_name": "Display Name",
 		"display_name_placeholder": "Add a display name"
-	}
+	},
+    "ai_chat_screen":{
+        "loading":"Loading AI context..."
+    }
 }
