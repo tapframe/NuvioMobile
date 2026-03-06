@@ -666,6 +666,7 @@
 		"integrations": "Integrazioni",
 		"playback": "Riproduzione",
 		"backup_restore": "Backup e Ripristino",
+		"backup_restore_desc": "Crea e utilizza backup per l'app",
 		"updates": "Aggiornamenti",
 		"about": "Informazioni",
 		"developer": "Sviluppatore",

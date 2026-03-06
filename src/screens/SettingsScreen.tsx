@@ -920,7 +920,7 @@ const SettingsScreen: React.FC = () => {
 								{settingsConfig?.categories?.['backup']?.visible !== false && (
 									<SettingItem
 										title={t('settings.backup_restore')}
-										description="Create and restore app backups"
+										description={t('settings.backup_restore_desc')}
 										icon="archive"
 										renderControl={() => <ChevronRight />}
 										onPress={() => navigation.navigate('Backup')}
