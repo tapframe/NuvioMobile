@@ -697,7 +697,8 @@
 			"media": "MEDIA",
 			"notifications": "NOTIFICATIONS",
 			"testing": "TESTING",
-			"danger_zone": "DANGER ZONE"
+			"danger_zone": "DANGER ZONE",
+			"introdb_contribution": "INTRODB CONTRIBUTION"
 		},
 		"items": {
 			"legal": "Legal & Disclaimer",
@@ -758,7 +759,12 @@
 			"reset_campaigns": "Reset Campaigns",
 			"reset_campaigns_desc": "Clear campaign impressions",
 			"clear_all_data": "Clear All Data",
-			"clear_all_data_desc": "Reset all settings and cached data"
+			"clear_all_data_desc": "Reset all settings and cached data",
+			"enable_intro_submission": "Enable Intro Submission",
+			"enable_intro_submission_desc": "Contribute timestamps to the community",
+			"introdb_api_key": "INTRODB API KEY",
+			"introdb_key_placeholder": "Enter your API Key",
+			"api_key_cleared": "API Key Cleared"
 		},
 		"options": {
 			"horizontal": "Horizontal",
@@ -906,10 +912,10 @@
 		"confirm_remove_msg": "Are you sure you want to remove your OpenRouter API key? This will disable AI chat features.",
 		"success_removed": "API key removed successfully",
 		"error_remove": "Failed to remove API key",
-        "model":"Model",
-        "using":"Using",
-        "free_routing":"(free automatic routing)",
-        "paid_model":"Use a custom OpenRouter model ID (useful for paid plans)."
+		"model": "Model",
+		"using": "Using",
+		"free_routing": "(free automatic routing)",
+		"paid_model": "Use a custom OpenRouter model ID (useful for paid plans)."
 	},
 	"catalog_settings": {
 		"title": "Catalogs",

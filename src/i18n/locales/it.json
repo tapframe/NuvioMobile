@@ -696,7 +696,8 @@
 			"media": "MEDIA",
 			"notifications": "NOTIFICHE",
 			"testing": "TEST",
-			"danger_zone": "ZONA PERICOLOSA"
+			"danger_zone": "ZONA PERICOLOSA",
+			"introdb_contribution": "CONTRIBUTI INTRODB"
 		},
 		"items": {
 			"legal": "Note Legali & Disclaimer",
@@ -757,7 +758,12 @@
 			"reset_campaigns": "Ripristina Campagne",
 			"reset_campaigns_desc": "Cancella le impressioni delle campagne",
 			"clear_all_data": "Cancella tutti i dati",
-			"clear_all_data_desc": "Ripristina tutte le impostazioni e i dati memorizzati"
+			"clear_all_data_desc": "Ripristina tutte le impostazioni e i dati memorizzati",
+            "enable_intro_submission":"Abilita contributi IntroDB",
+            "enable_intro_submission_desc":"Contribuisci con i tuoi timestamp",
+            "introdb_api_key":"CHIAVE API INTRODB",
+            "introdb_key_placeholder":"Inserisci la tua chiave API",
+            "api_key_cleared":"Chiave API rimossa"
 		},
 		"options": {
 			"horizontal": "Orizzontale",
