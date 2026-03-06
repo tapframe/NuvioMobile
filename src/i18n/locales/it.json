@@ -1573,5 +1573,11 @@
 		"later": "Dopo",
 		"dismiss": "Ignora",
 		"view_release": "Vedi Release"
+	},
+	"pause_overlay_screen": {
+		"you_are_watching": "Stai guardando",
+		"back_to_details": "Torna ai dettagli",
+		"as": "come",
+		"cast": "Cast"
 	}
 }

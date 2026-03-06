@@ -1565,13 +1565,19 @@
 		"later": "Later",
 		"dismiss": "Dismiss"
 	},
-    "major_update_screen":{
-        "major_update_title":"Major update available",
-        "latest":"Latest:",
-        "downloading":"Downloading...",
-        "update_now":"Update Now",
-        "later":"Later",
-        "dismiss":"Dismiss",
-        "view_release":"View Release"
-    }
+	"major_update_screen": {
+		"major_update_title": "Major update available",
+		"latest": "Latest:",
+		"downloading": "Downloading...",
+		"update_now": "Update Now",
+		"later": "Later",
+		"dismiss": "Dismiss",
+		"view_release": "View Release"
+	},
+	"pause_overlay_screen": {
+		"you_are_watching": "You're watching",
+		"back_to_details": "Back to Details",
+        "as":"as",
+        "cast":"Cast"
+	}
 }
