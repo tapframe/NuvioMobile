@@ -42,6 +42,7 @@ import { TraktLoadingSpinner } from '../components/common/TraktLoadingSpinner';
 import { useSettings } from '../hooks/useSettings';
 import { useTranslation } from 'react-i18next';
 import { useScrollToTop } from '../contexts/ScrollToTopContext';
+import { TMDBService } from '../services/tmdbService';
 
 interface LibraryItem extends StreamingContent {
   progress?: number;
@@ -75,6 +76,7 @@ interface TraktFolder {
 }
 
 const ANDROID_STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
+const TRAKT_LIBRARY_SYNC_MODE_KEY = 'trakt_library_sync_mode';
 
 function getGridLayout(screenWidth: number): { numColumns: number; itemWidth: number } {
   const horizontalPadding = 26;
@@ -88,8 +90,6 @@ function getGridLayout(screenWidth: number): { numColumns: number; itemWidth: nu
   const itemWidth = Math.floor(available / numColumns);
   return { numColumns, itemWidth };
 }
-
-import { TMDBService } from '../services/tmdbService';
 
 const TraktItem = React.memo(({
   item,
@@ -124,10 +124,6 @@ const TraktItem = React.memo(({
 
           if (item.imdbId) {
             tmdbId = await tmdbService.findTMDBIdByIMDB(item.imdbId);
-          }
-
-          if (!tmdbId && item.traktId) {
-
           }
 
           if (tmdbId) {
@@ -270,6 +266,9 @@ const LibraryScreen = () => {
   const { currentTheme } = useTheme();
   const { settings } = useSettings();
   const flashListRef = useRef<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [traktSyncMode, setTraktSyncMode] = useState<'off' | 'manual' | 'automatic'>('off');
+  const hasAutoSyncedThisSession = useRef(false);
 
   const scrollToTop = useCallback(() => {
     flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -314,6 +313,29 @@ const LibraryScreen = () => {
     ratedContent: simklRatedContent,
     loadAllCollections: loadSimklCollections
   } = useSimklContext();
+
+  // Load Trakt sync mode preferences
+  useEffect(() => {
+    const loadSyncMode = async () => {
+      try {
+        const mode = await mmkvStorage.getItem(TRAKT_LIBRARY_SYNC_MODE_KEY);
+        if (mode === 'manual' || mode === 'automatic') {
+          setTraktSyncMode(mode);
+        } else {
+          setTraktSyncMode('off');
+        }
+      } catch (error) {
+        logger.error('[LibraryScreen] Failed to load sync mode:', error);
+        setTraktSyncMode('off');
+      }
+    };
+    
+    loadSyncMode();
+
+    // Reload when screen is focused (to pick up changes from settings)
+    const unsubscribe = navigation.addListener('focus', loadSyncMode);
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     const applyStatusBarConfig = () => {
@@ -422,6 +444,248 @@ const LibraryScreen = () => {
     };
   }, [navigation]);
 
+  // Refs to always have access to latest context values (avoids stale closure)
+  const watchlistMoviesRef = useRef(watchlistMovies);
+  const watchlistShowsRef = useRef(watchlistShows);
+  
+  useEffect(() => {
+    watchlistMoviesRef.current = watchlistMovies;
+    watchlistShowsRef.current = watchlistShows;
+  }, [watchlistMovies, watchlistShows]);
+
+  // Sync Trakt watchlist to local library
+  const syncTraktWatchlistToLibrary = useCallback(async () => {
+    if (!traktAuthenticated) {
+      showError('Sync Failed', 'Please connect to Trakt first');
+      return;
+    }
+
+    setIsSyncing(true);
+    logger.log('[LibraryScreen] Starting Trakt watchlist sync...');
+
+    try {
+      // Load Trakt data fresh before syncing
+      logger.log('[LibraryScreen] Loading Trakt collections...');
+      await loadAllCollections();
+      
+      // Wait for React to process state updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Access FRESH values from refs (updated by useEffect)
+      const currentMovies = watchlistMoviesRef.current;
+      const currentShows = watchlistShowsRef.current;
+      
+      logger.log(`[LibraryScreen] Syncing ${currentMovies?.length || 0} movies and ${currentShows?.length || 0} shows`);
+      
+      const hasMovies = currentMovies && currentMovies.length > 0;
+      const hasShows = currentShows && currentShows.length > 0;
+
+      if (!hasMovies && !hasShows) {
+        logger.error('[LibraryScreen] No Trakt watchlist data available');
+        showError(
+          'Sync Failed',
+          'No items found in your Trakt watchlist. Add some movies or shows to your Trakt watchlist first.'
+        );
+        return;
+      }
+
+      const tmdbService = TMDBService.getInstance();
+      let addedCount = 0;
+      let updatedCount = 0;
+      let removedCount = 0;
+
+      const currentLibraryItems = await catalogService.getLibraryItems();
+      const traktWatchlistImdbIds = new Set<string>();
+
+      // Collect IMDb IDs from watchlist (using FRESH refs)
+      if (currentMovies) {
+        currentMovies.forEach(item => {
+          if (item.movie?.ids?.imdb) {
+            traktWatchlistImdbIds.add(item.movie.ids.imdb);
+          }
+        });
+      }
+
+      if (currentShows) {
+        currentShows.forEach(item => {
+          if (item.show?.ids?.imdb) {
+            traktWatchlistImdbIds.add(item.show.ids.imdb);
+          }
+        });
+      }
+
+      // Remove items not in watchlist
+      for (const libraryItem of currentLibraryItems) {
+        const imdbId = libraryItem.id;
+        if (imdbId.startsWith('tt') && !traktWatchlistImdbIds.has(imdbId)) {
+          logger.log(`[LibraryScreen] Removing: ${libraryItem.name}`);
+          await catalogService.removeFromLibrary(libraryItem.type, imdbId);
+          removedCount++;
+        }
+      }
+
+      // Add/update movies (using FRESH refs)
+      if (currentMovies) {
+        for (const watchlistItem of currentMovies) {
+          const movie = watchlistItem.movie;
+          if (!movie?.ids?.imdb) continue;
+
+          const imdbId = movie.ids.imdb;
+          const existingItem = currentLibraryItems.find(
+            item => item.id === imdbId && item.type === 'movie'
+          );
+
+          let posterUrl = 'https://via.placeholder.com/300x450/cccccc/666666?text=No+Image';
+          let overview = '';
+          let genres: string[] = [];
+          let year = movie.year;
+
+          try {
+            const tmdbId = await tmdbService.findTMDBIdByIMDB(imdbId);
+            if (tmdbId) {
+              const details = await tmdbService.getMovieDetails(String(tmdbId));
+              if (details) {
+                if (details.poster_path) {
+                  posterUrl = tmdbService.getImageUrl(details.poster_path, 'w500') || posterUrl;
+                }
+                overview = details.overview || '';
+                genres = details.genres?.map((g: any) => g.name) || [];
+                year = details.release_date ? new Date(details.release_date).getFullYear() : year;
+              }
+            }
+          } catch (error) {
+            logger.error(`Failed to fetch TMDB data for ${movie.title}:`, error);
+          }
+
+          if (posterUrl === 'https://via.placeholder.com/300x450/cccccc/666666?text=No+Image' && movie.images) {
+            const traktPosterUrl = TraktService.getTraktPosterUrl(movie.images);
+            if (traktPosterUrl) posterUrl = traktPosterUrl;
+          }
+
+          const contentToAdd: StreamingContent = {
+            id: imdbId,
+            type: 'movie',
+            name: movie.title,
+            poster: posterUrl,
+            posterShape: 'poster',
+            year,
+            description: overview,
+            genres,
+            imdbRating: undefined,
+            inLibrary: true,
+          };
+
+          if (existingItem) {
+            if (existingItem.poster !== posterUrl) {
+              await catalogService.addToLibrary(contentToAdd);
+              updatedCount++;
+            }
+          } else {
+            await catalogService.addToLibrary(contentToAdd);
+            addedCount++;
+          }
+        }
+      }
+
+      // Add/update shows (using FRESH refs)
+      if (currentShows) {
+        for (const watchlistItem of currentShows) {
+          const show = watchlistItem.show;
+          if (!show?.ids?.imdb) continue;
+
+          const imdbId = show.ids.imdb;
+          const existingItem = currentLibraryItems.find(
+            item => item.id === imdbId && item.type === 'series'
+          );
+
+          let posterUrl = 'https://via.placeholder.com/300x450/cccccc/666666?text=No+Image';
+          let overview = '';
+          let genres: string[] = [];
+          let year = show.year;
+
+          try {
+            const tmdbId = await tmdbService.findTMDBIdByIMDB(imdbId);
+            if (tmdbId) {
+              const details = await tmdbService.getTVShowDetails(tmdbId);
+              if (details) {
+                if (details.poster_path) {
+                  posterUrl = tmdbService.getImageUrl(details.poster_path, 'w500') || posterUrl;
+                }
+                overview = details.overview || '';
+                genres = details.genres?.map((g: any) => g.name) || [];
+                year = details.first_air_date ? new Date(details.first_air_date).getFullYear() : year;
+              }
+            }
+          } catch (error) {
+            logger.error(`Failed to fetch TMDB data for ${show.title}:`, error);
+          }
+
+          if (posterUrl === 'https://via.placeholder.com/300x450/cccccc/666666?text=No+Image' && show.images) {
+            const traktPosterUrl = TraktService.getTraktPosterUrl(show.images);
+            if (traktPosterUrl) posterUrl = traktPosterUrl;
+          }
+
+          const contentToAdd: StreamingContent = {
+            id: imdbId,
+            type: 'series',
+            name: show.title,
+            poster: posterUrl,
+            posterShape: 'poster',
+            year,
+            description: overview,
+            genres,
+            imdbRating: undefined,
+            inLibrary: true,
+          };
+
+          if (existingItem) {
+            if (existingItem.poster !== posterUrl) {
+              await catalogService.addToLibrary(contentToAdd);
+              updatedCount++;
+            }
+          } else {
+            await catalogService.addToLibrary(contentToAdd);
+            addedCount++;
+          }
+        }
+      }
+
+      // Show result
+      if (addedCount > 0 || updatedCount > 0 || removedCount > 0) {
+        let message = '';
+        if (addedCount > 0) message += `Added ${addedCount}`;
+        if (updatedCount > 0) message += `${message ? ', updated ' : 'Updated '}${updatedCount}`;
+        if (removedCount > 0) message += `${message ? ', removed ' : 'Removed '}${removedCount}`;
+        showInfo('Sync Complete', message);
+        logger.log(`[LibraryScreen] Sync complete: ${message}`);
+      } else {
+        showInfo('Sync Complete', 'Library is up to date');
+      }
+    } catch (error) {
+      logger.error('[LibraryScreen] Sync failed:', error);
+      showError('Sync Failed', 'Unable to sync. Please try again.');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [traktAuthenticated, loadAllCollections, showInfo, showError]);
+  // Removed watchlistMovies and watchlistShows from deps - we access via refs!
+
+  // Automatic sync on first visit
+  useEffect(() => {
+    if (
+      traktSyncMode === 'automatic' &&
+      traktAuthenticated &&
+      !hasAutoSyncedThisSession.current &&
+      !showTraktContent &&
+      !showSimklContent
+    ) {
+      hasAutoSyncedThisSession.current = true;
+      logger.log('[LibraryScreen] Performing automatic sync');
+      syncTraktWatchlistToLibrary();
+    }
+
+  }, [traktSyncMode, traktAuthenticated, showTraktContent, showSimklContent, syncTraktWatchlistToLibrary]);
+
   const filteredItems = libraryItems.filter(item => {
     if (filter === 'movies') return item.type === 'movie';
     if (filter === 'series') return item.type === 'series';
@@ -465,7 +729,7 @@ const LibraryScreen = () => {
     ];
 
     return folders.filter(folder => folder.itemCount > 0);
-  }, [traktAuthenticated, watchedMovies, watchedShows, watchlistMovies, watchlistShows, collectionMovies, collectionShows, continueWatching, ratedContent]);
+  }, [traktAuthenticated, watchedMovies, watchedShows, watchlistMovies, watchlistShows, collectionMovies, collectionShows, continueWatching, ratedContent, t]);
 
   const simklFolders = useMemo((): TraktFolder[] => {
     if (!simklAuthenticated) return [];
@@ -1438,6 +1702,9 @@ const LibraryScreen = () => {
     return (Platform.OS === 'ios' ? (Platform as any).isPad === true : smallestDimension >= 768);
   }, [width, height]);
 
+  // Show sync button only when mode is 'manual' and viewing local library
+  const shouldShowSyncButton = traktSyncMode === 'manual' && !showTraktContent && !showSimklContent && traktAuthenticated;
+
   return (
     <View style={[styles.container, { backgroundColor: currentTheme.colors.darkBackground }]}>
       <ScreenHeader
@@ -1485,6 +1752,29 @@ const LibraryScreen = () => {
 
         {showTraktContent ? renderTraktContent() : showSimklContent ? renderSimklContent() : renderContent()}
       </View>
+
+      {/* Sync FAB - Bottom Right (only in manual mode) */}
+      {shouldShowSyncButton && (
+        <TouchableOpacity
+          style={[
+            styles.syncFab,
+            {
+              backgroundColor: currentTheme.colors.primary,
+              bottom: insets.bottom + 80,
+              shadowColor: currentTheme.colors.black,
+            }
+          ]}
+          onPress={syncTraktWatchlistToLibrary}
+          activeOpacity={0.8}
+          disabled={isSyncing}
+        >
+          {isSyncing ? (
+            <ActivityIndicator color={currentTheme.colors.white} size="small" />
+          ) : (
+            <MaterialIcons name="sync" size={24} color={currentTheme.colors.white} />
+          )}
+        </TouchableOpacity>
+      )}
 
       {selectedItem && (
         <DropUpMenu
@@ -1830,6 +2120,19 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  syncFab: {
+    position: 'absolute',
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });
 
