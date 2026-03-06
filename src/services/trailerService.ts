@@ -14,8 +14,8 @@ interface CacheEntry {
 }
 
 export class TrailerService {
-  // Cache for 3 minutes — just enough to avoid re-extracting on quick re-renders
-  private static readonly CACHE_TTL_MS = 30 * 1000;
+  // Cache for 5 seconds — just enough to avoid re-extracting on quick re-renders
+  private static readonly CACHE_TTL_MS = 5 * 1000;
   private static urlCache = new Map<string, CacheEntry>();
 
   // ---------------------------------------------------------------------------
@@ -112,6 +112,11 @@ export class TrailerService {
     const url = await this.getTrailerUrl(title, year);
     if (!url) return null;
     return { url, title, year };
+  }
+
+  static invalidateCache(videoId: string): void {
+    this.urlCache.delete(videoId);
+    logger.info('TrailerService', `Cache invalidated for videoId=${videoId}`);
   }
 
   static setUseLocalServer(_useLocal: boolean): void {}
