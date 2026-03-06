@@ -1509,6 +1509,11 @@
 			"tried_url": "Provato: {{url}}",
 			"provider_logs": "Log Provider",
 			"no_logs_captured": "Nessun log catturato."
+		},
+		"first_time_welcome": {
+			"welcome_msg": "Benvenuto su Nuvio!",
+			"get_started": "Per iniziare, installa addons per accedere ai contenuti da varie fonti",
+			"install_addons": "Installa Addon"
 		}
 	}
 }
