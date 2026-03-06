@@ -12,6 +12,7 @@ import {
   Platform,
   Clipboard,
   Linking,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -657,12 +658,17 @@ const DownloadsScreen: React.FC = () => {
         isTablet={isTablet}
       >
         {downloads.length > 0 && (
-          <View style={styles.filterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScrollContainer}
+            contentContainerStyle={styles.filterContainer}
+          >
             {renderFilterButton('all', t('downloads.filter_all'), stats.total)}
             {renderFilterButton('downloading', t('downloads.filter_active'), stats.downloading)}
             {renderFilterButton('completed', t('downloads.filter_done'), stats.completed)}
             {renderFilterButton('paused', t('downloads.filter_paused'), stats.paused)}
-          </View>
+          </ScrollView>
         )}
       </ScreenHeader>
 
@@ -745,9 +751,14 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 8,
   },
+  // testing add scroll
+  filterScrollContainer: {
+    flexGrow: 0,
+  },
   filterContainer: {
     flexDirection: 'row',
     gap: isTablet ? 16 : 12,
+    paddingHorizontal: 16,
   },
   filterButton: {
     flexDirection: 'row',
@@ -756,6 +767,8 @@ const styles = StyleSheet.create({
     paddingVertical: isTablet ? 10 : 8,
     borderRadius: 20,
     gap: 8,
+    flexShrink: 0,
+    minWidth: 'auto',
   },
   filterButtonText: {
     fontSize: isTablet ? 16 : 14,
