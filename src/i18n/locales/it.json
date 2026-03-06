@@ -1555,5 +1555,14 @@
 		"skip_intro": "Salta Inizio",
 		"skip_ending": "Salta Fine",
 		"skip_recap": "Salta Riassunto"
+	},
+	"update_popup": {
+		"update_available": "Aggiornamento Disponibile",
+		"new_version": "Una nuova versione di Nuvio è pronta per esser installata",
+		"version": "Versione:",
+		"update_now": "Aggiorna Ora",
+		"installing": "Installazione...",
+		"later": "Dopo",
+		"dismiss": "Ignora"
 	}
 }

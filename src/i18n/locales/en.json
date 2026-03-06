@@ -1549,5 +1549,20 @@
 		"moderate": "moderate",
 		"mild": "mild",
 		"none": "none"
+	},
+	"skip_intro_button": {
+		"skip": "Skip",
+		"skip_intro": "Skip Intro",
+		"skip_ending": "Skip Ending",
+		"skip_recap": "Skip Recap"
+	},
+	"update_popup": {
+		"update_available": "Update Available",
+		"new_version": "A new version of Nuvio is ready to install",
+		"version": "Version:",
+		"update_now": "Update Now",
+		"installing": "Installing...",
+		"later": "Later",
+		"dismiss": "Dismiss"
 	}
 }
