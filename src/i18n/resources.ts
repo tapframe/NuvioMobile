@@ -25,6 +25,7 @@ import ro from './locales/ro.json';
 import sq from './locales/sq.json';
 import ca from './locales/ca.json';
 import ja from './locales/ja.json';
+import vi from './locales/vi.json';
 
 export const resources = {
     en: { translation: en },
@@ -53,4 +54,5 @@ export const resources = {
     sq: { translation: sq },
     ca: { translation: ca },
     ja: { translation: ja },
+    vi: { translation: vi }
 };
