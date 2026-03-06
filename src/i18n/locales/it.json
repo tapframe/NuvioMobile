@@ -760,11 +760,17 @@
 			"reset_campaigns_desc": "Cancella le impressioni delle campagne",
 			"clear_all_data": "Cancella tutti i dati",
 			"clear_all_data_desc": "Ripristina tutte le impostazioni e i dati memorizzati",
-            "enable_intro_submission":"Abilita contributi IntroDB",
-            "enable_intro_submission_desc":"Contribuisci con i tuoi timestamp",
-            "introdb_api_key":"CHIAVE API INTRODB",
-            "introdb_key_placeholder":"Inserisci la tua chiave API",
-            "api_key_cleared":"Chiave API rimossa"
+			"enable_intro_submission": "Abilita contributi IntroDB",
+			"enable_intro_submission_desc": "Contribuisci con i tuoi timestamp",
+			"introdb_api_key": "CHIAVE API INTRODB",
+			"introdb_key_placeholder": "Inserisci la tua chiave API",
+			"api_key_cleared": "Chiave API rimossa",
+			"plugin_tester": "Plugin Tester",
+			"plugin_tester_desc": "Esegui un plugin vedendo i log e i flussi",
+			"onboarding_success_desc": "La schermata iniziale è stata resettata . Riavvia l'app per vedere il flusso.",
+			"clear_all_data_prompt": "Questo ripristinerà tutte le impostazioni cancellando anche i dati salvati. Sei sicuro?",
+			"clear_all_data_success": "Tutti i dati sono stati cancellati. Riavvia l'app",
+			"clear_all_data_error": "C'è stato un errore nella cancellazione dei dati"
 		},
 		"options": {
 			"horizontal": "Orizzontale",

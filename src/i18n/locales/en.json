@@ -759,12 +759,18 @@
 			"reset_campaigns": "Reset Campaigns",
 			"reset_campaigns_desc": "Clear campaign impressions",
 			"clear_all_data": "Clear All Data",
-			"clear_all_data_desc": "Reset all settings and cached data",
+			"clear_all_data_desc": "Reset all settings and cached data.",
 			"enable_intro_submission": "Enable Intro Submission",
 			"enable_intro_submission_desc": "Contribute timestamps to the community",
 			"introdb_api_key": "INTRODB API KEY",
 			"introdb_key_placeholder": "Enter your API Key",
-			"api_key_cleared": "API Key Cleared"
+			"api_key_cleared": "API Key Cleared",
+			"plugin_tester": "Plugin Tester",
+			"plugin_tester_desc": "Run a plugin and inspect logs/streams",
+			"onboarding_success_desc": "Onboarding has been reset. Restart the app to see the onboarding flow.",
+			"clear_all_data_prompt": "This will reset all settings and clear all cached data. Are you sure?",
+			"clear_all_data_success": "All data cleared. Please restart the app.",
+			"clear_all_data_error": "Failed to clear data."
 		},
 		"options": {
 			"horizontal": "Horizontal",
