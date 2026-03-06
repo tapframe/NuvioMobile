@@ -629,7 +629,7 @@
 		"key_verified": "Chiave API verificata e salvata con successo.",
 		"disclaimer_part_one": "Questo prodotto usa l'API di TMDB ",
 		"disclaimer_part_two": "ma non è sponsorizzato nè certificato da TMDB.",
-        "done":"Fatto"
+		"done": "Fatto"
 	},
 	"settings": {
 		"language": "Lingua",
@@ -904,7 +904,11 @@
 		"confirm_remove_title": "Rimuovi Chiave API",
 		"confirm_remove_msg": "Sei sicuro di voler rimuovere la tua chiave API OpenRouter? Questo disabiliterà le funzioni di chat IA.",
 		"success_removed": "Chiave API rimossa con successo",
-		"error_remove": "Impossibile rimuovere la chiave API"
+		"error_remove": "Impossibile rimuovere la chiave API",
+		"model": "Modello",
+		"using": "In uso",
+		"free_routing": "(selezione automatica tra modelli gratuiti)",
+		"paid_model": "Usa ID di un modello specifico di Openrouter (utile in caso di piano a pagamento)"
 	},
 	"catalog_settings": {
 		"title": "Cataloghi",

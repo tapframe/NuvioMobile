@@ -905,7 +905,11 @@
 		"confirm_remove_title": "Remove API Key",
 		"confirm_remove_msg": "Are you sure you want to remove your OpenRouter API key? This will disable AI chat features.",
 		"success_removed": "API key removed successfully",
-		"error_remove": "Failed to remove API key"
+		"error_remove": "Failed to remove API key",
+        "model":"Model",
+        "using":"Using",
+        "free_routing":"(free automatic routing)",
+        "paid_model":"Use a custom OpenRouter model ID (useful for paid plans)."
 	},
 	"catalog_settings": {
 		"title": "Catalogs",
