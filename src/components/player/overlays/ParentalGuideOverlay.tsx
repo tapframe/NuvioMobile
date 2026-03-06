@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -24,18 +25,8 @@ interface ParentalGuideOverlayProps {
 interface WarningItem {
     label: string;
     severity: string;
+    rawSeverity: string;
 }
-
-const formatLabel = (key: string): string => {
-    const labels: Record<string, string> = {
-        nudity: 'Nudity',
-        violence: 'Violence',
-        profanity: 'Profanity',
-        alcohol: 'Alcohol/Drugs',
-        frightening: 'Frightening',
-    };
-    return labels[key] || key;
-};
 
 // Row height for calculating line animation
 const ROW_HEIGHT = 18;
@@ -66,6 +57,7 @@ export const ParentalGuideOverlay: React.FC<ParentalGuideOverlayProps> = ({
     episode,
     shouldShow,
 }) => {
+    const { t } = useTranslation();
     const { currentTheme } = useTheme();
     const insets = useSafeAreaInsets();
     const screenWidth = Dimensions.get('window').width;
@@ -89,47 +81,58 @@ export const ParentalGuideOverlay: React.FC<ParentalGuideOverlayProps> = ({
 
     // Fetch parental guide data
     useEffect(() => {
-        const fetchData = async () => {
-            if (!imdbId) return;
+      const fetchData = async () => {
+        if (!imdbId) return;
 
-            try {
-                let data;
-                if (type === 'movie') {
-                    data = await parentalGuideService.getMovieGuide(imdbId);
-                } else if (type === 'series' && season && episode) {
-                    data = await parentalGuideService.getTVGuide(imdbId, season, episode);
-                }
+        try {
+          let data;
+          if (type === "movie") {
+            data = await parentalGuideService.getMovieGuide(imdbId);
+          } else if (type === "series" && season && episode) {
+            data = await parentalGuideService.getTVGuide(
+              imdbId,
+              season,
+              episode,
+            );
+          }
 
-                if (data && data.parentalGuide) {
-                    const guide = data.parentalGuide;
-                    const items: WarningItem[] = [];
+          if (data && data.parentalGuide) {
+            const guide = data.parentalGuide;
+            const items: WarningItem[] = [];
 
-                    Object.entries(guide).forEach(([key, severity]) => {
-                        if (severity && severity.toLowerCase() !== 'none') {
-                            items.push({
-                                label: formatLabel(key),
-                                severity: severity,
-                            });
-                        }
-                    });
+            Object.entries(guide).forEach(([key, severity]) => {
+              const lowSeverity = severity?.toLowerCase();
+              if (lowSeverity && lowSeverity !== "none") {
+                items.push({
+                  label: t(`parentalGuide.labels.${key}`, {
+                    defaultValue: key,
+                  }),
+                  severity: t(`parentalGuide.severity.${lowSeverity}`, {
+                    defaultValue: severity,
+                  }),
+                  rawSeverity: lowSeverity,
+                });
+              }
+            });
 
-                    const severityOrder = { severe: 0, moderate: 1, mild: 2, none: 3 };
-                    items.sort((a, b) => {
-                        const orderA = severityOrder[a.severity.toLowerCase() as keyof typeof severityOrder] ?? 3;
-                        const orderB = severityOrder[b.severity.toLowerCase() as keyof typeof severityOrder] ?? 3;
-                        return orderA - orderB;
-                    });
+            const severityOrder = { severe: 0, moderate: 1, mild: 2, none: 3 };
+            items.sort((a, b) => {
+              // @ts-ignore - fallback to 3 if severity is unrecognized
+              const orderA = severityOrder[a.rawSeverity] ?? 3;
+              // @ts-ignore
+              const orderB = severityOrder[b.rawSeverity] ?? 3;
+              return orderA - orderB;
+            });
 
-                    setWarnings(items.slice(0, 5));
-                    logger.log('[ParentalGuideOverlay] Loaded warnings:', items.length);
-                }
-            } catch (error) {
-                logger.error('[ParentalGuideOverlay] Error fetching guide:', error);
-            }
-        };
+            setWarnings(items.slice(0, 5));
+          }
+        } catch (error) {
+          logger.error("[ParentalGuideOverlay] Error fetching guide:", error);
+        }
+      };
 
-        fetchData();
-    }, [imdbId, type, season, episode]);
+      fetchData();
+    }, [imdbId, type, season, episode, t]);
 
     // Handle show/hide based on shouldShow (controls visibility)
     useEffect(() => {
