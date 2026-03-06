@@ -529,11 +529,16 @@ export class TMDBService {
    */
   async extractTMDBIdFromStremioId(stremioId: string): Promise<number | null> {
     try {
-      // Extract the base IMDB ID (remove season/episode info if present)
-      const imdbId = stremioId.split(':')[0];
+      // Extract the base ID (remove season/episode info if present)
+      const baseId = stremioId.split(':')[0];
+
+      // Only try to convert if it's an IMDb ID (starts with 'tt')
+      if (!baseId.startsWith('tt')) {
+        return null;
+      }
 
       // Use the existing findTMDBIdByIMDB function to get the TMDB ID
-      const tmdbId = await this.findTMDBIdByIMDB(imdbId);
+      const tmdbId = await this.findTMDBIdByIMDB(baseId);
       return tmdbId;
     } catch (error) {
       return null;

@@ -325,8 +325,17 @@ class StremioService {
       return true;
     }
 
-    // Check if the ID matches any supported prefix
-    return supportedPrefixes.some(prefix => lowerId.startsWith(prefix.toLowerCase()));
+    // Check if the ID matches any supported prefix.
+    // For prefixes without a trailing separator (e.g. "mal", "kitsu"), the ID must be
+    // longer than the prefix itself so that bare prefix strings like "mal" are rejected.
+    const result = supportedPrefixes.some(prefix => {
+      const lowerPrefix = prefix.toLowerCase();
+      if (!lowerId.startsWith(lowerPrefix)) return false;
+      if (lowerPrefix.endsWith(':') || lowerPrefix.endsWith('_')) return true;
+      return lowerId.length > lowerPrefix.length;
+    });
+    if (__DEV__) console.log(`🔍 [isValidContentId] Prefix match result: ${result} for ID '${id}'`);
+    return result;
   }
 
   // Get all content types supported by installed addons

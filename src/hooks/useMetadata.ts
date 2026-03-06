@@ -1877,6 +1877,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
       }
 
       // Get TMDB ID for external sources and determine the correct ID for Stremio addons
+      const isImdb = id.startsWith('tt');
       if (__DEV__) console.log('🔍 [loadEpisodeStreams] Getting TMDB ID for:', id);
       let tmdbId;
       let stremioEpisodeId = episodeId; // Default to original episode ID
@@ -1901,19 +1902,25 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
         const cleanEpisodeId = episodeId.replace(/^series:/, '');
         const parts = cleanEpisodeId.split(':');
 
-        if (parts[0] === 'kitsu' && parts.length === 3) {
-          // kitsu:animeId:episode — no season segment
+        if (isImdb && parts.length === 3) {
+          // Format: ttXXX:season:episode
+          showIdStr = parts[0];
+          seasonNum = parts[1];
+          episodeNum = parts[2];
+        } else if (!isImdb && parts.length === 3) {
+          // Format: prefix:id:episode (no season for MAL/Kitsu/etc)
           showIdStr = `${parts[0]}:${parts[1]}`;
           episodeNum = parts[2];
           seasonNum = '';
-        } else if (parts.length >= 3) {
-          episodeNum = parts.pop() || '';
-          seasonNum = parts.pop() || '';
-          showIdStr = parts.join(':');
         } else if (parts.length === 2) {
           showIdStr = parts[0];
           episodeNum = parts[1];
           seasonNum = '';
+        } else if (parts.length >= 4) {
+          // Format: prefix:id:season:episode - it is possible that some addons use it
+          episodeNum = parts.pop() || '';
+          seasonNum = parts.pop() || '';
+          showIdStr = parts.join(':');
         }
 
         if (__DEV__) console.log(`🔍 [loadEpisodeStreams] Parsed ID: show=${showIdStr}, s=${seasonNum}, e=${episodeNum}`);
@@ -1976,7 +1983,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
             if (__DEV__) console.log('⚠️ [loadEpisodeStreams] Failed to convert TMDB to IMDb, using TMDB episode ID:', error);
           }
         }
-      } else if (id.startsWith('tt')) {
+      } else if (isImdb) {
         // This is already an IMDB ID, perfect for Stremio
         if (settings.enrichMetadataWithTMDB) {
           if (__DEV__) console.log('📝 [loadEpisodeStreams] Converting IMDB ID to TMDB ID...');

@@ -586,13 +586,17 @@ const MetadataScreen: React.FC = () => {
 
   const handleShowStreams = useCallback(() => {
     const { watchProgress } = watchProgressData;
+    const isImdb = id.startsWith('tt');
 
     // Ensure trailer stops immediately before navigating to Streams
     try { pauseTrailer(); } catch { }
 
     // Helper to build episodeId from episode object
     const buildEpisodeId = (ep: any): string => {
-      return ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number}`;
+      if (ep.stremioId) return ep.stremioId;
+      return isImdb 
+        ? `${id}:${ep.season_number}:${ep.episode_number}`
+        : `${id}:${ep.episode_number}`;
     };
 
     if (Object.keys(groupedEpisodes).length > 0) {
@@ -611,38 +615,28 @@ const MetadataScreen: React.FC = () => {
 
         const parts = watchProgress.episodeId.split(':');
 
-        if (parts.length === 3) {
-          // showId:season:episode
-          currentSeason = parseInt(parts[1], 10);
-          currentEpisode = parseInt(parts[2], 10);
-        } else if (parts.length === 2) {
-          // season:episode
-          currentSeason = parseInt(parts[0], 10);
-          currentEpisode = parseInt(parts[1], 10);
-        } else {
-          // pattern like s5e01
-          const match = watchProgress.episodeId.match(/s(\d+)e(\d+)/i);
-          if (match) {
-            currentSeason = parseInt(match[1], 10);
-            currentEpisode = parseInt(match[2], 10);
+        if (isImdb) {
+          if (parts.length === 3) {
+            currentSeason = parseInt(parts[1], 10);
+            currentEpisode = parseInt(parts[2], 10);
+          } else if (parts.length === 2) {
+            currentEpisode = parseInt(parts[1], 10);
           }
+        } else {
+          currentEpisode = parts.length === 3 ? parseInt(parts[2], 10) : null;
         }
 
-        if (currentSeason !== null && currentEpisode !== null) {
-          // DIRECT APPROACH: Just create the next episode ID directly
-          // This ensures we navigate to the next episode even if it's not yet in our episodes array
-          const nextEpisodeId = `${id}:${currentSeason}:${currentEpisode + 1}`;
-          if (__DEV__) console.log(`[MetadataScreen] Created next episode ID directly: ${nextEpisodeId}`);
+        if (currentEpisode !== null) {
+          const nextEpisodeId = isImdb
+            ? `${id}:${currentSeason || episodes[0]?.season_number || 1}:${currentEpisode + 1}`
+            : `${id}:${currentEpisode + 1}`;
+          if (__DEV__) console.log(`[MetadataScreen] Created next episode ID: ${nextEpisodeId}`);
 
-          // Still try to find the episode in our list to verify it exists
-          const nextEpisodeExists = episodes.some(ep =>
-            ep.season_number === currentSeason && ep.episode_number === (currentEpisode + 1)
-          );
-
+          const nextEpisodeExists = episodes.some(ep => ep.episode_number === (currentEpisode + 1));
           if (nextEpisodeExists) {
-            if (__DEV__) console.log(`[MetadataScreen] Verified next episode S${currentSeason}E${currentEpisode + 1} exists in episodes list`);
+            if (__DEV__) console.log(`[MetadataScreen] Verified next episode exists`);
           } else {
-            if (__DEV__) console.log(`[MetadataScreen] Warning: Next episode S${currentSeason}E${currentEpisode + 1} not found in episodes list, but proceeding anyway`);
+            if (__DEV__) console.log(`[MetadataScreen] Warning: Next episode not found`);
           }
 
           targetEpisodeId = nextEpisodeId;
@@ -656,10 +650,14 @@ const MetadataScreen: React.FC = () => {
       }
 
       if (targetEpisodeId) {
-        // Ensure the episodeId has showId prefix (id:season:episode)
+        // Ensure the episodeId has showId prefix (id:season:episode or id:episode)
         const epParts = targetEpisodeId.split(':');
         let normalizedEpisodeId = targetEpisodeId;
-        if (epParts.length === 2) {
+        
+        if (epParts.length === 2 && !isImdb) {
+          normalizedEpisodeId = `${id}:${epParts[1]}`;
+        }
+        else if (epParts.length === 2 && isImdb) {
           normalizedEpisodeId = `${id}:${epParts[0]}:${epParts[1]}`;
         }
         if (__DEV__) console.log(`[MetadataScreen] Navigating to streams with episodeId: ${normalizedEpisodeId}`);
@@ -672,7 +670,9 @@ const MetadataScreen: React.FC = () => {
     let fallbackEpisodeId = episodeId;
     if (episodeId && episodeId.split(':').length === 2) {
       const p = episodeId.split(':');
-      fallbackEpisodeId = `${id}:${p[0]}:${p[1]}`;
+      if (!p[0].startsWith('tt')) {
+        fallbackEpisodeId = isImdb ? `${id}:${p[0]}:${p[1]}` : `${id}:${p[1]}`;
+      }
     }
     if (__DEV__) console.log(`[MetadataScreen] Navigating with fallback episodeId: ${fallbackEpisodeId}`);
     navigation.navigate('Streams', { id, type, episodeId: fallbackEpisodeId });
@@ -682,7 +682,16 @@ const MetadataScreen: React.FC = () => {
     if (!isScreenFocused) return;
 
     if (__DEV__) console.log('[MetadataScreen] Selected Episode:', episode.episode_number, episode.season_number);
-    const episodeId = episode.stremioId || `${id}:${episode.season_number}:${episode.episode_number}`;
+    
+    let episodeId: string;
+    if (episode.stremioId) {
+      episodeId = episode.stremioId;
+    } else {
+      const isImdb = id.startsWith('tt');
+      episodeId = isImdb 
+        ? `${id}:${episode.season_number}:${episode.episode_number}`
+        : `${id}:${episode.episode_number}`;
+    }
 
     // Optimize navigation with requestAnimationFrame
     requestAnimationFrame(() => {
