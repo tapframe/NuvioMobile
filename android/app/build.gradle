@@ -244,6 +244,12 @@ dependencies {
         implementation jscFlavor
     }
 
+    // DoH resolver used by custom OkHttp DNS implementation
+    implementation "com.squareup.okhttp3:okhttp-dnsoverhttps:4.9.2"
+    
+    // MMKV for native storage access (compile-only to avoid duplicates)
+    compileOnly "com.tencent:mmkv:1.3.9"
+
     // Include only FFmpeg decoder AAR to avoid duplicates with Maven Media3
     implementation files("libs/lib-decoder-ffmpeg-release.aar")
     

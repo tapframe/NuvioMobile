@@ -109,6 +109,11 @@ export interface AppSettings {
   videoPlayerEngine: 'auto' | 'mpv'; // Video player engine: auto (ExoPlayer primary, MPV fallback) or mpv (MPV only)
   decoderMode: 'auto' | 'sw' | 'hw' | 'hw+'; // Decoder mode: auto (auto-copy), sw (software), hw (mediacodec-copy), hw+ (mediacodec)
   gpuMode: 'gpu' | 'gpu-next'; // GPU rendering mode: gpu (standard) or gpu-next (advanced HDR/color)
+  // Network privacy
+  dnsOverHttpsEnabled: boolean; // Enable DNS over HTTPS at the native networking layer
+  dnsOverHttpsMode: 'off' | 'auto' | 'strict'; // off = disabled, auto = fallback to system DNS, strict = DoH only
+  dnsOverHttpsProvider: 'cloudflare' | 'google' | 'quad9' | 'custom'; // Selected DoH resolver provider
+  dnsOverHttpsCustomUrl: string; // Custom DoH resolver URL (when provider=custom)
   showDiscover: boolean;
   // Audio/Subtitle Language Preferences
   preferredSubtitleLanguage: string; // Preferred language for subtitles (ISO 639-1 code, e.g., 'en', 'es', 'fr')
@@ -199,6 +204,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   videoPlayerEngine: 'auto', // Default to auto (ExoPlayer primary, MPV fallback)
   decoderMode: 'auto', // Default to auto (best compatibility and performance)
   gpuMode: 'gpu', // Default to gpu (gpu-next for advanced HDR)
+  dnsOverHttpsEnabled: false, // Off by default for safe rollout
+  dnsOverHttpsMode: 'auto', // Keep auto as default mode when enabled
+  dnsOverHttpsProvider: 'cloudflare', // Default curated provider
+  dnsOverHttpsCustomUrl: '', // Empty unless custom provider is selected
   showDiscover: true, // Show Discover section in SearchScreen
   // Audio/Subtitle Language Preferences
   preferredSubtitleLanguage: 'en', // Default to English subtitles
