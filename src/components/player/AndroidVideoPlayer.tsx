@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, useCallback, useState } from 'react';
-import { View, StyleSheet, Platform, Animated, ToastAndroid, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Platform, Animated, ToastAndroid, ActivityIndicator, AppState } from 'react-native';
 import { toast } from '@backpackapp-io/react-native-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -102,6 +102,12 @@ const AndroidVideoPlayer: React.FC = () => {
   // State to force unmount VideoSurface during stream transitions
   const [isTransitioningStream, setIsTransitioningStream] = useState(false);
 
+  const supportsPictureInPicture = Platform.OS === 'android' && Number(Platform.Version) >= 26;
+  const [isInPictureInPicture, setIsInPictureInPicture] = useState(false);
+  const [isPiPTransitionPending, setIsPiPTransitionPending] = useState(false);
+  const pipSupportLoggedRef = useRef<boolean | null>(null);
+  const pipAutoEntryStateRef = useRef<string>('');
+
   // Dual video engine state: ExoPlayer primary, MPV fallback
   // If videoPlayerEngine is 'mpv', always use MPV; otherwise use auto behavior
   const shouldUseMpvOnly = settings.videoPlayerEngine === 'mpv';
@@ -119,6 +125,16 @@ const AndroidVideoPlayer: React.FC = () => {
       setUseExoPlayer(false);
     }
   }, [settings.videoPlayerEngine]);
+
+  const autoEnterPipReason = useMemo(() => {
+    if (!supportsPictureInPicture) return 'unsupported_platform_or_api';
+    if (!useExoPlayer) return 'engine_mpv';
+    if (playerState.paused) return 'paused';
+    return 'enabled';
+  }, [supportsPictureInPicture, useExoPlayer, playerState.paused]);
+
+  const shouldAutoEnterPip = autoEnterPipReason === 'enabled';
+  const canShowPipButton = supportsPictureInPicture && useExoPlayer;
 
   // Subtitle addon state
   const [availableSubtitles, setAvailableSubtitles] = useState<WyzieSubtitle[]>([]);
@@ -210,7 +226,8 @@ const AndroidVideoPlayer: React.FC = () => {
     playerState.paused,
     traktAutosync,
     controlsHook.seekToTime,
-    currentStreamProvider
+    currentStreamProvider,
+    isInPictureInPicture || isPiPTransitionPending
   );
 
   const gestureControls = usePlayerGestureControls({
@@ -520,6 +537,77 @@ const AndroidVideoPlayer: React.FC = () => {
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.reset({ index: 0, routes: [{ name: 'Home' }] } as any);
   }, [navigation]);
+
+  useEffect(() => {
+    if (pipSupportLoggedRef.current === supportsPictureInPicture) return;
+    pipSupportLoggedRef.current = supportsPictureInPicture;
+    logger.info(`[PiP] Support ${supportsPictureInPicture ? 'enabled' : 'disabled'} (api=${String(Platform.Version)})`);
+  }, [supportsPictureInPicture]);
+
+  useEffect(() => {
+    if (pipAutoEntryStateRef.current === autoEnterPipReason) return;
+    pipAutoEntryStateRef.current = autoEnterPipReason;
+    if (autoEnterPipReason === 'enabled') {
+      logger.info('[PiP] Auto-entry enabled');
+    } else {
+      logger.info(`[PiP] Auto-entry disabled (${autoEnterPipReason})`);
+    }
+  }, [autoEnterPipReason]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState.match(/inactive|background/) && shouldAutoEnterPip) {
+        logger.info('[PiP] Background transition detected; waiting for PiP status callback');
+        setIsPiPTransitionPending(true);
+      }
+      if (nextAppState === 'active') {
+        setIsPiPTransitionPending(false);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [shouldAutoEnterPip]);
+
+  const handlePictureInPictureStatusChanged = useCallback((isInPip: boolean) => {
+    setIsInPictureInPicture((previous) => {
+      if (previous !== isInPip) {
+        logger.info(`[PiP] Status changed: ${isInPip ? 'entered' : 'exited'}`);
+      }
+      return isInPip;
+    });
+    if (isInPip) {
+      setIsPiPTransitionPending(false);
+      playerState.setShowControls(false);
+    } else {
+      setIsPiPTransitionPending(false);
+    }
+  }, [playerState.setShowControls]);
+
+  const handleEnterPictureInPicture = useCallback(() => {
+    if (!supportsPictureInPicture) {
+      logger.info('[PiP] Manual entry skipped: unsupported platform/API');
+      return;
+    }
+
+    if (!useExoPlayer) {
+      logger.info('[PiP] Manual entry blocked: MPV backend active');
+      ToastAndroid.show('PiP currently works with ExoPlayer only', ToastAndroid.SHORT);
+      return;
+    }
+
+    const playerRef = exoPlayerRef.current as any;
+    const enterPiPMethod = playerRef?.enterPictureInPicture ?? playerRef?.enterPictureInPictureMode;
+    if (typeof enterPiPMethod !== 'function') {
+      logger.warn('[PiP] Manual entry unavailable: Exo ref has no PiP method');
+      return;
+    }
+
+    logger.info('[PiP] Manual entry requested');
+    setIsPiPTransitionPending(true);
+    enterPiPMethod.call(playerRef);
+  }, [supportsPictureInPicture, useExoPlayer]);
 
   // Handle codec errors from ExoPlayer - silently switch to MPV
   const handleCodecError = useCallback(() => {
@@ -841,6 +929,8 @@ const AndroidVideoPlayer: React.FC = () => {
             // Dual video engine props
             useExoPlayer={useExoPlayer}
             onCodecError={handleCodecError}
+            enterPictureInPictureOnLeave={shouldAutoEnterPip}
+            onPictureInPictureStatusChanged={handlePictureInPictureStatusChanged}
             selectedAudioTrack={tracksHook.selectedAudioTrack as any || undefined}
             selectedTextTrack={memoizedSelectedTextTrack as any}
             // Subtitle Styling - pass to MPV for built-in subtitle customization
@@ -957,6 +1047,8 @@ const AndroidVideoPlayer: React.FC = () => {
           playerBackend={useExoPlayer ? 'ExoPlayer' : 'MPV'}
           onSwitchToMPV={handleManualSwitchToMPV}
           useExoPlayer={useExoPlayer}
+          canEnterPictureInPicture={canShowPipButton}
+          onEnterPictureInPicture={handleEnterPictureInPicture}
           isBuffering={playerState.isBuffering}
           imdbId={imdbId}
         />

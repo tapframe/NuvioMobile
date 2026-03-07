@@ -67,6 +67,8 @@ interface PlayerControlsProps {
   // MPV Switch (Android only)
   onSwitchToMPV?: () => void;
   useExoPlayer?: boolean;
+  canEnterPictureInPicture?: boolean;
+  onEnterPictureInPicture?: () => void;
   isBuffering?: boolean;
   imdbId?: string;
 }
@@ -114,6 +116,8 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
   onAirPlayPress,
   onSwitchToMPV,
   useExoPlayer,
+  canEnterPictureInPicture,
+  onEnterPictureInPicture,
   isBuffering = false,
   imdbId,
 }) => {
@@ -394,6 +398,18 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
                 >
                   <Ionicons
                     name="swap-horizontal"
+                    size={closeIconSize}
+                    color="white"
+                  />
+                </TouchableOpacity>
+              )}
+              {Platform.OS === 'android' && canEnterPictureInPicture && onEnterPictureInPicture && (
+                <TouchableOpacity
+                  style={{ padding: 8 }}
+                  onPress={onEnterPictureInPicture}
+                >
+                  <Feather
+                    name="minimize-2"
                     size={closeIconSize}
                     color="white"
                   />

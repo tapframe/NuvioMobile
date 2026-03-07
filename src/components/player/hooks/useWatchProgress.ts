@@ -13,7 +13,8 @@ export const useWatchProgress = (
     paused: boolean,
     traktAutosync: any,
     seekToTime: (time: number) => void,
-    addonId?: string
+    addonId?: string,
+    isInPictureInPicture: boolean = false
 ) => {
     const [resumePosition, setResumePosition] = useState<number | null>(null);
     const [savedDuration, setSavedDuration] = useState<number | null>(null);
@@ -26,6 +27,7 @@ export const useWatchProgress = (
     // Values refs for unmount cleanup
     const currentTimeRef = useRef(currentTime);
     const durationRef = useRef(duration);
+    const isInPictureInPictureRef = useRef(isInPictureInPicture);
 
     useEffect(() => {
         currentTimeRef.current = currentTime;
@@ -34,6 +36,10 @@ export const useWatchProgress = (
     useEffect(() => {
         durationRef.current = duration;
     }, [duration]);
+
+    useEffect(() => {
+        isInPictureInPictureRef.current = isInPictureInPicture;
+    }, [isInPictureInPicture]);
 
     // Keep latest traktAutosync ref to avoid dependency cycles in listeners
     const traktAutosyncRef = useRef(traktAutosync);
@@ -58,9 +64,13 @@ export const useWatchProgress = (
                     try {
                         await storageService.setWatchProgress(id, type, progress, episodeId);
 
-                        // Trakt sync (end session)
-                        // Use 'user_close' to force immediate sync
-                        await traktAutosyncRef.current.handlePlaybackEnd(currentTimeRef.current, durationRef.current, 'user_close');
+                        if (isInPictureInPictureRef.current) {
+                            logger.log('[useWatchProgress] In PiP mode, skipping background playback end sync');
+                        } else {
+                            // Trakt sync (end session)
+                            // Use 'user_close' to force immediate sync
+                            await traktAutosyncRef.current.handlePlaybackEnd(currentTimeRef.current, durationRef.current, 'user_close');
+                        }
                     } catch (error) {
                         logger.error('[useWatchProgress] Error saving background progress:', error);
                     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, StatusBar } from 'react-native';
+import { View, StyleSheet, ScrollView, StatusBar, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -83,6 +83,22 @@ const DeveloperSettingsScreen: React.FC = () => {
         );
     };
 
+    const handleOpenPipTestStream = () => {
+        const playerRoute = Platform.OS === 'ios' ? 'PlayerIOS' : 'PlayerAndroid';
+        navigation.navigate(playerRoute as any, {
+            uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+            title: 'PiP Test Stream',
+            quality: '720',
+            streamProvider: 'Dev Test',
+            streamName: 'Mux HLS',
+            id: 'dev-pip-test',
+            type: 'movie',
+            headers: {
+                'User-Agent': 'Nuvio-PiP-Test',
+            },
+        });
+    };
+
     // Only show if developer mode is enabled (via __DEV__ or manually unlocked)
     if (!developerModeEnabled) {
         return null;
@@ -123,6 +139,13 @@ const DeveloperSettingsScreen: React.FC = () => {
                         description={t('settings.items.reset_campaigns_desc')}
                         icon="refresh-cw"
                         onPress={handleResetCampaigns}
+                        renderControl={() => <ChevronRight />}
+                    />
+                    <SettingItem
+                        title={'PiP Test Stream (Temporary)'}
+                        description={'Open a public HLS stream for player/PiP smoke tests'}
+                        icon="tv"
+                        onPress={handleOpenPipTestStream}
                         renderControl={() => <ChevronRight />}
                         isLast
                     />

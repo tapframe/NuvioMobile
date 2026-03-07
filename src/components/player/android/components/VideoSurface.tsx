@@ -55,6 +55,8 @@ interface VideoSurfaceProps {
     useExoPlayer?: boolean;
     onCodecError?: () => void;
     onEngineChange?: (engine: 'exoplayer' | 'mpv') => void;
+    enterPictureInPictureOnLeave?: boolean;
+    onPictureInPictureStatusChanged?: (isInPip: boolean) => void;
 
     // Subtitle Styling
     subtitleSize?: number;
@@ -244,6 +246,8 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
     useExoPlayer = true,
     onCodecError,
     onEngineChange,
+    enterPictureInPictureOnLeave = false,
+    onPictureInPictureStatusChanged,
     // Subtitle Styling
     subtitleSize,
     subtitleColor,
@@ -317,6 +321,14 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
         lastLoggedExoRequestKeyRef.current = key;
         console.log('[VideoSurface] Headers:', exoRequestHeaders);
     }, [streamUrl, useExoPlayer, exoRequestHeaders]);
+
+    const lastPipAutoEnterStateRef = useRef<boolean | null>(null);
+    useEffect(() => {
+        if (!useExoPlayer) return;
+        if (lastPipAutoEnterStateRef.current === enterPictureInPictureOnLeave) return;
+        lastPipAutoEnterStateRef.current = enterPictureInPictureOnLeave;
+        logger.info(`[PiP] VideoSurface auto-enter-on-leave ${enterPictureInPictureOnLeave ? 'enabled' : 'disabled'}`);
+    }, [useExoPlayer, enterPictureInPictureOnLeave]);
 
     useEffect(() => {
         if (mpvPlayerRef?.current && !useExoPlayer) {
@@ -429,6 +441,20 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
         onSeek({ currentTime: data.currentTime });
     };
 
+    const handleExoPictureInPictureStatusChanged = (event: any) => {
+        const isInPictureInPicture = typeof event === 'boolean'
+            ? event
+            : Boolean(
+                event?.isInPictureInPicture
+                ?? event?.isActive
+                ?? event?.nativeEvent?.isInPictureInPicture
+                ?? event?.nativeEvent?.isActive
+                ?? event?.value
+            );
+        logger.info(`[PiP] VideoSurface status event: ${isInPictureInPicture ? 'entered' : 'exited'}`);
+        onPictureInPictureStatusChanged?.(isInPictureInPicture);
+    };
+
     const getExoResizeMode = (): ResizeMode => {
         switch (resizeMode) {
             case 'cover':
@@ -502,6 +528,10 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({
                     playInBackground={false}
                     playWhenInactive={false}
                     ignoreSilentSwitch="ignore"
+                    // @ts-ignore - Prop supported by patched react-native-video
+                    enterPictureInPictureOnLeave={enterPictureInPictureOnLeave}
+                    // @ts-ignore - Prop supported by patched react-native-video
+                    onPictureInPictureStatusChanged={handleExoPictureInPictureStatusChanged}
                     automaticallyWaitsToMinimizeStalling={true}
                     useTextureView={true}
                     subtitleStyle={{
