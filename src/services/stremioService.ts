@@ -287,6 +287,10 @@ class StremioService {
 
 
   private addonProvidesStreams(manifest: Manifest): boolean {
+    if (manifest.catalogs && Array.isArray(manifest.catalogs) && manifest.catalogs.length > 0) {
+      return true;
+    }
+
     if (!manifest.resources || !Array.isArray(manifest.resources)) {
       return false;
     }
@@ -699,7 +703,7 @@ class StremioService {
 
       // Only allow multiple installations for stream-providing addons
       if (isAlreadyInstalled && !this.addonProvidesStreams(manifest)) {
-        throw new Error('This addon is already installed. Multiple installations are only allowed for stream providers.');
+        throw new Error('This addon is already installed. Multiple installations are only allowed for stream and catalog providers.');
       }
 
       // Generate a unique installation ID for this installation

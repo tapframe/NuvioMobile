@@ -62,6 +62,7 @@ interface GroupedCatalogs {
     catalogs: CatalogSetting[];
     expanded: boolean;
     enabledCount: number;
+    installationNumber?: number;
   };
 }
 
@@ -121,6 +122,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 8,
     letterSpacing: 0.8,
+  },
+  priorityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  priorityText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
   card: {
     marginHorizontal: 16,
@@ -310,7 +321,7 @@ const CatalogSettingsScreen = () => {
           const uniqueCatalogs = new Map<string, CatalogSetting>();
 
           addon.catalogs.forEach(catalog => {
-            const settingKey = `${addon.id}:${catalog.type}:${catalog.id}`;
+            const settingKey = `${addon.installationId || addon.id}:${catalog.type}:${catalog.id}`;
             let displayName = catalog.name || catalog.id;
             const catalogType = catalog.type === 'movie' ? 'Movies' : catalog.type === 'series' ? 'TV Shows' : catalog.type.charAt(0).toUpperCase() + catalog.type.slice(1);
 
@@ -335,7 +346,7 @@ const CatalogSettingsScreen = () => {
             }
 
             uniqueCatalogs.set(settingKey, {
-              addonId: addon.id,
+              addonId: addon.installationId || addon.id,
               catalogId: catalog.id,
               type: catalog.type,
               name: displayName,
@@ -348,18 +359,27 @@ const CatalogSettingsScreen = () => {
         }
       });
 
+      // Count installations per base addon id
+      const installationCountById: Record<string, number> = {};
+      const installationIndexById: Record<string, number> = {};
+      addons.forEach(addon => {
+        installationCountById[addon.id] = (installationCountById[addon.id] || 0) + 1;
+      });
+
       // Group settings by addon name
       const grouped: GroupedCatalogs = {};
       availableCatalogs.forEach(setting => {
-        const addon = addons.find(a => a.id === setting.addonId);
+        const addon = addons.find(a => (a.installationId || a.id) === setting.addonId);
         if (!addon) return;
 
         if (!grouped[setting.addonId]) {
+          installationIndexById[addon.id] = (installationIndexById[addon.id] || 0) + 1;
           grouped[setting.addonId] = {
             name: addon.name,
             catalogs: [],
             expanded: true,
-            enabledCount: 0
+            enabledCount: 0,
+            installationNumber: installationCountById[addon.id] > 1 ? installationIndexById[addon.id] : undefined
           };
         }
 
@@ -620,9 +640,16 @@ const CatalogSettingsScreen = () => {
 
         {Object.entries(groupedSettings).map(([addonId, group]) => (
           <View key={addonId} style={styles.addonSection}>
-            <Text style={styles.addonTitle}>
-              {group.name.toUpperCase()}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={[styles.addonTitle, { marginBottom: 0 }]}>
+                {group.name.toUpperCase()}
+              </Text>
+              {group.installationNumber !== undefined && (
+                <View style={[styles.priorityBadge, { marginLeft: 8, backgroundColor: colors.primary }]}>
+                  <Text style={styles.priorityText}>#{group.installationNumber}</Text>
+                </View>
+              )}
+            </View>
 
             <View style={styles.card}>
               <TouchableOpacity

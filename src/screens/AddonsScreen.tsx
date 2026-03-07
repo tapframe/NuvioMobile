@@ -630,8 +630,8 @@ const AddonsScreen = () => {
       const existingInstallations = installedAddons.filter(a => a.id === manifest.id);
       const isAlreadyInstalled = existingInstallations.length > 0;
 
-      // Check if addon provides streams
-      const providesStreams = manifest.resources?.some(resource => {
+      // Check if addon provides streams or catalogs
+      const providesStreams = (manifest.catalogs && manifest.catalogs.length > 0) || manifest.resources?.some(resource => {
         if (typeof resource === 'string') {
           return resource === 'stream';
         } else if (typeof resource === 'object' && resource !== null && 'name' in resource) {
@@ -643,7 +643,7 @@ const AddonsScreen = () => {
       
       if (isAlreadyInstalled && !providesStreams) {
         setAlertTitle(t('common.error'));
-        setAlertMessage('This addon is already installed. Multiple installations are only allowed for stream providers.');
+        setAlertMessage('This addon is already installed. Multiple installations are only allowed for stream and catalog providers.');
         setAlertActions([{ label: t('common.ok'), onPress: () => setAlertVisible(false) }]);
         setAlertVisible(true);
         return;

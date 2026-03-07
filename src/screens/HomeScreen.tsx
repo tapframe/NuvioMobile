@@ -245,7 +245,7 @@ const HomeScreen = () => {
         if (addon.catalogs) {
           for (const catalog of addon.catalogs) {
             // Check if this catalog is enabled (default to true if no setting exists)
-            const settingKey = `${addon.id}:${catalog.type}:${catalog.id}`;
+            const settingKey = `${addon.installationId || addon.id}:${catalog.type}:${catalog.id}`;
             const isEnabled = catalogSettings[settingKey] ?? true;
 
             // Only load enabled catalogs
