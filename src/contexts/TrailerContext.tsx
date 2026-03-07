@@ -10,7 +10,7 @@ interface TrailerContextValue {
 const TrailerContext = createContext<TrailerContextValue | undefined>(undefined);
 
 export const TrailerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isTrailerPlaying, setIsTrailerPlaying] = useState(true);
+  const [isTrailerPlaying, setIsTrailerPlaying] = useState(false);
 
   const pauseTrailer = useCallback(() => {
     setIsTrailerPlaying(false);

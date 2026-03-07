@@ -11,7 +11,8 @@ import {
   Platform,
   useColorScheme,
   Animated,
-  Dimensions
+  Dimensions,
+  ActivityIndicator
 } from 'react-native';
 import { useSettings } from '../hooks/useSettings';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -110,7 +111,7 @@ const SectionHeader: React.FC<{ title: string; isDarkMode: boolean; colors: any 
 
 const HomeScreenSettings: React.FC = () => {
   const { t } = useTranslation();
-  const { settings, updateSetting } = useSettings();
+  const { settings, updateSetting, isLoaded } = useSettings();
   const systemColorScheme = useColorScheme();
   const { currentTheme } = useTheme();
   const colors = currentTheme.colors;
@@ -263,6 +264,20 @@ const HomeScreenSettings: React.FC = () => {
       color={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
     />
   );
+
+  if (!isLoaded) {
+    return (
+      <SafeAreaView style={[
+        styles.container,
+        { backgroundColor: isDarkMode ? colors.darkBackground : '#F2F2F7' }
+      ]}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[
@@ -710,6 +725,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 6,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

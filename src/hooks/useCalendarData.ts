@@ -68,7 +68,38 @@ export const useCalendarData = (): UseCalendarDataReturn => {
         );
 
         if (cachedData) {
-          setCalendarData(cachedData);
+          // Apply watched filter even on cached data
+          if (traktAuthenticated && watchedShows && watchedShows.length > 0) {
+            const cachedWatchedSet = new Set<string>();
+            for (const ws of watchedShows) {
+              const imdb = ws.show?.ids?.imdb;
+              if (!imdb) continue;
+              const showId = imdb.startsWith('tt') ? imdb : `tt${imdb}`;
+              const resetAt = ws.reset_at ? new Date(ws.reset_at).getTime() : 0;
+              if (ws.seasons) {
+                for (const season of ws.seasons) {
+                  for (const episode of season.episodes) {
+                    if (resetAt > 0 && new Date(episode.last_watched_at).getTime() < resetAt) continue;
+                    cachedWatchedSet.add(`${showId}:${season.number}:${episode.number}`);
+                  }
+                }
+              }
+            }
+            const filtered = cachedData.map(section => {
+              if (section.title !== 'This Week') return section;
+              return {
+                ...section,
+                data: section.data.filter((ep: any) => {
+                  const showId = ep.seriesId?.startsWith('tt') ? ep.seriesId : `tt${ep.seriesId}`;
+                  return !cachedWatchedSet.has(`${showId}:${ep.season}:${ep.episode}`) &&
+                         !cachedWatchedSet.has(`${ep.seriesId}:${ep.season}:${ep.episode}`);
+                })
+              };
+            });
+            setCalendarData(filtered);
+          } else {
+            setCalendarData(cachedData);
+          }
           setLoading(false);
           return;
         }
@@ -314,6 +345,29 @@ export const useCalendarData = (): UseCalendarDataReturn => {
 
       logger.log(`[CalendarData] Total episodes fetched: ${allEpisodes.length}`);
 
+      // Build a set of watched episodes from Trakt so we can filter them out of This Week
+      const watchedEpisodeSet = new Set<string>();
+      if (traktAuthenticated && watchedShows) {
+        for (const ws of watchedShows) {
+          const imdb = ws.show?.ids?.imdb;
+          if (!imdb) continue;
+          const showId = imdb.startsWith('tt') ? imdb : `tt${imdb}`;
+          const resetAt = ws.reset_at ? new Date(ws.reset_at).getTime() : 0;
+          if (ws.seasons) {
+            for (const season of ws.seasons) {
+              for (const episode of season.episodes) {
+                // Respect reset_at
+                if (resetAt > 0) {
+                  const watchedAt = new Date(episode.last_watched_at).getTime();
+                  if (watchedAt < resetAt) continue;
+                }
+                watchedEpisodeSet.add(`${showId}:${season.number}:${episode.number}`);
+              }
+            }
+          }
+        }
+      }
+
       // Use memory-efficient filtering with error handling
       const thisWeekEpisodes = await memoryManager.filterLargeArray(
         allEpisodes,
@@ -321,8 +375,18 @@ export const useCalendarData = (): UseCalendarDataReturn => {
           try {
             if (!ep.releaseDate) return false;
             const parsed = parseISO(ep.releaseDate);
-            // Show all episodes for this week, including released ones
-            return isThisWeek(parsed);
+            if (!isThisWeek(parsed)) return false;
+            // Filter out already-watched episodes when Trakt is authenticated
+            if (traktAuthenticated && watchedEpisodeSet.size > 0) {
+              const showId = ep.seriesId?.startsWith('tt') ? ep.seriesId : `tt${ep.seriesId}`;
+              if (
+                watchedEpisodeSet.has(`${showId}:${ep.season}:${ep.episode}`) ||
+                watchedEpisodeSet.has(`${ep.seriesId}:${ep.season}:${ep.episode}`)
+              ) {
+                return false;
+              }
+            }
+            return true;
           } catch (error) {
             logger.warn(`[CalendarData] Error parsing date for this week filtering: ${ep.releaseDate}`, error);
             return false;

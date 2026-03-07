@@ -259,6 +259,17 @@ export class TMDBService {
     }
   }
 
+  /**
+   * Returns the resolved TMDB API key (custom user key if set, otherwise default).
+   * Always awaits key loading so callers get the correct value.
+   */
+  async getApiKey(): Promise<string> {
+    if (!this.apiKeyLoaded) {
+      await this.loadApiKey();
+    }
+    return this.apiKey;
+  }
+
   private async getHeaders() {
     // Ensure API key is loaded before returning headers
     if (!this.apiKeyLoaded) {

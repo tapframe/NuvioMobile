@@ -75,6 +75,11 @@ const TrailerPlayer = React.forwardRef<any, TrailerPlayerProps>(({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isComponentMounted, setIsComponentMounted] = useState(true);
 
+  // FIX: Track whether this player has ever been in a playing state.
+  // This prevents the globalTrailerPlaying effect from suppressing the
+  // very first play attempt before the global state has been set to true.
+  const hasBeenPlayingRef = useRef(false);
+
   // Animated values
   const controlsOpacity = useSharedValue(0);
   const loadingOpacity = useSharedValue(1);
@@ -150,6 +155,7 @@ const TrailerPlayer = React.forwardRef<any, TrailerPlayerProps>(({
   useEffect(() => {
     if (isComponentMounted && paused === undefined) {
       setIsPlaying(autoPlay);
+      if (autoPlay) hasBeenPlayingRef.current = true;
     }
   }, [autoPlay, isComponentMounted, paused]);
 
@@ -163,18 +169,23 @@ const TrailerPlayer = React.forwardRef<any, TrailerPlayerProps>(({
   // Handle external paused prop to override playing state (highest priority)
   useEffect(() => {
     if (paused !== undefined) {
-      setIsPlaying(!paused);
-      logger.info('TrailerPlayer', `External paused prop changed: ${paused}, setting isPlaying to ${!paused}`);
+      const shouldPlay = !paused;
+      setIsPlaying(shouldPlay);
+      if (shouldPlay) hasBeenPlayingRef.current = true;
+      logger.info('TrailerPlayer', `External paused prop changed: ${paused}, setting isPlaying to ${shouldPlay}`);
     }
   }, [paused]);
 
   // Respond to global trailer state changes (e.g., when modal opens)
-  // Only apply if no external paused prop is controlling this
+  // Only apply if no external paused prop is controlling this.
+  // FIX: Only pause if this player has previously been in a playing state.
+  // This avoids the race condition where globalTrailerPlaying is still false
+  // at mount time (before the parent has called setTrailerPlaying(true)),
+  // which was causing the trailer to be immediately paused on every load.
   useEffect(() => {
     if (isComponentMounted && paused === undefined) {
-      // Always sync with global trailer state when pausing
-      // This ensures all trailers pause when one screen loses focus
-      if (!globalTrailerPlaying) {
+      if (!globalTrailerPlaying && hasBeenPlayingRef.current) {
+        // Only suppress if the player was previously playing — not on initial mount
         logger.info('TrailerPlayer', 'Global trailer paused - pausing this trailer');
         setIsPlaying(false);
       }
@@ -363,26 +374,18 @@ const TrailerPlayer = React.forwardRef<any, TrailerPlayerProps>(({
       <Video
         ref={videoRef}
         source={(() => {
-          const androidHeaders = Platform.OS === 'android' ? { 'User-Agent': 'Nuvio/1.0 (Android)' } : {} as any;
-          // Help ExoPlayer select proper MediaSource
           const lower = (trailerUrl || '').toLowerCase();
           const looksLikeHls = /\.m3u8(\b|$)/.test(lower) || /hls|applehlsencryption|playlist|m3u/.test(lower);
-          const looksLikeDash = /\.mpd(\b|$)/.test(lower) || /dash|manifest/.test(lower);
           if (Platform.OS === 'android') {
+            const androidHeaders = { 'User-Agent': 'Nuvio/1.0 (Android)' };
             if (looksLikeHls) {
               return { uri: trailerUrl, type: 'm3u8', headers: androidHeaders } as any;
-            }
-            if (looksLikeDash) {
-              return { uri: trailerUrl, type: 'mpd', headers: androidHeaders } as any;
             }
             return { uri: trailerUrl, headers: androidHeaders } as any;
           }
           return { uri: trailerUrl } as any;
         })()}
-        style={[
-          styles.video,
-          contentType === 'movie' && styles.movieVideoScale,
-        ]}
+        style={styles.video}
         resizeMode="cover"
         paused={!isPlaying}
         repeat={false}
@@ -513,9 +516,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  movieVideoScale: {
-    transform: [{ scale: 1.30 }], // Custom scale for movies to crop black bars
-  },
+
   videoOverlay: {
     position: 'absolute',
     top: 0,

@@ -19,6 +19,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { useTrailer } from '../../contexts/TrailerContext';
 import { logger } from '../../utils/logger';
 import TrailerService from '../../services/trailerService';
+import { TMDBService } from '../../services/tmdbService';
 import TrailerModal from './TrailerModal';
 import Animated, { useSharedValue, withTiming, withDelay, useAnimatedStyle } from 'react-native-reanimated';
 
@@ -175,10 +176,13 @@ const TrailersSection: React.FC<TrailersSectionProps> = memo(({
       try {
         logger.info('TrailersSection', `Fetching trailers for TMDB ID: ${tmdbId}, type: ${type}`);
 
+        // Resolve user-configured TMDB API key (falls back to default if not set)
+        const tmdbApiKey = await TMDBService.getInstance().getApiKey();
+
         // First check if the movie/TV show exists
         const basicEndpoint = type === 'movie'
-          ? `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=d131017ccc6e5462a81c9304d21476de`
-          : `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=d131017ccc6e5462a81c9304d21476de`;
+          ? `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${tmdbApiKey}`
+          : `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${tmdbApiKey}`;
 
         const basicResponse = await fetch(basicEndpoint);
         if (!basicResponse.ok) {
@@ -197,7 +201,7 @@ const TrailersSection: React.FC<TrailersSectionProps> = memo(({
 
         if (type === 'movie') {
           // For movies, just fetch the main videos endpoint
-          const videosEndpoint = `https://api.themoviedb.org/3/movie/${tmdbId}/videos?api_key=d131017ccc6e5462a81c9304d21476de&language=en-US`;
+          const videosEndpoint = `https://api.themoviedb.org/3/movie/${tmdbId}/videos?api_key=${tmdbApiKey}`;
 
           logger.info('TrailersSection', `Fetching movie videos from: ${videosEndpoint}`);
 
@@ -228,7 +232,7 @@ const TrailersSection: React.FC<TrailersSectionProps> = memo(({
           logger.info('TrailersSection', `TV show has ${numberOfSeasons} seasons`);
 
           // Fetch main TV show videos
-          const tvVideosEndpoint = `https://api.themoviedb.org/3/tv/${tmdbId}/videos?api_key=d131017ccc6e5462a81c9304d21476de&language=en-US`;
+          const tvVideosEndpoint = `https://api.themoviedb.org/3/tv/${tmdbId}/videos?api_key=${tmdbApiKey}`;
           const tvResponse = await fetch(tvVideosEndpoint);
 
           if (tvResponse.ok) {
@@ -247,7 +251,7 @@ const TrailersSection: React.FC<TrailersSectionProps> = memo(({
           const seasonPromises = [];
           for (let seasonNum = 1; seasonNum <= numberOfSeasons; seasonNum++) {
             seasonPromises.push(
-              fetch(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNum}/videos?api_key=d131017ccc6e5462a81c9304d21476de&language=en-US`)
+              fetch(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNum}/videos?api_key=${tmdbApiKey}`)
                 .then(res => res.json())
                 .then(data => ({
                   seasonNumber: seasonNum,

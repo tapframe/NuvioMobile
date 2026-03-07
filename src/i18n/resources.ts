@@ -24,6 +24,7 @@ import nlNL from './locales/nl-NL.json';
 import ro from './locales/ro.json';
 import sq from './locales/sq.json';
 import ca from './locales/ca.json';
+import ja from './locales/ja.json';
 
 export const resources = {
     en: { translation: en },
@@ -51,4 +52,5 @@ export const resources = {
     ro: { translation: ro },
     sq: { translation: sq },
     ca: { translation: ca },
+    ja: { translation: ja },
 };

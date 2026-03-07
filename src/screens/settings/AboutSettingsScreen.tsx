@@ -341,41 +341,6 @@ export const AboutFooter: React.FC<{ displayDownloads: number | null }> = ({ dis
                     />
                 </TouchableOpacity>
 
-                <View style={styles.socialRow}>
-                    <TouchableOpacity
-                        style={[styles.socialButton, { backgroundColor: currentTheme.colors.elevation1 }]}
-                        onPress={() => Linking.openURL('https://discord.gg/KVgDTjhA4H')}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.socialButtonContent}>
-                            <FastImage
-                                source={{ uri: 'https://pngimg.com/uploads/discord/discord_PNG3.png' }}
-                                style={styles.socialLogo}
-                                resizeMode={FastImage.resizeMode.contain}
-                            />
-                            <Text style={[styles.socialButtonText, { color: currentTheme.colors.highEmphasis }]}>
-                                Discord
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.socialButton, { backgroundColor: '#FF4500' + '15' }]}
-                        onPress={() => Linking.openURL('https://www.reddit.com/r/Nuvio/')}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.socialButtonContent}>
-                            <FastImage
-                                source={{ uri: 'https://www.iconpacks.net/icons/2/free-reddit-logo-icon-2436-thumb.png' }}
-                                style={styles.socialLogo}
-                                resizeMode={FastImage.resizeMode.contain}
-                            />
-                            <Text style={[styles.socialButtonText, { color: '#FF4500' }]}>
-                                Reddit
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
             </View>
 
             {/* Monkey Animation */}
@@ -468,30 +433,6 @@ const styles = StyleSheet.create({
     kofiImage: {
         width: 200,
         height: 50,
-    },
-    socialRow: {
-        flexDirection: 'row',
-        gap: 12,
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-    },
-    socialButton: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 12,
-    },
-    socialButtonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    socialLogo: {
-        width: 24,
-        height: 24,
-    },
-    socialButtonText: {
-        fontSize: 15,
-        fontWeight: '600',
     },
     monkeyContainer: {
         alignItems: 'center',

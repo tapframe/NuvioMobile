@@ -217,7 +217,7 @@ let settingsCacheTimestamp = 0;
 const SETTINGS_CACHE_TTL = 60000; // 1 minute
 
 export const useSettings = () => {
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<AppSettings>(() => cachedSettings || DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
@@ -289,10 +289,32 @@ export const useSettings = () => {
     value: AppSettings[K],
     emitEvent: boolean = true
   ) => {
-    const newSettings = { ...settings, [key]: value };
     try {
       const scope = (await mmkvStorage.getItem('@user:current')) || 'local';
       const scopedKey = `@user:${scope}:${SETTINGS_STORAGE_KEY}`;
+      // Always merge against the latest persisted/cached settings to avoid stale-overwrite races
+      // when multiple screens update settings concurrently.
+      let baseSettings: AppSettings = cachedSettings || DEFAULT_SETTINGS;
+      if (!cachedSettings) {
+        const [scopedJson, legacyJson] = await Promise.all([
+          mmkvStorage.getItem(scopedKey),
+          mmkvStorage.getItem(SETTINGS_STORAGE_KEY),
+        ]);
+        const parsedScoped = scopedJson ? JSON.parse(scopedJson) : null;
+        const parsedLegacy = legacyJson ? JSON.parse(legacyJson) : null;
+        const merged = parsedScoped || parsedLegacy;
+        if (merged) {
+          baseSettings = { ...DEFAULT_SETTINGS, ...merged };
+        }
+      }
+
+      const newSettings = { ...baseSettings, [key]: value };
+
+      // Update cache/UI immediately so subsequent updates in the same tick see fresh state.
+      cachedSettings = newSettings;
+      settingsCacheTimestamp = Date.now();
+      setSettings(newSettings);
+
       // Write to both scoped key (multi-user aware) and legacy key for backward compatibility
       await Promise.all([
         mmkvStorage.setItem(scopedKey, JSON.stringify(newSettings)),
@@ -300,12 +322,6 @@ export const useSettings = () => {
       ]);
       // Ensure a current scope exists to avoid future loads missing the chosen scope
       await mmkvStorage.setItem('@user:current', scope);
-
-      // Update cache
-      cachedSettings = newSettings;
-      settingsCacheTimestamp = Date.now();
-
-      setSettings(newSettings);
       if (__DEV__) console.log(`Setting updated: ${key}`, value);
 
       // Notify all subscribers that settings have changed (if requested)
@@ -317,7 +333,7 @@ export const useSettings = () => {
     } catch (error) {
       if (__DEV__) console.error('Failed to save settings:', error);
     }
-  }, [settings]);
+  }, []);
 
   return {
     settings,

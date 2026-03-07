@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { NavigationProp, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { TMDBService } from '../../services/tmdbService';
 import { RootStackParamList } from '../../navigation/AppNavigator';
 import { LinearGradient } from 'expo-linear-gradient';
 import FastImage from '@d11/react-native-fast-image';
@@ -440,35 +441,68 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
       thumbnailOpacity.value = withTiming(1, { duration: 300 });
 
       try {
-        // Extract year from metadata
-        const year = currentItem.releaseInfo
-          ? parseInt(currentItem.releaseInfo.split('-')[0], 10)
-          : new Date().getFullYear();
-
         // Extract TMDB ID if available
         const tmdbId = currentItem.id?.startsWith('tmdb:')
           ? currentItem.id.replace('tmdb:', '')
           : undefined;
 
+        if (!tmdbId) {
+          logger.info('[AppleTVHero] No TMDB ID for:', currentItem.name, '- skipping trailer');
+          setTrailerUrl(null);
+          setTrailerLoading(false);
+          return;
+        }
+
         const contentType = currentItem.type === 'series' ? 'tv' : 'movie';
 
-        logger.info('[AppleTVHero] Fetching trailer for:', currentItem.name, year, tmdbId);
+        logger.info('[AppleTVHero] Fetching TMDB videos for:', currentItem.name, 'tmdbId:', tmdbId);
 
-        const url = await TrailerService.getTrailerUrl(
-          currentItem.name,
-          year,
-          tmdbId,
-          contentType
+        // Fetch video list from TMDB to get the YouTube video ID
+        const tmdbApiKey = await TMDBService.getInstance().getApiKey();
+        const videosRes = await fetch(
+          `https://api.themoviedb.org/3/${contentType}/${tmdbId}/videos?api_key=${tmdbApiKey}`
+        );
+
+        if (!alive) return;
+
+        if (!videosRes.ok) {
+          logger.warn('[AppleTVHero] TMDB videos fetch failed:', videosRes.status);
+          setTrailerUrl(null);
+          setTrailerLoading(false);
+          return;
+        }
+
+        const videosData = await videosRes.json();
+        const results: any[] = videosData.results ?? [];
+
+        // Pick best YouTube trailer: any trailer > teaser > any YouTube video
+        const pick =
+          results.find((v) => v.site === 'YouTube' && v.type === 'Trailer') ??
+          results.find((v) => v.site === 'YouTube' && v.type === 'Teaser') ??
+          results.find((v) => v.site === 'YouTube');
+
+        if (!alive) return;
+
+        if (!pick) {
+          logger.info('[AppleTVHero] No YouTube video found for:', currentItem.name);
+          setTrailerUrl(null);
+          setTrailerLoading(false);
+          return;
+        }
+
+        logger.info('[AppleTVHero] Extracting stream for videoId:', pick.key, currentItem.name);
+
+        const url = await TrailerService.getTrailerFromVideoId(
+          pick.key,
+          currentItem.name
         );
 
         if (!alive) return;
 
         if (url) {
-          const bestUrl = TrailerService.getBestFormatUrl(url);
-          setTrailerUrl(bestUrl);
-          // logger.info('[AppleTVHero] Trailer URL loaded:', bestUrl);
+          setTrailerUrl(url);
         } else {
-          logger.info('[AppleTVHero] No trailer found for:', currentItem.name);
+          logger.info('[AppleTVHero] No stream extracted for:', currentItem.name);
           setTrailerUrl(null);
         }
       } catch (error) {
@@ -491,10 +525,17 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
   }, [currentItem, currentIndex]); // Removed settings?.showTrailers from dependencies
 
   // Handle trailer preloaded
+  // FIX: Set global trailer playing to true HERE — before the visible player mounts —
+  // so that when the visible player's autoPlay prop is evaluated it is already true,
+  // eliminating the race condition that previously caused the global state effect in
+  // TrailerPlayer to immediately pause the video on first render.
   const handleTrailerPreloaded = useCallback(() => {
+    if (isFocused && !isOutOfView && !trailerShouldBePaused) {
+      setTrailerPlaying(true);
+    }
     setTrailerPreloaded(true);
     logger.info('[AppleTVHero] Trailer preloaded successfully');
-  }, []);
+  }, [isFocused, isOutOfView, trailerShouldBePaused, setTrailerPlaying]);
 
   // Handle trailer ready to play
   const handleTrailerReady = useCallback(() => {
@@ -1078,7 +1119,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
                   key={`visible-${trailerUrl}`}
                   ref={trailerVideoRef}
                   trailerUrl={trailerUrl}
-                  autoPlay={globalTrailerPlaying}
+                  autoPlay={!trailerShouldBePaused}
                   muted={trailerMuted}
                   style={StyleSheet.absoluteFillObject}
                   hideLoadingSpinner={true}

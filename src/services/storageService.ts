@@ -500,7 +500,10 @@ class StorageService {
           traktProgress: highestTraktProgress,
           currentTime: highestCurrentTime,
         };
-        await this.setWatchProgress(id, type, updatedProgress, episodeId);
+        // preserveTimestamp: true prevents lastUpdated from being bumped to Date.now(),
+        // which would make getUnsyncedProgress() think the entry needs re-syncing and
+        // re-add already-watched movies/episodes back to Trakt history.
+        await this.setWatchProgress(id, type, updatedProgress, episodeId, { preserveTimestamp: true });
       }
     } catch (error) {
       logger.error('Error updating Trakt sync status:', error);
@@ -540,7 +543,9 @@ class StorageService {
           simklProgress: highestSimklProgress,
           currentTime: highestCurrentTime,
         };
-        await this.setWatchProgress(id, type, updatedProgress, episodeId);
+        // preserveTimestamp: true prevents lastUpdated from being bumped to Date.now(),
+        // which would make getUnsyncedProgress() treat synced entries as needing re-sync.
+        await this.setWatchProgress(id, type, updatedProgress, episodeId, { preserveTimestamp: true });
       }
     } catch (error) {
       logger.error('Error updating Simkl sync status:', error);

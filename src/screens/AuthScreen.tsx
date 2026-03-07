@@ -406,6 +406,7 @@ const AuthScreen: React.FC = () => {
                     placeholder="Password (min 6 characters)"
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     style={[styles.input, { color: currentTheme.colors.white }]}
+                    autoCapitalize="none"
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
@@ -454,6 +455,7 @@ const AuthScreen: React.FC = () => {
                       placeholder="Confirm password"
                       placeholderTextColor="rgba(255,255,255,0.4)"
                       style={[styles.input, { color: currentTheme.colors.white }]}
+                      autoCapitalize="none"
                       secureTextEntry={!showConfirm}
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}

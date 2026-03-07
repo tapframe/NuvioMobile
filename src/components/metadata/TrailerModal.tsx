@@ -159,35 +159,19 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
   const handleVideoError = useCallback((error: any) => {
     logger.error('TrailerModal', 'Video error:', error);
 
-    // Check if this is a permission/network error that might benefit from retry
-    const errorCode = error?.error?.code;
-    const isRetryableError = errorCode === -1102 || errorCode === -1009 || errorCode === -1005;
-
-    if (isRetryableError && retryCount < 2) {
-      // Silent retry - increment count and try again
-      logger.info('TrailerModal', `Retrying video load (attempt ${retryCount + 1}/2)`);
+    if (retryCount < 2) {
+      logger.info('TrailerModal', `Re-extracting trailer (attempt ${retryCount + 1}/2)`);
       setRetryCount(prev => prev + 1);
-
-      // Small delay before retry to avoid rapid-fire attempts
-      setTimeout(() => {
-        if (videoRef.current) {
-          // Force video to reload by changing the source briefly
-          setTrailerUrl(null);
-          setTimeout(() => {
-            if (trailerUrl) {
-              setTrailerUrl(trailerUrl);
-            }
-          }, 100);
-        }
-      }, 1000);
+      // Invalidate cache so loadTrailer gets a fresh URL, not the same bad one
+      if (trailer?.key) TrailerService.invalidateCache(trailer.key);
+      loadTrailer();
       return;
     }
 
-    // After 2 retries or for non-retryable errors, show the error
-    logger.error('TrailerModal', 'Video error after retries or non-retryable:', error);
+    logger.error('TrailerModal', 'Video error after retries:', error);
     setError('Unable to play trailer. Please try again.');
     setLoading(false);
-  }, [retryCount, trailerUrl]);
+  }, [retryCount, loadTrailer, trailer?.key]);
 
   const handleTrailerEnd = useCallback(() => {
     setIsPlaying(false);
@@ -270,7 +254,18 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
               <View style={styles.playerWrapper}>
                 <Video
                   ref={videoRef}
-                  source={{ uri: trailerUrl }}
+                  source={(() => {
+                    const lower = (trailerUrl || '').toLowerCase();
+                    const looksLikeHls = /\.m3u8(\b|$)/.test(lower) || /hls|playlist|m3u/.test(lower);
+                    if (Platform.OS === 'android') {
+                      const headers = { 'User-Agent': 'Nuvio/1.0 (Android)' };
+                      if (looksLikeHls) {
+                        return { uri: trailerUrl, type: 'm3u8', headers } as any;
+                      }
+                      return { uri: trailerUrl, headers } as any;
+                    }
+                    return { uri: trailerUrl } as any;
+                  })()}
                   style={styles.player}
                   controls={true}
                   paused={!isPlaying}

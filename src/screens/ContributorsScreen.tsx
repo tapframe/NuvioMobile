@@ -289,7 +289,7 @@ const DonorCard: React.FC<DonorCardProps> = ({ donor, currentTheme, isTablet }) 
           { color: currentTheme.colors.mediumEmphasis },
           isTablet && styles.tabletContributions
         ]}>
-          {donor.amount.toFixed(2)} {donor.currency} · {formatDonationDate(donor.date)}
+          {formatDonationDate(donor.date)}
         </Text>
         {donor.message ? (
           <Text style={[styles.donorMessage, { color: currentTheme.colors.mediumEmphasis }]}>
@@ -876,7 +876,7 @@ const ContributorsScreen: React.FC = () => {
                           { color: currentTheme.colors.mediumEmphasis },
                           isTablet && styles.tabletContributions
                         ]}>
-                          {entry.total.toFixed(2)} {entry.currency} · {entry.count} {entry.count === 1 ? 'donation' : 'donations'}
+                          {entry.count} {entry.count === 1 ? 'donation' : 'donations'}
                         </Text>
                         <Text style={[styles.donorMessage, { color: currentTheme.colors.mediumEmphasis }]}>
                           Rank #{entry.rank} · Last: {formatDonationDate(entry.lastDate)}

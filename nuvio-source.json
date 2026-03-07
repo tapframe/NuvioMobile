@@ -11,7 +11,7 @@
   "apps": [
     {
       "name": "Nuvio",
-      "bundleIdentifier": "com.nuvio.app",
+      "bundleIdentifier": "com.nuvio.hub",
       "developerName": "Tapframe",
       "subtitle": "Media player and discovery app",
       "localizedDescription": "Nuvio is a media player and metadata discovery application for user-provided and user-installed sources.",
