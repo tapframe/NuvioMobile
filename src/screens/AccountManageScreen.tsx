@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform, Animated, Easing, TextInput, ActivityIndicator } from 'react-native';
 import FastImage from '@d11/react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAccount } from '../contexts/AccountContext';
@@ -15,6 +16,7 @@ const AccountManageScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user, signOut, updateProfile } = useAccount();
   const { currentTheme } = useTheme();
+  const { t } = useTranslation();
 
   const headerOpacity = useRef(new Animated.Value(0)).current;
   const headerTranslateY = useRef(new Animated.Value(8)).current;
@@ -50,27 +52,27 @@ const AccountManageScreen: React.FC = () => {
     setSaving(true);
     const err = await updateProfile({ displayName: displayName.trim() || undefined, avatarUrl: avatarUrl.trim() || undefined });
     if (err) {
-      setAlertTitle('Error');
+      setAlertTitle(t('common.error', 'Error'));
       setAlertMessage(err);
-      setAlertActions([{ label: 'OK', onPress: () => {} }]);
+      setAlertActions([{ label: t('common.ok', 'OK'), onPress: () => { } }]);
       setAlertVisible(true);
     }
     setSaving(false);
   };
 
   const handleSignOut = () => {
-    setAlertTitle('Sign out');
-    setAlertMessage('Are you sure you want to sign out?');
+    setAlertTitle(t('account_manage.sign_out'));
+    setAlertMessage(t('components.are_you_sure_sign_out'));
     setAlertActions([
-      { label: 'Cancel', onPress: () => {} },
+      { label: t('common.cancel', 'Cancel'), onPress: () => { } },
       {
-        label: 'Sign out',
+        label: t('account_manage.sign_out'),
         onPress: async () => {
           try {
             await signOut();
             // @ts-ignore
             navigation.goBack();
-          } catch (_) {}
+          } catch (_) { }
         },
         style: { opacity: 1 },
       },
@@ -100,7 +102,7 @@ const AccountManageScreen: React.FC = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <MaterialIcons name="arrow-back" size={22} color={currentTheme.colors.white} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: currentTheme.colors.white }]}>Account</Text>
+        <Text style={[styles.headerTitle, { color: currentTheme.colors.white }]}>{t('account_manage.title')}</Text>
         <View style={{ width: 22, height: 22 }} />
       </Animated.View>
 
@@ -109,7 +111,7 @@ const AccountManageScreen: React.FC = () => {
         {/* Profile Badge */}
         <View style={styles.profileContainer}>
           {avatarUrl && !avatarError ? (
-            <View style={[styles.avatar, { overflow: 'hidden' }]}> 
+            <View style={[styles.avatar, { overflow: 'hidden' }]}>
               <FastImage
                 source={{ uri: avatarUrl }}
                 style={styles.avatarImage}
@@ -129,10 +131,10 @@ const AccountManageScreen: React.FC = () => {
           <View style={styles.itemRow}>
             <View style={styles.itemLeft}>
               <MaterialIcons name="badge" size={20} color={currentTheme.colors.primary} />
-              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>Display name</Text>
+              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>{t('account_manage.display_name')}</Text>
             </View>
             <TextInput
-              placeholder="Add a display name"
+              placeholder={t('account_manage.display_name_placeholder')}
               placeholderTextColor={currentTheme.colors.mediumEmphasis}
               style={[styles.input, { color: currentTheme.colors.white }]}
               value={displayName}
@@ -146,7 +148,7 @@ const AccountManageScreen: React.FC = () => {
           <View style={[styles.itemRow, Platform.OS === 'android' && styles.itemRowCompact]}>
             <View style={styles.itemLeft}>
               <MaterialIcons name="image" size={20} color={currentTheme.colors.primary} />
-              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>Avatar URL</Text>
+              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>{t('account_manage.avatar_url')}</Text>
             </View>
             <TextInput
               placeholder="https://..."
@@ -164,7 +166,7 @@ const AccountManageScreen: React.FC = () => {
           <View style={styles.itemRow}>
             <View style={styles.itemLeft}>
               <MaterialIcons name="account-circle" size={20} color={currentTheme.colors.primary} />
-              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>Email</Text>
+              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>{t('account_manage.email')}</Text>
             </View>
             <Text style={[styles.itemValue, { color: currentTheme.colors.mediumEmphasis }]} numberOfLines={1}>
               {user?.email || '—'}
@@ -176,7 +178,7 @@ const AccountManageScreen: React.FC = () => {
           <View style={styles.itemRow}>
             <View style={styles.itemLeft}>
               <MaterialIcons name="fingerprint" size={20} color={currentTheme.colors.primary} />
-              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>User ID</Text>
+              <Text style={[styles.itemTitle, { color: currentTheme.colors.highEmphasis }]}>{t('account_manage.user_id')}</Text>
             </View>
             <Text style={[styles.itemValue, { color: currentTheme.colors.mediumEmphasis }]} numberOfLines={1}>
               {user?.id}
@@ -196,7 +198,7 @@ const AccountManageScreen: React.FC = () => {
           ) : (
             <>
               <MaterialIcons name="save-alt" size={18} color={currentTheme.colors.white} style={{ marginRight: 8 }} />
-              <Text style={styles.saveText}>Save changes</Text>
+              <Text style={styles.saveText}>{t('account_manage.save_changes')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -210,7 +212,7 @@ const AccountManageScreen: React.FC = () => {
           onPress={handleSignOut}
         >
           <MaterialIcons name="logout" size={18} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.signOutText}>Sign out</Text>
+          <Text style={styles.signOutText}>{t('account_manage.sign_out')}</Text>
         </TouchableOpacity>
       </Animated.View>
       <CustomAlert

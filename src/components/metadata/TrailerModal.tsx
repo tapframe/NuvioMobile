@@ -59,7 +59,7 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
         return t('trailers.clip');
       case 'Featurette':
         return t('trailers.featurette');
-      case 'Behind the Scenes':
+      case t('components.behind_the_scenes'):
         return t('trailers.behind_the_scenes');
       default:
         return type;
@@ -120,10 +120,10 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
         setIsPlaying(true);
         logger.info('TrailerModal', `Successfully loaded direct trailer URL for: ${trailer.name}`);
       } else {
-        throw new Error('No streaming URL available');
+        throw new Error(t('trailers.no_streaming_url'));
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load trailer';
+      const errorMessage = err instanceof Error ? err.message : t('errors.failed_to_load_trailer');
       setError(errorMessage);
       setLoading(false);
       logger.error('TrailerModal', 'Error loading trailer:', err);
@@ -138,7 +138,7 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
 
   const handleClose = useCallback(() => {
     setIsPlaying(false);
-    
+
     // Resume hero section trailer when modal closes
     try {
       resumeTrailer();
@@ -146,12 +146,12 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
     } catch (error) {
       logger.warn('TrailerModal', 'Error resuming hero trailer:', error);
     }
-    
+
     onClose();
   }, [onClose, resumeTrailer]);
 
   const handleTrailerError = useCallback(() => {
-    setError('Failed to play trailer');
+    setError(t('trailers.unable_to_play'));
     setIsPlaying(false);
   }, []);
 
@@ -169,7 +169,7 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
     }
 
     logger.error('TrailerModal', 'Video error after retries:', error);
-    setError('Unable to play trailer. Please try again.');
+    setError(t('trailers.unable_to_play'));
     setLoading(false);
   }, [retryCount, loadTrailer, trailer?.key]);
 
@@ -230,7 +230,7 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={currentTheme.colors.primary} />
                 <Text style={[styles.loadingText, { color: currentTheme.colors.textMuted }]}>
-                  Loading trailer...
+                  {t('trailers.loading')}
                 </Text>
               </View>
             )}

@@ -15,13 +15,13 @@ export interface Theme {
 export const DEFAULT_THEMES: Theme[] = [
   {
     id: 'default',
-    name: 'Default Dark',
+    name: 'default_dark',
     colors: defaultColors,
     isEditable: false,
   },
   {
     id: 'ocean',
-    name: 'Ocean Blue',
+    name: 'ocean_blue',
     colors: {
       ...defaultColors,
       primary: '#3498db',
@@ -32,7 +32,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'sunset',
-    name: 'Sunset',
+    name: 'sunset',
     colors: {
       ...defaultColors,
       primary: '#ff7e5f',
@@ -43,7 +43,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'moonlight',
-    name: 'Moonlight',
+    name: 'moonlight',
     colors: {
       ...defaultColors,
       primary: '#c084fc',
@@ -54,7 +54,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'emerald',
-    name: 'Emerald',
+    name: 'emerald',
     colors: {
       ...defaultColors,
       primary: '#2ecc71',
@@ -65,7 +65,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'ruby',
-    name: 'Ruby',
+    name: 'ruby',
     colors: {
       ...defaultColors,
       primary: '#e74c3c',
@@ -76,7 +76,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'amethyst',
-    name: 'Amethyst',
+    name: 'amethyst',
     colors: {
       ...defaultColors,
       primary: '#9b59b6',
@@ -87,7 +87,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'amber',
-    name: 'Amber',
+    name: 'amber',
     colors: {
       ...defaultColors,
       primary: '#f39c12',
@@ -98,7 +98,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'mint',
-    name: 'Mint',
+    name: 'mint',
     colors: {
       ...defaultColors,
       primary: '#1abc9c',
@@ -109,7 +109,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'slate',
-    name: 'Slate',
+    name: 'slate',
     colors: {
       ...defaultColors,
       primary: '#7f8c8d',
@@ -120,7 +120,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'neon',
-    name: 'Neon',
+    name: 'neon',
     colors: {
       ...defaultColors,
       primary: '#00ff00',
@@ -131,7 +131,7 @@ export const DEFAULT_THEMES: Theme[] = [
   },
   {
     id: 'retro',
-    name: 'Retro Wave',
+    name: 'retro_wave',
     colors: {
       ...defaultColors,
       primary: '#ff00ff',

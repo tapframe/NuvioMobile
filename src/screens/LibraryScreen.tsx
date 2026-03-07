@@ -479,91 +479,91 @@ const LibraryScreen = () => {
       },
       {
         id: 'watching-shows',
-        name: 'Watching Shows',
+        name: t('library.watching_shows'),
         icon: 'visibility',
         itemCount: watchingShows?.length || 0,
       },
       {
         id: 'watching-movies',
-        name: 'Watching Movies',
+        name: t('library.watching_movies'),
         icon: 'visibility',
         itemCount: watchingMovies?.length || 0,
       },
       {
         id: 'watching-anime',
-        name: 'Watching Anime',
+        name: t('library.watching_anime'),
         icon: 'visibility',
         itemCount: watchingAnime?.length || 0,
       },
       {
         id: 'plantowatch-shows',
-        name: 'Plan to Watch Shows',
+        name: t('library.plan_to_watch_shows'),
         icon: 'bookmark-border',
         itemCount: planToWatchShows?.length || 0,
       },
       {
         id: 'plantowatch-movies',
-        name: 'Plan to Watch Movies',
+        name: t('library.plan_to_watch_movies'),
         icon: 'bookmark-border',
         itemCount: planToWatchMovies?.length || 0,
       },
       {
         id: 'plantowatch-anime',
-        name: 'Plan to Watch Anime',
+        name: t('library.plan_to_watch_anime'),
         icon: 'bookmark-border',
         itemCount: planToWatchAnime?.length || 0,
       },
       {
         id: 'completed-shows',
-        name: 'Completed Shows',
+        name: t('library.completed_shows'),
         icon: 'check-circle',
         itemCount: completedShows?.length || 0,
       },
       {
         id: 'completed-movies',
-        name: 'Completed Movies',
+        name: t('library.completed_movies'),
         icon: 'check-circle',
         itemCount: completedMovies?.length || 0,
       },
       {
         id: 'completed-anime',
-        name: 'Completed Anime',
+        name: t('library.completed_anime'),
         icon: 'check-circle',
         itemCount: completedAnime?.length || 0,
       },
       {
         id: 'onhold-shows',
-        name: 'On Hold Shows',
+        name: t('library.on_hold_shows'),
         icon: 'pause-circle-outline',
         itemCount: onHoldShows?.length || 0,
       },
       {
         id: 'onhold-movies',
-        name: 'On Hold Movies',
+        name: t('library.on_hold_movies'),
         icon: 'pause-circle-outline',
         itemCount: onHoldMovies?.length || 0,
       },
       {
         id: 'onhold-anime',
-        name: 'On Hold Anime',
+        name: t('library.on_hold_anime'),
         icon: 'pause-circle-outline',
         itemCount: onHoldAnime?.length || 0,
       },
       {
         id: 'dropped-shows',
-        name: 'Dropped Shows',
+        name: t('library.dropped_shows'),
         icon: 'cancel',
         itemCount: droppedShows?.length || 0,
       },
       {
         id: 'dropped-movies',
-        name: 'Dropped Movies',
+        name: t('library.dropped_movies'),
         icon: 'cancel',
         itemCount: droppedMovies?.length || 0,
       },
       {
         id: 'dropped-anime',
-        name: 'Dropped Anime',
+        name: t('library.dropped_anime'),
         icon: 'cancel',
         itemCount: droppedAnime?.length || 0,
       },
@@ -1187,7 +1187,7 @@ const LibraryScreen = () => {
             }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.exploreButtonText, { color: currentTheme.colors.white }]}>Refresh</Text>
+            <Text style={[styles.exploreButtonText, { color: currentTheme.colors.white }]}>{t('library.refresh')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -1313,7 +1313,7 @@ const LibraryScreen = () => {
             }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.exploreButtonText, { color: currentTheme.colors.white }]}>Refresh</Text>
+            <Text style={[styles.exploreButtonText, { color: currentTheme.colors.white }]}>{t('library.refresh')}</Text>
           </TouchableOpacity>
         </View>
       );

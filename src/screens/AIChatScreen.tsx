@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
@@ -433,7 +434,7 @@ const AIChatScreen: React.FC = () => {
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertActions, setAlertActions] = useState<Array<{ label: string; onPress: () => void; style?: object }>>([
-    { label: 'OK', onPress: () => setAlertVisible(false) },
+    { label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) },
   ]);
 
   const openAlert = (
@@ -452,7 +453,7 @@ const AIChatScreen: React.FC = () => {
         }))
       );
     } else {
-      setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+      setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
     }
     setAlertVisible(true);
   };
@@ -597,7 +598,7 @@ const AIChatScreen: React.FC = () => {
       }
     } catch (error) {
       if (__DEV__) console.error('Error loading context:', error);
-      openAlert('Error', 'Failed to load content details for AI chat');
+      openAlert('Error', i18n.t('components.failed_load_content_ai'));
     } finally {
       setIsLoadingContext(false);
       {/* CustomAlert at root */ }
@@ -692,18 +693,18 @@ const AIChatScreen: React.FC = () => {
     } catch (error) {
       if (__DEV__) console.error('Error sending message:', error);
 
-      let errorMessage = 'Sorry, I encountered an error. Please try again.';
+      let errorMessage = i18n.t('errors.ai_encountered_error');
       if (error instanceof Error) {
         if (error.message.includes('not configured')) {
           errorMessage = 'Please configure your OpenRouter API key in Settings > AI Assistant.';
         } else if (/401|unauthorized|invalid api key|authentication/i.test(error.message)) {
           errorMessage = 'OpenRouter rejected your API key. Please verify the key in Settings > AI Assistant.';
         } else if (/insufficient|credit|quota|429/i.test(error.message)) {
-          errorMessage = 'OpenRouter quota/credits were rejected for this request. Please check your OpenRouter usage and limits.';
+          errorMessage = i18n.t('errors.openrouter_quota_rejected');
         } else if (/model|provider|endpoint|unsupported|unavailable|not found/i.test(error.message)) {
           errorMessage = 'The selected OpenRouter model is unavailable. Retry with `openrouter/free` or choose another custom model in Settings > AI Assistant.';
         } else if (error.message.includes('API request failed')) {
-          errorMessage = 'Failed to connect to AI service. Please check your internet connection, API key, and OpenRouter model availability.';
+          errorMessage = i18n.t('errors.ai_service_error');
         }
       }
 
@@ -942,7 +943,7 @@ const AIChatScreen: React.FC = () => {
                   ]}
                   value={inputText}
                   onChangeText={setInputText}
-                  placeholder="Ask about this content..."
+                  placeholder={i18n.t('components.ask_about_content')}
                   placeholderTextColor={currentTheme.colors.mediumEmphasis}
                   multiline
                   maxLength={500}

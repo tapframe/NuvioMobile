@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -44,7 +45,7 @@ const DeveloperSettingsScreen: React.FC = () => {
     ) => {
         setAlertTitle(title);
         setAlertMessage(message);
-        setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
+        setAlertActions(actions && actions.length > 0 ? actions : [{ label: i18n.t('common.ok'), onPress: () => { } }]);
         setAlertVisible(true);
     };
 
@@ -67,9 +68,9 @@ const DeveloperSettingsScreen: React.FC = () => {
             'Clear All Data',
             'This will reset all settings and clear all cached data. Are you sure?',
             [
-                { label: 'Cancel', onPress: () => { } },
+                { label: t('components.cancel'), onPress: () => { } },
                 {
-                    label: 'Clear',
+                    label: t('components.clear'),
                     onPress: async () => {
                         try {
                             await mmkvStorage.clear();

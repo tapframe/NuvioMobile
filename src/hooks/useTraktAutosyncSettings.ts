@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useState, useEffect, useCallback } from 'react';
 import { mmkvStorage } from '../services/mmkvStorage';
 import { useTraktIntegration } from './useTraktIntegration';
@@ -130,10 +131,10 @@ export function useTraktAutosyncSettings() {
 
   // Get formatted sync frequency options
   const getSyncFrequencyOptions = useCallback(() => [
-    { label: 'Every 30 seconds', value: 30000 },
-    { label: 'Every minute', value: 60000 },
-    { label: 'Every 2 minutes', value: 120000 },
-    { label: 'Every 5 minutes', value: 300000 },
+    { label: i18n.t('settings.every_30_seconds'), value: 30000 },
+    { label: i18n.t('settings.every_minute'), value: 60000 },
+    { label: i18n.t('settings.every_2_minutes'), value: 120000 },
+    { label: i18n.t('settings.every_5_minutes'), value: 300000 },
   ], []);
 
   // Get formatted completion threshold options

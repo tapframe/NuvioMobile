@@ -48,7 +48,7 @@ const SyncSettingsScreen: React.FC = () => {
     (title: string, message: string, actions?: Array<{ label: string; onPress: () => void; style?: object }>) => {
       setAlertTitle(title);
       setAlertMessage(message);
-      setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
+      setAlertActions(actions && actions.length > 0 ? actions : [{ label: t('common.ok'), onPress: () => { } }]);
       setAlertVisible(true);
     },
     []

@@ -69,7 +69,7 @@ const CalendarScreen = () => {
     continueWatching,
     loadAllCollections
   } = useTraktContext();
-  
+
   logger.log(`[Calendar] Initial load - Library has ${libraryItems?.length || 0} items, loading: ${libraryLoading}`);
   const [refreshing, setRefreshing] = useState(false);
   const [uiReady, setUiReady] = useState(false);
@@ -91,7 +91,7 @@ const CalendarScreen = () => {
     });
     return () => task.cancel();
   }, []);
-  
+
   const handleSeriesPress = useCallback((seriesId: string, episode?: CalendarEpisode) => {
     navigation.navigate('Metadata', {
       id: seriesId,
@@ -99,14 +99,14 @@ const CalendarScreen = () => {
       episodeId: episode ? `${episode.seriesId}:${episode.season}:${episode.episode}` : undefined
     });
   }, [navigation]);
-  
+
   const handleEpisodePress = useCallback((episode: CalendarEpisode) => {
     // For series without episode dates, just go to the series page
     if (!episode.releaseDate) {
       handleSeriesPress(episode.seriesId, episode);
       return;
     }
-    
+
     // For episodes with dates, go to the stream screen
     const episodeId = `${episode.seriesId}:${episode.season}:${episode.episode}`;
     navigation.navigate('Streams', {
@@ -115,23 +115,23 @@ const CalendarScreen = () => {
       episodeId
     });
   }, [navigation, handleSeriesPress]);
-  
+
   const renderEpisodeItem = ({ item }: { item: CalendarEpisode }) => {
     const hasReleaseDate = !!item.releaseDate;
     const releaseDate = hasReleaseDate ? parseISO(item.releaseDate) : null;
     const formattedDate = releaseDate ? format(releaseDate, 'MMM d, yyyy') : '';
     const isFuture = releaseDate ? isAfter(releaseDate, new Date()) : false;
-    
+
     // Use episode still image if available, fallback to series poster
-    const imageUrl = item.still_path ? 
-      tmdbService.getImageUrl(item.still_path) : 
-      (item.season_poster_path ? 
-        tmdbService.getImageUrl(item.season_poster_path) : 
+    const imageUrl = item.still_path ?
+      tmdbService.getImageUrl(item.still_path) :
+      (item.season_poster_path ?
+        tmdbService.getImageUrl(item.season_poster_path) :
         item.poster);
-    
+
     return (
       <Animated.View entering={FadeIn.duration(300).delay(100)}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.episodeItem, { borderBottomColor: currentTheme.colors.border + '20' }]}
           onPress={() => handleEpisodePress(item)}
           activeOpacity={0.7}
@@ -146,40 +146,40 @@ const CalendarScreen = () => {
               resizeMode={FastImage.resizeMode.cover}
             />
           </TouchableOpacity>
-          
+
           <View style={styles.episodeDetails}>
             <Text style={[styles.seriesName, { color: currentTheme.colors.text }]} numberOfLines={1}>
               {item.seriesName}
             </Text>
-            
+
             {hasReleaseDate ? (
               <>
                 <Text style={[styles.episodeTitle, { color: currentTheme.colors.lightGray }]} numberOfLines={2}>
                   S{item.season}:E{item.episode} - {item.title}
                 </Text>
-                
+
                 {item.overview ? (
                   <Text style={[styles.overview, { color: currentTheme.colors.lightGray }]} numberOfLines={2}>
                     {item.overview}
                   </Text>
                 ) : null}
-                
+
                 <View style={styles.metadataContainer}>
                   <View style={styles.dateContainer}>
-                    <MaterialIcons 
-                      name={isFuture ? "event" : "event-available"} 
-                      size={16} 
-                      color={currentTheme.colors.lightGray} 
+                    <MaterialIcons
+                      name={isFuture ? "event" : "event-available"}
+                      size={16}
+                      color={currentTheme.colors.lightGray}
                     />
                     <Text style={[styles.date, { color: currentTheme.colors.lightGray }]}>{formattedDate}</Text>
                   </View>
-                  
+
                   {item.vote_average > 0 && (
                     <View style={styles.ratingContainer}>
-                      <MaterialIcons 
-                        name="star" 
-                        size={16} 
-                        color={currentTheme.colors.primary} 
+                      <MaterialIcons
+                        name="star"
+                        size={16}
+                        color={currentTheme.colors.primary}
                       />
                       <Text style={[styles.rating, { color: currentTheme.colors.primary }]}>
                         {item.vote_average.toFixed(1)}
@@ -194,10 +194,10 @@ const CalendarScreen = () => {
                   {t('calendar.no_scheduled_episodes')}
                 </Text>
                 <View style={styles.dateContainer}>
-                  <MaterialIcons 
-                    name="event-busy" 
-                    size={16} 
-                    color={currentTheme.colors.lightGray} 
+                  <MaterialIcons
+                    name="event-busy"
+                    size={16}
+                    color={currentTheme.colors.lightGray}
                   />
                   <Text style={[styles.date, { color: currentTheme.colors.lightGray }]}>{t('calendar.check_back_later')}</Text>
                 </View>
@@ -208,22 +208,22 @@ const CalendarScreen = () => {
       </Animated.View>
     );
   };
-  
+
   const renderSectionHeader = ({ section }: { section: CalendarSection }) => {
     // Map section titles to translation keys
     const titleKeyMap: Record<string, string> = {
-      'This Week': 'home.this_week',
+      [t('components.this_week')]: 'home.this_week',
       'Upcoming': 'home.upcoming',
-      'Recently Released': 'home.recently_released',
-      'Series with No Scheduled Episodes': 'home.no_scheduled_episodes'
+      [t('components.recently_released')]: 'home.recently_released',
+      [t('components.series_no_scheduled')]: 'home.no_scheduled_episodes'
     };
-    
+
     const displayTitle = titleKeyMap[section.title] ? t(titleKeyMap[section.title]) : section.title;
 
     return (
-      <View style={[styles.sectionHeader, { 
+      <View style={[styles.sectionHeader, {
         backgroundColor: currentTheme.colors.darkBackground,
-        borderBottomColor: currentTheme.colors.border 
+        borderBottomColor: currentTheme.colors.border
       }]}>
         <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>
           {displayTitle}
@@ -231,19 +231,19 @@ const CalendarScreen = () => {
       </View>
     );
   };
-  
+
   // Process all episodes once data is loaded - using memory-efficient approach
   const allEpisodes = React.useMemo(() => {
     if (!uiReady) return [] as CalendarEpisode[];
     const episodes = calendarData.reduce((acc: CalendarEpisode[], section: CalendarSection) => {
-      
+
       const trimmed = memoryManager.limitArraySize(section.data.filter(ep => ep.season !== 0), 500);
       return acc.length > 1500 ? acc : [...acc, ...trimmed];
     }, [] as CalendarEpisode[]);
     // Global cap to keep memory bounded
     return memoryManager.limitArraySize(episodes, 1500);
   }, [calendarData, uiReady]);
-  
+
   // Log when rendering with relevant state info
   logger.log(`[Calendar] Rendering: loading=${loading}, calendarData sections=${calendarData.length}, allEpisodes=${allEpisodes.length}`);
 
@@ -260,19 +260,19 @@ const CalendarScreen = () => {
   } else {
     logger.log(`[Calendar] No calendarData sections available`);
   }
-  
+
   // Handle date selection from calendar
   const handleDateSelect = useCallback((date: Date) => {
     logger.log(`[Calendar] Date selected: ${format(date, 'yyyy-MM-dd')}`);
     setSelectedDate(date);
-    
+
     // Filter episodes for the selected date
     const filtered = allEpisodes.filter(episode => {
       if (!episode.releaseDate) return false;
       const episodeDate = parseISO(episode.releaseDate);
       return isSameDay(episodeDate, date);
     });
-    
+
     logger.log(`[Calendar] Filtered episodes for selected date: ${filtered.length}`);
     setFilteredEpisodes(filtered);
   }, [allEpisodes]);
@@ -283,7 +283,7 @@ const CalendarScreen = () => {
     setSelectedDate(null);
     setFilteredEpisodes([]);
   }, []);
-  
+
   if ((loading || !uiReady) && !refreshing) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.darkBackground }]}>
@@ -295,13 +295,13 @@ const CalendarScreen = () => {
       </SafeAreaView>
     );
   }
-  
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.darkBackground }]}>
       <StatusBar barStyle="light-content" />
-      
+
       <View style={[styles.header, { borderBottomColor: currentTheme.colors.border }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -310,7 +310,7 @@ const CalendarScreen = () => {
         <Text style={[styles.headerTitle, { color: currentTheme.colors.text }]}>{t('calendar.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
-      
+
       {selectedDate && filteredEpisodes.length > 0 && (
         <View style={[styles.filterInfoContainer, { borderBottomColor: currentTheme.colors.border }]}>
           <Text style={[styles.filterInfoText, { color: currentTheme.colors.text }]}>
@@ -321,12 +321,12 @@ const CalendarScreen = () => {
           </TouchableOpacity>
         </View>
       )}
-      
-      <CalendarSectionComponent 
+
+      <CalendarSectionComponent
         episodes={allEpisodes}
         onSelectDate={handleDateSelect}
       />
-      
+
       {selectedDate && filteredEpisodes.length > 0 ? (
         <FlatList
           data={filteredEpisodes}
@@ -353,7 +353,7 @@ const CalendarScreen = () => {
           <Text style={[styles.emptyFilterText, { color: currentTheme.colors.text }]}>
             {t('calendar.no_episodes_for', { date: format(selectedDate, 'MMMM d, yyyy') })}
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.clearFilterButtonLarge, { backgroundColor: currentTheme.colors.primary }]}
             onPress={clearDateFilter}
           >

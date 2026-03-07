@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { memo, useCallback, useMemo } from 'react';
 import {
   View,
@@ -72,7 +73,7 @@ const StreamCard = memo(({
 
         // Use toast for Android, custom alert for iOS
         if (Platform.OS === 'android') {
-          showSuccess('URL Copied', 'Stream URL copied to clipboard!');
+          showSuccess(i18n.t('stream.url_copied'), i18n.t('stream.stream_url_copied'));
         } else {
           // iOS uses custom alert
           showAlert('Copied!', 'Stream URL has been copied to clipboard.');
@@ -80,7 +81,7 @@ const StreamCard = memo(({
       } catch (error) {
         // Fallback: show URL in alert if clipboard fails
         if (Platform.OS === 'android') {
-          showInfo('Stream URL', `Stream URL: ${stream.url}`);
+          showInfo(i18n.t('stream.stream_url'), `${i18n.t('stream.stream_url')}: ${stream.url}`);
         } else {
           showAlert('Stream URL', stream.url);
         }

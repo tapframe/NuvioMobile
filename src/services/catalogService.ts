@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { stremioService, Meta, Manifest } from './stremioService';
 import { notificationService } from './notificationService';
 import { mmkvStorage } from './mmkvStorage';
@@ -399,7 +400,7 @@ class CatalogService {
           displayName = uniqueWords.join(' ');
 
           // Add content type if not present
-          const contentType = catalog.type === 'movie' ? 'Movies' : 'TV Shows';
+          const contentType = catalog.type === 'movie' ? 'Movies' : i18n.t('components.tv_shows');
           if (!displayName.toLowerCase().includes(contentType.toLowerCase())) {
             displayName = `${displayName} ${contentType}`;
           }
@@ -526,7 +527,7 @@ class CatalogService {
               addon: 'tmdb',
               type,
               id: 'trending',
-              name: `Trending ${type === 'movie' ? 'Movies' : 'TV Shows'}`,
+              name: `Trending ${type === 'movie' ? 'Movies' : i18n.t('components.tv_shows')}`,
               items: trendingStreamingItems
             };
           })(),
@@ -541,7 +542,7 @@ class CatalogService {
               addon: 'tmdb',
               type,
               id: 'popular',
-              name: `Popular ${type === 'movie' ? 'Movies' : 'TV Shows'}`,
+              name: `Popular ${type === 'movie' ? 'Movies' : i18n.t('components.tv_shows')}`,
               items: popularStreamingItems
             };
           })(),
@@ -556,7 +557,7 @@ class CatalogService {
               addon: 'tmdb',
               type,
               id: 'upcoming',
-              name: type === 'movie' ? 'Upcoming Movies' : 'On Air TV Shows',
+              name: type === 'movie' ? i18n.t('components.upcoming_movies') : i18n.t('components.on_air_tv_shows'),
               items: upcomingStreamingItems
             };
           })()
@@ -574,7 +575,7 @@ class CatalogService {
           addon: 'tmdb',
           type,
           id: 'discover',
-          name: `${genreFilter} ${type === 'movie' ? 'Movies' : 'TV Shows'}`,
+          name: `${genreFilter} ${type === 'movie' ? 'Movies' : i18n.t('components.tv_shows')}`,
           genre: genreFilter,
           items: streamingItems
         }];

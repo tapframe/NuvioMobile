@@ -22,6 +22,7 @@ import axios from 'axios';
 import { getPluginTesterStyles, useIsLargeScreen } from './styles';
 import { Header, MainTabBar } from './components';
 import type { RootStackNavigationProp } from '../../navigation/AppNavigator';
+import i18n from '../../i18n';
 
 interface IndividualTesterProps {
     onSwitchTab: (tab: 'individual' | 'repo') => void;
@@ -462,7 +463,7 @@ export const IndividualTester = ({ onSwitchTab }: IndividualTesterProps) => {
                                 onPress={() => setMediaType('movie')}
                             >
                                 <Ionicons name="film-outline" size={18} color={mediaType === 'movie' ? currentTheme.colors.primary : currentTheme.colors.highEmphasis} />
-                                <Text style={[styles.segmentText, mediaType === 'movie' && styles.segmentTextActive]}>Movie</Text>
+                                <Text style={[styles.segmentText, mediaType === 'movie' && styles.segmentTextActive]}>{i18n.t('components.movie')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.segmentItem, mediaType === 'tv' && styles.segmentItemActive]}

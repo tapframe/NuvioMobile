@@ -42,6 +42,7 @@ import Animated, {
     Layout,
 } from 'react-native-reanimated';
 import { SubtitleCue } from '../utils/playerTypes';
+import i18n from '../../../i18n';
 
 interface SubtitleSyncModalProps {
     visible: boolean;
@@ -296,7 +297,7 @@ export const SubtitleSyncModal: React.FC<SubtitleSyncModalProps> = ({
                         />
                         {/* Offset display */}
                         <View style={styles.offsetContainer}>
-                            <Text style={[styles.offsetLabel, isLargeScreen && styles.offsetLabelLarge]}>Delay</Text>
+                            <Text style={[styles.offsetLabel, isLargeScreen && styles.offsetLabelLarge]}>{i18n.t('components.delay')}</Text>
                             <Text style={[
                                 styles.offsetValue,
                                 { color: primaryColor },
@@ -352,7 +353,7 @@ export const SubtitleSyncModal: React.FC<SubtitleSyncModalProps> = ({
                                 activeOpacity={0.7}
                             >
                                 <MaterialIcons name="refresh" size={isLargeScreen ? 16 : 14} color="#fff" style={{ marginRight: 4 }} />
-                                <Text style={[styles.resetBtnText, isLargeScreen && styles.resetBtnTextLarge]}>Reset</Text>
+                                <Text style={[styles.resetBtnText, isLargeScreen && styles.resetBtnTextLarge]}>{i18n.t('components.reset')}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -378,7 +379,7 @@ export const SubtitleSyncModal: React.FC<SubtitleSyncModalProps> = ({
                                 onPress={onClose}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[styles.cancelBtnText, isLargeScreen && styles.btnTextLarge]}>CANCEL</Text>
+                                <Text style={[styles.cancelBtnText, isLargeScreen && styles.btnTextLarge]}>{i18n.t('components.cancel_upper')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -398,7 +399,7 @@ export const SubtitleSyncModal: React.FC<SubtitleSyncModalProps> = ({
                     >
                         {/* Offset display */}
                         <View style={styles.offsetContainer}>
-                            <Text style={[styles.offsetLabel, isLargeScreen && styles.offsetLabelLarge]}>Delay</Text>
+                            <Text style={[styles.offsetLabel, isLargeScreen && styles.offsetLabelLarge]}>{i18n.t('components.delay')}</Text>
                             <Text style={[
                                 styles.offsetValue,
                                 { color: primaryColor },
@@ -454,7 +455,7 @@ export const SubtitleSyncModal: React.FC<SubtitleSyncModalProps> = ({
                                 activeOpacity={0.7}
                             >
                                 <MaterialIcons name="refresh" size={isLargeScreen ? 16 : 14} color="#fff" style={{ marginRight: 4 }} />
-                                <Text style={[styles.resetBtnText, isLargeScreen && styles.resetBtnTextLarge]}>Reset</Text>
+                                <Text style={[styles.resetBtnText, isLargeScreen && styles.resetBtnTextLarge]}>{i18n.t('components.reset')}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -480,7 +481,7 @@ export const SubtitleSyncModal: React.FC<SubtitleSyncModalProps> = ({
                                 onPress={onClose}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[styles.cancelBtnText, isLargeScreen && styles.btnTextLarge]}>CANCEL</Text>
+                                <Text style={[styles.cancelBtnText, isLargeScreen && styles.btnTextLarge]}>{i18n.t('components.cancel_upper')}</Text>
                             </TouchableOpacity>
                         </View>
                     </ExpoBlurView>

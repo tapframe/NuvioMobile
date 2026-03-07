@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { toastService } from '../services/toastService';
@@ -79,13 +80,13 @@ export const useUpdatePopup = (): UseUpdatePopupReturn => {
         // The app will automatically reload with the new version
         console.log('Update installed successfully');
       } else {
-        toastService.error('Installation Failed', 'Unable to install the update. Please try again later or check your internet connection.');
+        toastService.error(i18n.t('errors.installation_failed'), i18n.t('errors.installation_failed_desc'));
         // Show popup again after failed installation
         setShowUpdatePopup(true);
       }
     } catch (error) {
       if (__DEV__) console.error('Error installing update:', error);
-      toastService.error('Installation Error', 'An error occurred while installing the update. Please try again later.');
+      toastService.error(i18n.t('errors.installation_error'), i18n.t('errors.installation_error_desc'));
       // Show popup again after error
       setShowUpdatePopup(true);
     } finally {

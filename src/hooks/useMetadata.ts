@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { StreamingContent } from '../services/catalogService';
 import { catalogService } from '../services/catalogService';
@@ -24,7 +25,7 @@ const withTimeout = <T>(promise: Promise<T>, timeout: number, fallback?: T): Pro
   return Promise.race([
     promise,
     new Promise<T>((resolve, reject) =>
-      setTimeout(() => fallback ? resolve(fallback) : reject(new Error('Request timed out')), timeout)
+      setTimeout(() => fallback ? resolve(fallback) : reject(new Error(i18n.t('errors.request_timed_out'))), timeout)
     )
   ]);
 };
@@ -393,7 +394,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
               ...status,
               isLoading: false,
               hasCompleted: true,
-              error: error instanceof Error ? error.message : 'Initial request failed',
+              error: error instanceof Error ? error.message : i18n.t('errors.initial_request_failed'),
               endTime: Date.now()
             };
           }
@@ -598,7 +599,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
 
                   // Extract creators/writers
                   const writers = credits.crew
-                    .filter((person: any) => ['Writer', 'Screenplay'].includes(person.job))
+                    .filter((person: any) => [i18n.t('roles.writer'), i18n.t('roles.screenplay')].includes(person.job))
                     .map((person: any) => person.name);
 
                   // Add to formatted movie
@@ -682,9 +683,9 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
                     const creators = credits.crew
                       .filter((person: any) =>
                         person.job === 'Creator' ||
-                        person.job === 'Series Creator' ||
+                        person.job === i18n.t('roles.series_creator') ||
                         person.department === 'Production' ||
-                        person.job === 'Executive Producer'
+                        person.job === i18n.t('roles.executive_producer')
                       )
                       .map((person: any) => person.name);
 
@@ -1125,7 +1126,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
       }
 
       // Preserve the original error details for better error parsing
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load content';
+      const errorMessage = error instanceof Error ? error.message : i18n.t('errors.failed_to_load_content');
       setError(errorMessage);
 
       // Clear any stale data
@@ -1761,7 +1762,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
         setScraperStatuses(prevStatuses =>
           prevStatuses.map(status =>
             !status.hasCompleted && !status.error
-              ? { ...status, isLoading: false, hasCompleted: true, error: 'Request timed out', endTime: Date.now() }
+              ? { ...status, isLoading: false, hasCompleted: true, error: i18n.t('errors.request_timed_out'), endTime: Date.now() }
               : status
           )
         );
@@ -1770,7 +1771,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
     } catch (error) {
       if (__DEV__) console.error('❌ [loadStreams] Failed to load streams:', error);
       // Preserve the original error details for better error parsing
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load streams';
+      const errorMessage = error instanceof Error ? error.message : i18n.t('errors.failed_to_load_streams');
       setError(errorMessage);
       setLoadingStreams(false);
     }
@@ -2057,7 +2058,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
         setScraperStatuses(prevStatuses =>
           prevStatuses.map(status =>
             !status.hasCompleted && !status.error
-              ? { ...status, isLoading: false, hasCompleted: true, error: 'Request timed out', endTime: Date.now() }
+              ? { ...status, isLoading: false, hasCompleted: true, error: i18n.t('errors.request_timed_out'), endTime: Date.now() }
               : status
           )
         );
@@ -2066,7 +2067,7 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
     } catch (error) {
       if (__DEV__) console.error('❌ [loadEpisodeStreams] Failed to load episode streams:', error);
       // Preserve the original error details for better error parsing
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load episode streams';
+      const errorMessage = error instanceof Error ? error.message : i18n.t('errors.failed_to_load_episode_streams');
       setError(errorMessage);
       setLoadingEpisodeStreams(false);
     }

@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -207,7 +208,7 @@ const UpdateScreen: React.FC = () => {
     } catch (error) {
       if (__DEV__) console.error('Error checking for updates:', error);
       setUpdateStatus('error');
-      setLastOperation(`${t('common.error')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLastOperation(`${t('common.error')}: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
       openAlert(t('common.error'), t('updates.status_error'));
     } finally {
       setIsChecking(false);
@@ -247,10 +248,10 @@ const UpdateScreen: React.FC = () => {
         const fullRelease = await import('../services/githubReleaseService').then(m => m.fetchLatestGithubRelease());
 
         if (!fullRelease || !fullRelease.assets) {
-          throw new Error('Could not fetch release assets');
+          throw new Error(t('errors.could_not_fetch_release'));
         }
 
-        setLastOperation('Downloading APK...');
+        setLastOperation(t('errors.downloading_apk'));
         // Note: Progress is not currently supported by FileSystem.downloadAsync in the simple way
         // We'll simulate it for now or implement a more complex downloader later if needed
         const success = await AndroidUpdateService.downloadAndInstallUpdate(
@@ -266,7 +267,7 @@ const UpdateScreen: React.FC = () => {
           setLastOperation(t('updates.status_success'));
           // No alert needed, system installer takes over
         } else {
-          throw new Error('Download or installation failed');
+          throw new Error(t('errors.download_or_install_failed'));
         }
         return;
       }
@@ -301,7 +302,7 @@ const UpdateScreen: React.FC = () => {
     } catch (error) {
       if (__DEV__) console.error('Error installing update:', error);
       setUpdateStatus('error');
-      setLastOperation(`${t('updates.status_error')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLastOperation(`${t('updates.status_error')}: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
       openAlert(t('common.error'), t('updates.alert_install_failed'));
     } finally {
       setIsInstalling(false);
@@ -342,29 +343,29 @@ const UpdateScreen: React.FC = () => {
 
   const testConnectivity = async () => {
     try {
-      setLastOperation('Testing connectivity...');
+      setLastOperation(t('components.testing_connectivity'));
       const isReachable = await UpdateService.testUpdateConnectivity();
 
       if (isReachable) {
-        setLastOperation('Update server is reachable');
+        setLastOperation(t('components.update_server_reachable'));
       } else {
-        setLastOperation('Update server is not reachable');
+        setLastOperation(t('components.update_server_unreachable'));
       }
     } catch (error) {
       if (__DEV__) console.error('Error testing connectivity:', error);
-      setLastOperation(`Connectivity test error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLastOperation(`Connectivity test error: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
       // Logs disabled
     }
   };
 
   const testAssetUrls = async () => {
     try {
-      setLastOperation('Testing asset URLs...');
+      setLastOperation(t('components.testing_asset_urls'));
       await UpdateService.testAllAssetUrls();
-      setLastOperation('Asset URL testing completed');
+      setLastOperation(t('components.asset_url_testing_completed'));
     } catch (error) {
       if (__DEV__) console.error('Error testing asset URLs:', error);
-      setLastOperation(`Asset URL test error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setLastOperation(`Asset URL test error: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
       // Logs disabled
     }
   };
@@ -752,7 +753,7 @@ const UpdateScreen: React.FC = () => {
           </SettingsCard>
 
           {false && (
-            <SettingsCard title="UPDATE LOGS" isTablet={isTablet}>
+            <SettingsCard title={t('settings.update_logs_title')} isTablet={isTablet}>
               <View style={styles.logsContainer}>
                 <View style={styles.logsHeader}>
                   <Text style={[styles.logsHeaderText, { color: currentTheme.colors.highEmphasis }]}>
@@ -786,7 +787,7 @@ const UpdateScreen: React.FC = () => {
                   nestedScrollEnabled={true}
                 >
                   {false ? (
-                    <Text style={[styles.noLogsText, { color: currentTheme.colors.mediumEmphasis }]}>No logs available</Text>
+                    <Text style={[styles.noLogsText, { color: currentTheme.colors.mediumEmphasis }]}>{t('update.no_logs')}</Text>
                   ) : (
                     ([] as string[]).map((log, index) => {
                       const isError = log.indexOf('[ERROR]') !== -1;

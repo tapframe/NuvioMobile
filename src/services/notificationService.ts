@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import * as Notifications from 'expo-notifications';
 import { Platform, AppState, AppStateStatus } from 'react-native';
 import { mmkvStorage } from './mmkvStorage';
@@ -368,7 +369,7 @@ class NotificationService {
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Download complete',
+          title: i18n.t('success.download_complete'),
           body: title,
           data: { kind: 'download-complete' },
         },

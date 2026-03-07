@@ -9,6 +9,7 @@ import Animated, {
     SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { parentalGuideService } from '../../../services/parentalGuideService';
 import { logger } from '../../../utils/logger';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -26,16 +27,7 @@ interface WarningItem {
     severity: string;
 }
 
-const formatLabel = (key: string): string => {
-    const labels: Record<string, string> = {
-        nudity: 'Nudity',
-        violence: 'Violence',
-        profanity: 'Profanity',
-        alcohol: 'Alcohol/Drugs',
-        frightening: 'Frightening',
-    };
-    return labels[key] || key;
-};
+
 
 // Row height for calculating line animation
 const ROW_HEIGHT = 18;
@@ -66,6 +58,7 @@ export const ParentalGuideOverlay: React.FC<ParentalGuideOverlayProps> = ({
     episode,
     shouldShow,
 }) => {
+    const { t } = useTranslation();
     const { currentTheme } = useTheme();
     const insets = useSafeAreaInsets();
     const screenWidth = Dimensions.get('window').width;
@@ -107,8 +100,8 @@ export const ParentalGuideOverlay: React.FC<ParentalGuideOverlayProps> = ({
                     Object.entries(guide).forEach(([key, severity]) => {
                         if (severity && severity.toLowerCase() !== 'none') {
                             items.push({
-                                label: formatLabel(key),
-                                severity: severity,
+                                label: t(`advisory.${key}`, { defaultValue: key }),
+                                severity: t(`advisory.${severity.toLowerCase()}`, { defaultValue: severity }),
                             });
                         }
                     });
@@ -172,7 +165,7 @@ export const ParentalGuideOverlay: React.FC<ParentalGuideOverlayProps> = ({
                 // Don't reset hasShownRef here - only reset on content change
             }, lineDelay + 300);
         }
-        
+
         // When controls are hidden (shouldShow becomes true), show overlay if not already shown for this content
         // Only show if transitioning from false to true (controls just hidden)
         if (shouldShow && !prevShouldShowRef.current && warnings.length > 0 && !hasShownRef.current) {

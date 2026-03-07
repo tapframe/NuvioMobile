@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import i18n from '../../i18n';
 
 /**
  * Animated search indicator shown while searching
@@ -69,7 +70,7 @@ export const SearchAnimation: React.FC = () => {
                         color={currentTheme.colors.white}
                     />
                 </RNAnimated.View>
-                <Text style={[styles.text, { color: currentTheme.colors.white }]}>Searching</Text>
+                <Text style={[styles.text, { color: currentTheme.colors.white }]}>{i18n.t('components.searching')}</Text>
             </View>
         </RNAnimated.View>
     );

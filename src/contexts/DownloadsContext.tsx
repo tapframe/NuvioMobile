@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -478,9 +479,9 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const doneItem = downloadsRef.current.find(x => x.id === taskId);
         if (doneItem) {
           notifyCompleted({ ...doneItem, status: 'completed', progress: 100, fileUri: finalUri || doneItem.fileUri } as DownloadItem);
-          stopLiveActivityForDownload(taskId, { title: doneItem.title, subtitle: 'Completed', progressPercent: 100 });
+          stopLiveActivityForDownload(taskId, { title: doneItem.title, subtitle: i18n.t('download_status.completed'), progressPercent: 100 });
         } else {
-          stopLiveActivityForDownload(taskId, { subtitle: 'Completed', progressPercent: 100 });
+          stopLiveActivityForDownload(taskId, { subtitle: i18n.t('download_status.completed'), progressPercent: 100 });
         }
 
         try {
@@ -498,7 +499,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }));
 
         const current = downloadsRef.current.find(x => x.id === taskId);
-        stopLiveActivityForDownload(taskId, { title: current?.title, subtitle: 'Error', progressPercent: current?.progress });
+        stopLiveActivityForDownload(taskId, { title: current?.title, subtitle: i18n.t('download_status.error'), progressPercent: current?.progress });
 
         console.log(`[DownloadsContext] Background download error: ${taskId}`, error);
       });
@@ -596,9 +597,9 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               const done = downloadsRef.current.find(x => x.id === d.id);
               if (done) {
                 notifyCompleted({ ...done, status: 'completed', progress: 100, fileUri: d.fileUri } as DownloadItem);
-                stopLiveActivityForDownload(d.id, { title: done.title, subtitle: 'Completed', progressPercent: 100 });
+                stopLiveActivityForDownload(d.id, { title: done.title, subtitle: i18n.t('download_status.completed'), progressPercent: 100 });
               } else {
-                stopLiveActivityForDownload(d.id, { subtitle: 'Completed', progressPercent: 100 });
+                stopLiveActivityForDownload(d.id, { subtitle: i18n.t('download_status.completed'), progressPercent: 100 });
               }
               tasksRef.current.delete(d.id);
               lastBytesRef.current.delete(d.id);
@@ -663,12 +664,12 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const startDownload = useCallback(async (input: StartDownloadInput) => {
     if (!isHttpUrl(input.url)) {
-      throw new Error('This stream is not a direct HTTP URL, so it cannot be downloaded.');
+      throw new Error(i18n.t('errors.stream_not_direct'));
     }
 
     // Validate that the URL is downloadable (not m3u8 or DASH)
     if (!isDownloadableUrl(input.url)) {
-      throw new Error('This stream format cannot be downloaded. M3U8 (HLS) and DASH streaming formats are not supported for download.');
+      throw new Error(i18n.t('errors.stream_format_unsupported_dl'));
     }
 
     const contentId = input.id;
@@ -797,7 +798,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     updateDownload(id, (d) => ({ ...d, status: 'paused', updatedAt: Date.now() }));
 
     const current = downloadsRef.current.find(d => d.id === id);
-    stopLiveActivityForDownload(id, { title: current?.title, subtitle: 'Paused', progressPercent: current?.progress });
+    stopLiveActivityForDownload(id, { title: current?.title, subtitle: i18n.t('download_status.paused'), progressPercent: current?.progress });
 
     const task = tasksRef.current.get(id);
     if (!task) return;
@@ -811,7 +812,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const cancelDownload = useCallback(async (id: string) => {
     const current = downloadsRef.current.find(d => d.id === id);
-    await stopLiveActivityForDownload(id, { title: current?.title, subtitle: 'Canceled', progressPercent: current?.progress });
+    await stopLiveActivityForDownload(id, { title: current?.title, subtitle: i18n.t('download_status.canceled'), progressPercent: current?.progress });
     try {
       const task = tasksRef.current.get(id);
       if (task) {
@@ -831,7 +832,7 @@ export const DownloadsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const removeDownload = useCallback(async (id: string) => {
     const item = downloadsRef.current.find(d => d.id === id);
-    await stopLiveActivityForDownload(id, { title: item?.title, subtitle: 'Removed', progressPercent: item?.progress });
+    await stopLiveActivityForDownload(id, { title: item?.title, subtitle: i18n.t('download_status.removed'), progressPercent: item?.progress });
     if (item?.fileUri && item.status === 'completed') {
       await FileSystem.deleteAsync(item.fileUri, { idempotent: true }).catch(() => { });
     }

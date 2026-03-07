@@ -21,6 +21,7 @@ import { logger } from '../../utils/logger';
 import { useTraktComments } from '../../hooks/useTraktComments';
 import { useSettings } from '../../hooks/useSettings';
 import BottomSheet, { BottomSheetView, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import i18n from '../../i18n';
 
 // Enhanced responsive breakpoints for Comments Section
 const BREAKPOINTS = {
@@ -468,7 +469,7 @@ const CompactCommentCard: React.FC<{
                   color: theme.colors.error,
                   fontSize: isTV ? 13 : isLargeTablet ? 12 : isTablet ? 11 : 11
                 }
-              ]}>Spoiler</Text>
+              ]}>{i18n.t('components.spoiler')}</Text>
             )}
           </View>
           <View style={styles.compactStats}>
@@ -669,14 +670,14 @@ const ExpandedCommentBottomSheet: React.FC<{
             <View style={[styles.spoilerIcon, { backgroundColor: theme.colors.card }]}>
               <MaterialIcons name="visibility-off" size={20} color={theme.colors.mediumEmphasis} />
             </View>
-            <Text style={[styles.spoilerTitle, { color: theme.colors.highEmphasis }]}>Contains spoilers</Text>
+            <Text style={[styles.spoilerTitle, { color: theme.colors.highEmphasis }]}>{i18n.t('components.contains_spoilers')}</Text>
             <TouchableOpacity
               style={[styles.revealButton, { borderColor: theme.colors.primary }]}
               onPress={onSpoilerPress}
               activeOpacity={0.9}
             >
               <MaterialIcons name="visibility" size={18} color={theme.colors.primary} />
-              <Text style={[styles.revealButtonText, { color: theme.colors.primary }]}>Reveal</Text>
+              <Text style={[styles.revealButtonText, { color: theme.colors.primary }]}>{i18n.t('components.reveal')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -693,7 +694,7 @@ const ExpandedCommentBottomSheet: React.FC<{
         {/* Comment Meta */}
         <View style={styles.modalMeta}>
           {comment.spoiler && (
-            <Text style={[styles.spoilerText, { color: theme.colors.error }]}>Spoiler</Text>
+            <Text style={[styles.spoilerText, { color: theme.colors.error }]}>{i18n.t('components.spoiler')}</Text>
           )}
           <View style={styles.modalStats}>
             {comment.likes > 0 && (
@@ -1165,14 +1166,14 @@ export const CommentBottomSheet: React.FC<{
             <View style={[styles.spoilerIcon, { backgroundColor: theme.colors.card }]}>
               <MaterialIcons name="visibility-off" size={20} color={theme.colors.mediumEmphasis} />
             </View>
-            <Text style={[styles.spoilerTitle, { color: theme.colors.highEmphasis }]}>Contains spoilers</Text>
+            <Text style={[styles.spoilerTitle, { color: theme.colors.highEmphasis }]}>{i18n.t('components.contains_spoilers')}</Text>
             <TouchableOpacity
               style={[styles.revealButton, { borderColor: theme.colors.primary }]}
               onPress={onSpoilerPress}
               activeOpacity={0.9}
             >
               <MaterialIcons name="visibility" size={18} color={theme.colors.primary} />
-              <Text style={[styles.revealButtonText, { color: theme.colors.primary }]}>Reveal</Text>
+              <Text style={[styles.revealButtonText, { color: theme.colors.primary }]}>{i18n.t('components.reveal')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -1189,7 +1190,7 @@ export const CommentBottomSheet: React.FC<{
         {/* Comment Meta */}
         <View style={styles.modalMeta}>
           {comment.spoiler && (
-            <Text style={[styles.spoilerText, { color: theme.colors.error }]}>Spoiler</Text>
+            <Text style={[styles.spoilerText, { color: theme.colors.error }]}>{i18n.t('components.spoiler')}</Text>
           )}
           <View style={styles.modalStats}>
             {comment.likes > 0 && (

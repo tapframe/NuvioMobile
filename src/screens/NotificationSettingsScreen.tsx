@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -113,7 +114,7 @@ const NotificationSettingsScreen = () => {
       logger.error('Error updating notification settings:', error);
       setAlertTitle('Error');
       setAlertMessage('Failed to update notification settings');
-      setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+      setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
       setAlertVisible(true);
     }
   };
@@ -138,13 +139,13 @@ const NotificationSettingsScreen = () => {
             }
             setAlertTitle(t('common.success') || 'Success');
             setAlertMessage(t('notification.alert_reset_success'));
-            setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+            setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
             setAlertVisible(true);
           } catch (error) {
             logger.error('Error resetting notifications:', error);
             setAlertTitle('Error');
             setAlertMessage('Failed to reset notifications');
-            setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+            setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
             setAlertVisible(true);
           }
         },
@@ -167,13 +168,13 @@ const NotificationSettingsScreen = () => {
 
       setAlertTitle(t('notification.alert_sync_complete'));
       setAlertMessage(t('notification.alert_sync_msg', { upcoming: stats.upcoming, thisWeek: stats.thisWeek }));
-      setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+      setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
       setAlertVisible(true);
     } catch (error) {
       logger.error('Error syncing notifications:', error);
       setAlertTitle('Error');
       setAlertMessage('Failed to sync notifications. Please try again.');
-      setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+      setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
       setAlertVisible(true);
     } finally {
       setIsSyncing(false);
@@ -228,19 +229,19 @@ const NotificationSettingsScreen = () => {
         setCountdown(0); // No countdown for instant notification
         setAlertTitle(t('common.success') || 'Success');
         setAlertMessage(t('notification.alert_test_scheduled'));
-        setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+        setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
         setAlertVisible(true);
       } else {
         setAlertTitle('Error');
         setAlertMessage('Failed to schedule test notification. Make sure notifications are enabled.');
-        setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+        setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
         setAlertVisible(true);
       }
     } catch (error) {
       logger.error('Error scheduling test notification:', error);
       setAlertTitle('Error');
       setAlertMessage('Failed to schedule test notification');
-      setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+      setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
       setAlertVisible(true);
     }
   };
@@ -259,7 +260,7 @@ const NotificationSettingsScreen = () => {
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: currentTheme.colors.text }]}>Loading settings...</Text>
+          <Text style={[styles.loadingText, { color: currentTheme.colors.text }]}>{t('components.loading_settings')}</Text>
         </View>
       </SafeAreaView>
     );

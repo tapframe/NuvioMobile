@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -694,7 +695,7 @@ const CatalogScreen: React.FC<CatalogScreenProps> = ({ route, navigation }) => {
     } catch (err) {
       // ... existing error handling
       InteractionManager.runAfterInteractions(() => {
-        setError(err instanceof Error ? err.message : 'Failed to load catalog items');
+        setError(err instanceof Error ? err.message : i18n.t('errors.failed_to_load_catalog'));
       });
       logger.error('Failed to load catalog:', err);
     } finally {

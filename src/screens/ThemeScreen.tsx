@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -32,10 +33,10 @@ const ANDROID_STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 // Theme categories for organization
 const THEME_CATEGORIES = [
-  { id: 'all', name: 'All Themes' },
-  { id: 'dark', name: 'Dark Themes' },
+  { id: 'all', name: i18n.t('components.all_themes') },
+  { id: 'dark', name: i18n.t('components.dark_themes') },
   { id: 'colorful', name: 'Colorful' },
-  { id: 'custom', name: 'My Themes' },
+  { id: 'custom', name: i18n.t('components.my_themes') },
 ];
 
 interface ThemeCardProps {
@@ -193,7 +194,7 @@ const ThemeColorEditor: React.FC<ThemeColorEditorProps & {
         if (!themeName.trim()) {
           setAlertTitle(t('theme.editor.invalid_name_title'));
           setAlertMessage(t('theme.editor.invalid_name_msg'));
-          setAlertActions([{ label: 'OK', onPress: () => { } }]);
+          setAlertActions([{ label: i18n.t('common.ok'), onPress: () => { } }]);
           setAlertVisible(true);
           return;
         }
@@ -484,7 +485,7 @@ const ThemeScreen: React.FC = () => {
       if (!themeName.trim()) {
         setAlertTitle(t('theme.editor.invalid_name_title'));
         setAlertMessage(t('theme.editor.invalid_name_msg'));
-        setAlertActions([{ label: 'OK', onPress: () => { } }]);
+        setAlertActions([{ label: i18n.t('common.ok'), onPress: () => { } }]);
         setAlertVisible(true);
         return false;
       }

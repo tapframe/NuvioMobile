@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -162,7 +163,7 @@ const SpecialMentionCard: React.FC<SpecialMentionCardProps> = ({ mention, curren
         Alert.alert(
           mention.name,
           `Discord: @${mention.username}\n\nDo you want to open Discord and search for this user?`,
-          [{ text: 'OK' }]
+          [{ text: i18n.t('common.ok') }]
         );
       }
     });

@@ -63,6 +63,7 @@ import { findBestSubtitleTrack, findBestAudioTrack } from './utils/trackSelectio
 import { buildExoAudioTrackName, buildExoSubtitleTrackName } from './android/components/VideoSurface';
 import { useTheme } from '../../contexts/ThemeContext';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 
 const DEBUG_MODE = false;
 
@@ -71,9 +72,10 @@ const AndroidVideoPlayer: React.FC = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'PlayerAndroid'>>();
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
+  const { t } = useTranslation();
 
   const {
-    uri, title = 'Episode Name', season, episode, episodeTitle, quality, year,
+    uri, title = t('components.episode_name'), season, episode, episodeTitle, quality, year,
     streamProvider, streamName, headers, id, type, episodeId, imdbId,
     availableStreams: passedAvailableStreams, backdrop, groupedEpisodes
   } = route.params;
@@ -526,7 +528,7 @@ const AndroidVideoPlayer: React.FC = () => {
     if (!hasExoPlayerFailed.current) {
       hasExoPlayerFailed.current = true;
       logger.warn('[AndroidVideoPlayer] ExoPlayer codec error detected, switching to MPV silently');
-      ToastAndroid.show('Switching to MPV due to playback issue', ToastAndroid.SHORT);
+      ToastAndroid.show(t('components.switching_to_mpv_error'), ToastAndroid.SHORT);
       setUseExoPlayer(false);
     }
   }, []);
@@ -542,7 +544,7 @@ const AndroidVideoPlayer: React.FC = () => {
   const confirmSwitchToMPV = useCallback(() => {
     hasExoPlayerFailed.current = true;
     logger.info('[AndroidVideoPlayer] User confirmed switch to MPV');
-    ToastAndroid.show('Switching to MPV player...', ToastAndroid.SHORT);
+    ToastAndroid.show(t('components.switching_to_mpv_player'), ToastAndroid.SHORT);
 
     // Store current playback position before switching
     const currentPos = playerState.currentTime;
@@ -699,10 +701,10 @@ const AndroidVideoPlayer: React.FC = () => {
       setCurrentSubtitle(cueNow ? cueNow.text : '');
 
       logger.info(`[AndroidVideoPlayer] Loaded addon subtitle: ${subtitle.display} (${parsedCues.length} cues)`);
-      toast.success(`Subtitle loaded: ${subtitle.display}`);
+      toast.success(`${t('success.subtitle_loaded')}: ${subtitle.display}`);
     } catch (e) {
       logger.error('[AndroidVideoPlayer] Error loading subtitle', e);
-      toast.error('Failed to load subtitle');
+      toast.error(t('errors.failed_to_load_subtitle'));
     } finally {
       setIsLoadingSubtitles(false);
     }
@@ -791,7 +793,7 @@ const AndroidVideoPlayer: React.FC = () => {
               logger.error('Video Error', err);
 
               // Determine the actual error message
-              let displayError = 'An unknown error occurred';
+              let displayError = t('errors.an_unknown_error_occurred');
 
               if (typeof err?.error === 'string') {
                 displayError = err.error;
@@ -1177,16 +1179,16 @@ const AndroidVideoPlayer: React.FC = () => {
       {/* MPV Switch Confirmation Alert */}
       <CustomAlert
         visible={showMpvSwitchAlert}
-        title="Switch to MPV Player?"
-        message="This will switch from ExoPlayer to MPV player. Use this if you're facing playback issues that don't automatically switch to MPV. The switch cannot be undone during this playback session."
+        title={t('components.switch_to_mpv')}
+        message={t('components.switch_to_mpv_desc')}
         onClose={() => setShowMpvSwitchAlert(false)}
         actions={[
           {
-            label: 'Cancel',
+            label: t('common.cancel'),
             onPress: () => setShowMpvSwitchAlert(false),
           },
           {
-            label: 'Switch to MPV',
+            label: t('components.switch_mpv_btn'),
             onPress: () => {
               setShowMpvSwitchAlert(false);
               confirmSwitchToMPV();

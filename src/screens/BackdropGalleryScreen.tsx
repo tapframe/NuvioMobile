@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -75,10 +76,10 @@ const BackdropGalleryScreen: React.FC = () => {
         if (images && images.backdrops && images.backdrops.length > 0) {
           setBackdrops(images.backdrops);
         } else {
-          setError('No backdrops found');
+          setError(i18n.t('components.no_backdrops_found'));
         }
       } catch (err) {
-        setError('Failed to load backdrops');
+        setError(i18n.t('components.failed_to_load_backdrops'));
         console.error('Backdrop fetch error:', err);
       } finally {
         setLoading(false);
@@ -140,7 +141,7 @@ const BackdropGalleryScreen: React.FC = () => {
         {renderHeader()}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={currentTheme.colors.primary} />
-          <Text style={[styles.loadingText, { color: currentTheme.colors.textMuted }]}>Loading backdrops...</Text>
+          <Text style={[styles.loadingText, { color: currentTheme.colors.textMuted }]}>{i18n.t('components.loading_backdrops')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -154,7 +155,7 @@ const BackdropGalleryScreen: React.FC = () => {
         <View style={styles.errorContainer}>
           <MaterialIcons name="image-not-supported" size={64} color={currentTheme.colors.textMuted} />
           <Text style={[styles.errorText, { color: currentTheme.colors.textMuted }]}>
-            {error || 'No backdrops available'}
+            {error || i18n.t('components.no_backdrops_available')}
           </Text>
         </View>
       </SafeAreaView>

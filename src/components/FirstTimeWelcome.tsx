@@ -12,6 +12,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import i18n from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -46,7 +47,7 @@ const FirstTimeWelcome = () => {
         onPress={() => navigation.navigate('Addons')}
       >
         <MaterialIcons name="extension" size={20} color="white" />
-        <Text style={styles.buttonText}>Install Addons</Text>
+        <Text style={styles.buttonText}>{i18n.t('components.install_addons')}</Text>
       </TouchableOpacity>
     </Animated.View>
   );

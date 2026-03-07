@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import * as Updates from 'expo-updates';
 import { Platform } from 'react-native';
 
@@ -387,7 +388,7 @@ export class UpdateService {
         } catch (fetchError) {
           const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
           this.addLog(`Update fetch failed: ${errorMessage}`, 'ERROR');
-          this.addLog(`Fetch error stack: ${fetchError instanceof Error ? fetchError.stack : 'No stack available'}`, 'ERROR');
+          this.addLog(`Fetch error stack: ${fetchError instanceof Error ? fetchError.stack : i18n.t('errors.update_no_stack')}`, 'ERROR');
           throw fetchError; // Re-throw to be caught by outer catch block
         }
       }
@@ -398,7 +399,7 @@ export class UpdateService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.addLog(`Update installation failed: ${errorMessage}`, 'ERROR');
-      this.addLog(`Error stack: ${error instanceof Error ? error.stack : 'No stack available'}`, 'ERROR');
+      this.addLog(`Error stack: ${error instanceof Error ? error.stack : i18n.t('errors.update_no_stack')}`, 'ERROR');
       console.error('Failed to download/install update:', error);
       return false;
     }

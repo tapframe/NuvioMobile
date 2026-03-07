@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform, Animated, Easing, Keyboard, StatusBar, useWindowDimensions, Linking } from 'react-native';
 import { mmkvStorage } from '../services/mmkvStorage';
@@ -6,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAccount } from '../contexts/AccountContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { useToast } from '../contexts/ToastContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +17,7 @@ const AUTH_BG_GRADIENT = ['#07090F', '#0D1020', '#140B24'] as const;
 
 const normalizeAuthErrorMessage = (input: string): string => {
   const raw = (input || '').trim();
-  if (!raw) return 'Authentication failed';
+  if (!raw) return i18n.t('errors.auth_failed');
 
   let parsed: any = null;
   if (raw.startsWith('{') && raw.endsWith('}')) {
@@ -30,7 +32,7 @@ const normalizeAuthErrorMessage = (input: string): string => {
   const message = (parsed?.msg || parsed?.message || raw).toString();
 
   if (code === 'invalid_credentials' || /invalid login credentials/i.test(message)) {
-    return 'Invalid email or password';
+    return i18n.t('errors.invalid_email_pass');
   }
   if (code === 'email_not_confirmed' || /email not confirmed/i.test(message)) {
     return 'Email not confirmed. Check your inbox or Spam/Junk folder, verify your account, then sign in.';
@@ -51,6 +53,7 @@ const AuthScreen: React.FC = () => {
   const safeTopInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0);
   const backButtonTop = safeTopInset + 8;
   const { showError, showSuccess } = useToast();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -161,24 +164,24 @@ const AuthScreen: React.FC = () => {
     if (loading) return;
 
     if (!isEmailValid) {
-      const msg = 'Enter a valid email address';
+      const msg = t('errors.enter_valid_email');
       setError(msg);
-      showError('Invalid Email', 'Enter a valid email address');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showError(t('auth.invalid_email'), t('auth.enter_valid_email'));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => { });
       return;
     }
     if (!isPasswordValid) {
-      const msg = 'Password must be at least 6 characters';
+      const msg = t('errors.password_length');
       setError(msg);
-      showError('Password Too Short', 'Password must be at least 6 characters');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showError(t('auth.password_too_short'), t('auth.password_min_length'));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => { });
       return;
     }
     if (mode === 'signup' && !passwordsMatch) {
-      const msg = 'Passwords do not match';
+      const msg = t('errors.passwords_not_match');
       setError(msg);
-      showError('Passwords Don\'t Match', 'Passwords do not match');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showError(t('auth.passwords_dont_match'), t('auth.passwords_do_not_match'));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => { });
       return;
     }
     setLoading(true);
@@ -190,19 +193,19 @@ const AuthScreen: React.FC = () => {
         setMode('signin');
         setPassword('');
         setConfirmPassword('');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
         setLoading(false);
         return;
       }
 
       const cleanError = normalizeAuthErrorMessage(err);
       setError(cleanError);
-      showError('Authentication Failed', cleanError);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showError(t('auth.auth_failed'), cleanError);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => { });
     } else {
       const msg = mode === 'signin' ? 'Logged in successfully' : 'Sign up successful';
-      showSuccess('Success', msg);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      showSuccess(t('success.success'), msg);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
 
       // Navigate to main tabs after successful authentication
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] } as any);
@@ -213,7 +216,7 @@ const AuthScreen: React.FC = () => {
   const handleSkipAuth = async () => {
     try {
       await mmkvStorage.setItem('showLoginHintToastOnce', 'true');
-    } catch {}
+    } catch { }
     navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] } as any);
   };
 
@@ -230,7 +233,7 @@ const AuthScreen: React.FC = () => {
       {Platform.OS !== 'android' && (
         <View style={styles.backgroundPattern}>
           {Array.from({ length: 20 }).map((_, i) => (
-            <View 
+            <View
               key={i}
               style={[
                 styles.patternDot,
@@ -267,9 +270,9 @@ const AuthScreen: React.FC = () => {
               isTablet ? styles.centerContainerTablet : null,
               keyboardHeight > 0
                 ? {
-                    justifyContent: 'flex-start',
-                    paddingTop: Platform.OS === 'ios' ? 12 : safeTopInset + 8,
-                  }
+                  justifyContent: 'flex-start',
+                  paddingTop: Platform.OS === 'ios' ? 12 : safeTopInset + 8,
+                }
                 : null,
             ]}
           >
@@ -285,16 +288,16 @@ const AuthScreen: React.FC = () => {
               ]}
             >
               <Animated.Text style={[styles.heading, { color: currentTheme.colors.white, opacity: titleOpacity, transform: [{ translateY: titleTranslateY }] }]}>
-                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+                {mode === 'signin' ? t('auth.welcome_back') : t('auth.create_account')}
               </Animated.Text>
               {keyboardHeight === 0 && (
                 <Text style={[styles.subheading, { color: currentTheme.colors.textMuted }]}>
-                  Sync your addons, progress and settings across devices
+                  {t('auth.sync_desc')}
                 </Text>
               )}
             </Animated.View>
 
-            <Animated.View style={[styles.card, isTablet ? styles.cardTablet : null, keyboardHeight > 0 ? styles.cardCompact : null, { 
+            <Animated.View style={[styles.card, isTablet ? styles.cardTablet : null, keyboardHeight > 0 ? styles.cardCompact : null, {
               backgroundColor: Platform.OS === 'android' ? '#121212' : 'rgba(255,255,255,0.02)',
               borderColor: Platform.OS === 'android' ? '#1f1f1f' : 'rgba(255,255,255,0.06)',
               ...(Platform.OS !== 'android' ? {
@@ -305,8 +308,8 @@ const AuthScreen: React.FC = () => {
               } : {}),
               opacity: cardOpacity,
               transform: [{ translateY: cardTranslateY }],
-            }]}>                
-              
+            }]}>
+
               {/* Mode Toggle */}
               <View
                 onLayout={(e) => setSwitchWidth(e.nativeEvent.layout.width)}
@@ -339,7 +342,7 @@ const AuthScreen: React.FC = () => {
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.switchText, { color: mode === 'signin' ? '#fff' : currentTheme.colors.textMuted }]}>
-                    Sign In
+                    {t('auth.sign_in')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -348,32 +351,32 @@ const AuthScreen: React.FC = () => {
                   activeOpacity={0.8}
                 >
                   <Text style={[
-                    styles.switchText, 
-                    { 
+                    styles.switchText,
+                    {
                       color: mode === 'signup' ? '#fff' : currentTheme.colors.textMuted
                     }
                   ]}>
-                    Sign Up
+                    {t('auth.sign_up')}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {/* Email Input */}
               <View style={[styles.inputContainer]}>
-                <View style={[styles.inputRow, { 
-                  backgroundColor: Platform.OS === 'android' ? '#1a1a1a' : 'rgba(255,255,255,0.03)', 
+                <View style={[styles.inputRow, {
+                  backgroundColor: Platform.OS === 'android' ? '#1a1a1a' : 'rgba(255,255,255,0.03)',
                   borderColor: Platform.OS === 'android' ? '#2a2a2a' : (isEmailValid || !email ? 'rgba(255,255,255,0.08)' : 'rgba(255,107,107,0.4)'),
                   borderWidth: 1,
-                }]}>                
-                  <View style={[styles.iconContainer, { backgroundColor: Platform.OS === 'android' ? '#222' : (isEmailValid ? 'rgba(46,160,67,0.15)' : 'rgba(255,255,255,0.05)') }]}>                
-                    <MaterialIcons 
-                      name="mail-outline" 
-                      size={18} 
-                      color={Platform.OS === 'android' ? currentTheme.colors.textMuted : (isEmailValid ? '#2EA043' : currentTheme.colors.textMuted)} 
+                }]}>
+                  <View style={[styles.iconContainer, { backgroundColor: Platform.OS === 'android' ? '#222' : (isEmailValid ? 'rgba(46,160,67,0.15)' : 'rgba(255,255,255,0.05)') }]}>
+                    <MaterialIcons
+                      name="mail-outline"
+                      size={18}
+                      color={Platform.OS === 'android' ? currentTheme.colors.textMuted : (isEmailValid ? '#2EA043' : currentTheme.colors.textMuted)}
                     />
                   </View>
                   <TextInput
-                    placeholder="Email address"
+                    placeholder={t('auth.email_placeholder')}
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     style={[styles.input, { color: currentTheme.colors.white }]}
                     autoCapitalize="none"
@@ -390,20 +393,20 @@ const AuthScreen: React.FC = () => {
 
               {/* Password Input */}
               <View style={styles.inputContainer}>
-                <View style={[styles.inputRow, { 
-                  backgroundColor: Platform.OS === 'android' ? '#1a1a1a' : 'rgba(255,255,255,0.03)', 
+                <View style={[styles.inputRow, {
+                  backgroundColor: Platform.OS === 'android' ? '#1a1a1a' : 'rgba(255,255,255,0.03)',
                   borderColor: Platform.OS === 'android' ? '#2a2a2a' : (isPasswordValid || !password ? 'rgba(255,255,255,0.08)' : 'rgba(255,107,107,0.4)'),
                   borderWidth: 1,
-                }]}>                
-                  <View style={[styles.iconContainer, { backgroundColor: Platform.OS === 'android' ? '#222' : (isPasswordValid ? 'rgba(46,160,67,0.15)' : 'rgba(255,255,255,0.05)') }]}>                
-                    <MaterialIcons 
-                      name="lock-outline" 
-                      size={18} 
-                      color={Platform.OS === 'android' ? currentTheme.colors.textMuted : (isPasswordValid ? '#2EA043' : currentTheme.colors.textMuted)} 
+                }]}>
+                  <View style={[styles.iconContainer, { backgroundColor: Platform.OS === 'android' ? '#222' : (isPasswordValid ? 'rgba(46,160,67,0.15)' : 'rgba(255,255,255,0.05)') }]}>
+                    <MaterialIcons
+                      name="lock-outline"
+                      size={18}
+                      color={Platform.OS === 'android' ? currentTheme.colors.textMuted : (isPasswordValid ? '#2EA043' : currentTheme.colors.textMuted)}
                     />
                   </View>
                   <TextInput
-                    placeholder="Password (min 6 characters)"
+                    placeholder={t('auth.password_placeholder')}
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     style={[styles.input, { color: currentTheme.colors.white }]}
                     autoCapitalize="none"
@@ -414,10 +417,10 @@ const AuthScreen: React.FC = () => {
                     onSubmitEditing={handleSubmit}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={styles.eyeButton}>
-                    <MaterialIcons 
-                      name={showPassword ? 'visibility-off' : 'visibility'} 
-                      size={16} 
-                      color={currentTheme.colors.textMuted} 
+                    <MaterialIcons
+                      name={showPassword ? 'visibility-off' : 'visibility'}
+                      size={16}
+                      color={currentTheme.colors.textMuted}
                     />
                   </TouchableOpacity>
                   {Platform.OS !== 'android' && isPasswordValid && (
@@ -432,27 +435,27 @@ const AuthScreen: React.FC = () => {
                   activeOpacity={0.75}
                   style={styles.forgotPasswordButton}
                 >
-                  <Text style={[styles.forgotPasswordText, { color: currentTheme.colors.textMuted }]}>Forgot password?</Text>
+                  <Text style={[styles.forgotPasswordText, { color: currentTheme.colors.textMuted }]}>{t('auth.forgot_password')}</Text>
                 </TouchableOpacity>
               )}
 
               {/* Confirm Password (signup only) */}
               {mode === 'signup' && (
                 <View style={styles.inputContainer}>
-                  <View style={[styles.inputRow, { 
-                    backgroundColor: Platform.OS === 'android' ? '#1a1a1a' : 'rgba(255,255,255,0.03)', 
+                  <View style={[styles.inputRow, {
+                    backgroundColor: Platform.OS === 'android' ? '#1a1a1a' : 'rgba(255,255,255,0.03)',
                     borderColor: Platform.OS === 'android' ? '#2a2a2a' : ((passwordsMatch && (isConfirmValid || !confirmPassword)) ? 'rgba(255,255,255,0.08)' : 'rgba(255,107,107,0.4)'),
                     borderWidth: 1,
-                  }]}>                
-                    <View style={[styles.iconContainer, { backgroundColor: Platform.OS === 'android' ? '#222' : ((passwordsMatch && isConfirmValid) ? 'rgba(46,160,67,0.15)' : 'rgba(255,255,255,0.05)') }]}>                
-                      <MaterialIcons 
-                        name="lock-outline" 
-                        size={18} 
-                        color={Platform.OS === 'android' ? currentTheme.colors.textMuted : ((passwordsMatch && isConfirmValid) ? '#2EA043' : currentTheme.colors.textMuted)} 
+                  }]}>
+                    <View style={[styles.iconContainer, { backgroundColor: Platform.OS === 'android' ? '#222' : ((passwordsMatch && isConfirmValid) ? 'rgba(46,160,67,0.15)' : 'rgba(255,255,255,0.05)') }]}>
+                      <MaterialIcons
+                        name="lock-outline"
+                        size={18}
+                        color={Platform.OS === 'android' ? currentTheme.colors.textMuted : ((passwordsMatch && isConfirmValid) ? '#2EA043' : currentTheme.colors.textMuted)}
                       />
                     </View>
                     <TextInput
-                      placeholder="Confirm password"
+                      placeholder={t('auth.confirm_password_placeholder')}
                       placeholderTextColor="rgba(255,255,255,0.4)"
                       style={[styles.input, { color: currentTheme.colors.white }]}
                       autoCapitalize="none"
@@ -463,10 +466,10 @@ const AuthScreen: React.FC = () => {
                       onSubmitEditing={handleSubmit}
                     />
                     <TouchableOpacity onPress={() => setShowConfirm(p => !p)} style={styles.eyeButton}>
-                      <MaterialIcons 
-                        name={showConfirm ? 'visibility-off' : 'visibility'} 
-                        size={16} 
-                        color={currentTheme.colors.textMuted} 
+                      <MaterialIcons
+                        name={showConfirm ? 'visibility-off' : 'visibility'}
+                        size={16}
+                        color={currentTheme.colors.textMuted}
                       />
                     </TouchableOpacity>
                     {Platform.OS !== 'android' && passwordsMatch && isConfirmValid && (
@@ -488,8 +491,8 @@ const AuthScreen: React.FC = () => {
               <Animated.View style={{ transform: [{ scale: ctaScale }] }}>
                 <TouchableOpacity
                   style={[
-                    styles.ctaButton, 
-                    { 
+                    styles.ctaButton,
+                    {
                       backgroundColor: canSubmit ? currentTheme.colors.primary : 'rgba(255,255,255,0.08)',
                       ...(Platform.OS !== 'android' ? {
                         shadowColor: canSubmit ? currentTheme.colors.primary : 'transparent',
@@ -523,7 +526,7 @@ const AuthScreen: React.FC = () => {
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <Animated.Text style={[styles.ctaText, { opacity: ctaTextOpacity, transform: [{ translateY: ctaTextTranslateY }] }]}>
-                      {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                      {mode === 'signin' ? t('auth.sign_in') : t('auth.create_account')}
                     </Animated.Text>
                   )}
                 </TouchableOpacity>
@@ -536,9 +539,9 @@ const AuthScreen: React.FC = () => {
                 style={{ marginTop: 16 }}
               >
                 <Text style={[styles.switchModeText, { color: currentTheme.colors.textMuted }]}>
-                  {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+                  {mode === 'signin' ? t('auth.no_account') : t('auth.has_account')}
                   <Text style={{ color: currentTheme.colors.primary, fontWeight: '600' }}>
-                    {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                    {mode === 'signin' ? t('auth.sign_up') : t('auth.sign_in')}
                   </Text>
                 </Text>
               </TouchableOpacity>
@@ -558,12 +561,12 @@ const AuthScreen: React.FC = () => {
                   },
                 ]}
               >
-                <Text style={{ 
-                  color: fromOnboarding ? currentTheme.colors.white : currentTheme.colors.textMuted, 
+                <Text style={{
+                  color: fromOnboarding ? currentTheme.colors.white : currentTheme.colors.textMuted,
                   textAlign: 'center',
                   fontWeight: fromOnboarding ? '700' : '500',
                 }}>
-                  Continue without an account
+                  {t('auth.continue_without')}
                 </Text>
               </TouchableOpacity>
             </Animated.View>

@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { AppState, Platform } from 'react-native';
 import { mmkvStorage } from './mmkvStorage';
 import { logger } from '../utils/logger';
@@ -184,7 +185,7 @@ class SupabaseSyncService {
 
   public async signUpWithEmail(email: string, password: string): Promise<{ user?: SupabaseUser; error?: string }> {
     if (!this.isConfigured()) {
-      return { error: 'Supabase is not configured' };
+      return { error: i18n.t('errors.supabase_not_configured') };
     }
 
     try {
@@ -207,7 +208,7 @@ class SupabaseSyncService {
 
   public async signInWithEmail(email: string, password: string): Promise<{ user?: SupabaseUser; error?: string }> {
     if (!this.isConfigured()) {
-      return { error: 'Supabase is not configured' };
+      return { error: i18n.t('errors.supabase_not_configured') };
     }
 
     try {
@@ -319,10 +320,10 @@ class SupabaseSyncService {
       await this.pushAllLocalData();
       const response = await this.callRpc<Array<{ code: string }>>('generate_sync_code', { p_pin: pin });
       const code = response?.[0]?.code;
-      if (!code) return { error: 'Failed to generate sync code' };
+      if (!code) return { error: i18n.t('errors.failed_gen_sync_code') };
       return { code };
     } catch (error: any) {
-      return { error: this.extractErrorMessage(error, 'Failed to generate sync code') };
+      return { error: this.extractErrorMessage(error, i18n.t('errors.failed_gen_sync_code')) };
     }
   }
 
@@ -330,7 +331,7 @@ class SupabaseSyncService {
     try {
       const response = await this.callRpc<Array<{ code: string }>>('get_sync_code', { p_pin: pin });
       const code = response?.[0]?.code;
-      if (!code) return { error: 'No sync code found' };
+      if (!code) return { error: i18n.t('errors.no_sync_code') };
       return { code };
     } catch (error: any) {
       return { error: this.extractErrorMessage(error, 'Failed to fetch sync code') };
@@ -835,7 +836,7 @@ class SupabaseSyncService {
     }
   ): Promise<T> {
     if (!this.isConfigured()) {
-      throw new Error('Supabase is not configured');
+      throw new Error(i18n.t('errors.supabase_not_configured'));
     }
 
     const headers: Record<string, string> = {
@@ -923,7 +924,7 @@ class SupabaseSyncService {
   private async callRpc<T>(functionName: string, payload?: Record<string, unknown>): Promise<T> {
     const token = await this.getValidAccessToken();
     if (!token) {
-      throw new Error('Not authenticated');
+      throw new Error(i18n.t('errors.not_authenticated'));
     }
 
     return await this.request<T>(`/rest/v1/rpc/${functionName}`, {
@@ -1118,7 +1119,7 @@ class SupabaseSyncService {
           name: row.name || localScraperService.extractRepositoryName(row.url),
           url: row.url,
           enabled: row.enabled !== false,
-          description: 'Synced from cloud',
+          description: i18n.t('success.synced_from_cloud'),
         });
         continue;
       }
