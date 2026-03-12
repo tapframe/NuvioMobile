@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import axios from 'axios';
 import { mmkvStorage } from './mmkvStorage';
 import { logger } from '../utils/logger';
@@ -708,7 +709,7 @@ class StremioService {
 
       // Only allow multiple installations for stream-providing addons
       if (isAlreadyInstalled && !this.addonProvidesStreams(manifest)) {
-        throw new Error('This addon is already installed. Multiple installations are only allowed for stream providers.');
+        throw new Error(i18n.t('errors.addon_already_installed'));
       }
 
       // Generate a unique installation ID for this installation

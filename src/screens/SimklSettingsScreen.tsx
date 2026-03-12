@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
@@ -291,7 +292,7 @@ const SimklSettingsScreen: React.FC = () => {
                 title={alertTitle}
                 message={alertMessage}
                 onClose={() => setAlertVisible(false)}
-                actions={[{ label: 'OK', onPress: () => setAlertVisible(false) }]}
+                actions={[{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]}
             />
         </SafeAreaView>
     );

@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { ToastConfig } from '../components/ui/Toast';
 
 class ToastService {
@@ -104,47 +105,47 @@ class ToastService {
 
   // Convenience methods for common use cases
   showSaved(): string {
-    return this.success('Saved', 'Added to your library');
+    return this.success(i18n.t('success.saved'), i18n.t('success.added_to_library'));
   }
 
   showRemoved(): string {
-    return this.info('Removed', 'Removed from your library');
+    return this.info(i18n.t('success.removed'), i18n.t('success.removed_from_library'));
   }
 
   showTraktSaved(): string {
-    return this.success('Saved to Trakt', 'Added to watchlist and library');
+    return this.success(i18n.t('success.saved_to_trakt'), i18n.t('success.added_to_watchlist_library'));
   }
 
   showTraktRemoved(): string {
-    return this.info('Removed from Trakt', 'Removed from watchlist');
+    return this.info(i18n.t('success.removed_from_trakt'), i18n.t('success.removed_from_watchlist'));
   }
 
   showNetworkError(): string {
     return this.error(
       'Network Error',
-      'Please check your internet connection',
+      i18n.t('errors.network_error'),
       { duration: 8000 }
     );
   }
 
   showAuthError(): string {
     return this.error(
-      'Authentication Error',
-      'Please log in to Trakt again',
+      i18n.t('errors.not_authenticated'),
+      i18n.t('errors.please_log_in_trakt'),
       { duration: 8000 }
     );
   }
 
   showSyncSuccess(count: number): string {
     return this.success(
-      'Sync Complete',
+      i18n.t('success.sync_complete'),
       `Synced ${count} items to Trakt`,
       { duration: 3000 }
     );
   }
 
   showProgressSaved(): string {
-    return this.success('Progress Saved', 'Your watch progress has been synced');
+    return this.success(i18n.t('success.progress_saved'), i18n.t('success.watch_progress_synced'));
   }
 }
 

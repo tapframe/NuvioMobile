@@ -15,6 +15,7 @@ import { backupService, BackupOptions } from '../services/backupService';
 import { useTheme } from '../contexts/ThemeContext';
 import { logger } from '../utils/logger';
 import CustomAlert from './CustomAlert';
+import i18n from '../i18n';
 
 interface BackupRestoreSettingsProps {
   isTablet?: boolean;
@@ -48,8 +49,8 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
       logger.error('[BackupRestoreSettings] Failed to restart app:', error);
       // Fallback: show error message
       openAlert(
-        'Restart Failed',
-        'Failed to restart the app. Please manually close and reopen the app to see your restored data.',
+        i18n.t('components.restart_failed_title'),
+        i18n.t('components.restart_failed_desc'),
         [{ label: 'OK', onPress: () => {} }]
       );
     }
@@ -100,19 +101,19 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
                 if (await Sharing.isAvailableAsync()) {
                   await Sharing.shareAsync(fileUri, {
                     mimeType: 'application/json',
-                    dialogTitle: 'Share Nuvio Backup',
+                    dialogTitle: i18n.t('components.share_nuvio_backup'),
                   });
                 }
 
                 openAlert(
-                  'Backup Created',
-                  'Your backup has been created and is ready to share.',
+                  i18n.t('components.backup_created_title'),
+                  i18n.t('components.backup_created_desc'),
                   [{ label: 'OK', onPress: () => {} }]
                 );
               } catch (error) {
                 logger.error('[BackupRestoreSettings] Failed to create backup:', error);
                 openAlert(
-                  'Backup Failed',
+                  i18n.t('components.backup_failed_title'),
                   `Failed to create backup: ${error instanceof Error ? error.message : String(error)}`,
                   [{ label: 'OK', onPress: () => {} }]
                 );
@@ -127,7 +128,7 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
       logger.error('[BackupRestoreSettings] Failed to get backup preview:', error);
       openAlert(
         'Error',
-        'Failed to prepare backup information. Please try again.',
+        i18n.t('components.backup_failed_desc'),
         [{ label: 'OK', onPress: () => {} }]
       );
       setIsLoading(false);
@@ -152,7 +153,7 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
       const backupInfo = await backupService.getBackupInfo(fileUri);
       
       openAlert(
-        'Confirm Restore',
+        i18n.t('components.confirm_restore'),
         `This will restore your data from a backup created on ${new Date(backupInfo.timestamp || 0).toLocaleDateString()}.\n\nThis action will overwrite your current data. Are you sure you want to continue?`,
         [
           { label: 'Cancel', onPress: () => {} },
@@ -175,8 +176,8 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
                 await backupService.restoreBackup(fileUri, restoreOptions);
                 
                 openAlert(
-                  'Restore Complete',
-                  'Your data has been successfully restored. Please restart the app to see all changes.',
+                  i18n.t('components.restore_complete_title'),
+                  i18n.t('components.restore_complete_desc'),
                   [
                     { label: 'Cancel', onPress: () => {} },
                     { 
@@ -189,7 +190,7 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
               } catch (error) {
                 logger.error('[BackupRestoreSettings] Failed to restore backup:', error);
                 openAlert(
-                  'Restore Failed',
+                  i18n.t('components.restore_failed_title'),
                   `Failed to restore backup: ${error instanceof Error ? error.message : String(error)}`,
                   [{ label: 'OK', onPress: () => {} }]
                 );
@@ -203,7 +204,7 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
     } catch (error) {
       logger.error('[BackupRestoreSettings] Failed to pick backup file:', error);
       openAlert(
-        'File Selection Failed',
+        i18n.t('components.file_selection_failed'),
         `Failed to select backup file: ${error instanceof Error ? error.message : String(error)}`,
         [{ label: 'OK', onPress: () => {} }]
       );
@@ -248,7 +249,7 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
           ) : (
             <>
               <MaterialIcons name="backup" size={20} color="white" />
-              <Text style={styles.actionButtonText}>Create Backup</Text>
+              <Text style={styles.actionButtonText}>{i18n.t('components.create_backup')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -265,7 +266,7 @@ const BackupRestoreSettings: React.FC<BackupRestoreSettingsProps> = ({ isTablet 
           disabled={isLoading}
         >
           <MaterialIcons name="restore" size={20} color="white" />
-          <Text style={styles.actionButtonText}>Restore from Backup</Text>
+          <Text style={styles.actionButtonText}>{i18n.t('components.restore_backup')}</Text>
         </TouchableOpacity>
       </View>
 

@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
@@ -864,19 +865,19 @@ const StatusBadge: React.FC<{
   const getStatusConfig = () => {
     switch (status) {
       case 'enabled':
-        return { color: '#34C759', text: 'Active' };
+        return { color: '#34C759', text: i18n.t('plugin_status.active') };
       case 'disabled':
-        return { color: colors.mediumGray, text: 'Disabled' };
+        return { color: colors.mediumGray, text: i18n.t('plugin_status.disabled') };
       case 'available':
-        return { color: colors.primary, text: 'Available' };
+        return { color: colors.primary, text: i18n.t('plugin_status.available') };
       case 'platform-disabled':
-        return { color: '#FF9500', text: 'Platform Disabled' };
+        return { color: '#FF9500', text: i18n.t('plugin_status.platform_disabled') };
       case 'limited':
-        return { color: '#FF9500', text: 'Limited' };
+        return { color: '#FF9500', text: i18n.t('plugin_status.limited') };
       case 'error':
-        return { color: '#FF3B30', text: 'Error' };
+        return { color: '#FF3B30', text: i18n.t('plugin_status.error') };
       default:
-        return { color: colors.mediumGray, text: 'Unknown' };
+        return { color: colors.mediumGray, text: i18n.t('plugin_status.unknown') };
     }
   };
 
@@ -917,16 +918,14 @@ const PluginsScreen: React.FC = () => {
       // Small delay to ensure UI is ready
       setTimeout(() => {
         openAlert(
-          'Add Repository',
+          t('components.add_repository'),
           `Do you want to add the repository from:\n${url}`,
           [
-            {
-              label: 'Cancel',
+            { label: t('components.cancel'),
               onPress: () => { },
               style: { color: colors.error }
             },
-            {
-              label: 'Add',
+            { label: t('components.add'),
               onPress: () => {
                 handleAddRepository(url);
               }
@@ -950,7 +949,7 @@ const PluginsScreen: React.FC = () => {
   ) => {
     setAlertTitle(title);
     setAlertMessage(message);
-    setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
+    setAlertActions(actions && actions.length > 0 ? actions : [{ label: i18n.t('common.ok'), onPress: () => { } }]);
     setAlertVisible(true);
   };
 
@@ -1060,7 +1059,7 @@ const PluginsScreen: React.FC = () => {
       openAlert(t('plugins.success'), `${enabled ? t('plugins.enabled') : t('plugins.disabled')} ${filteredPlugins.length} extensions`);
     } catch (error) {
       logger.error('[PluginSettings] Failed to bulk toggle:', error);
-      openAlert(t('plugins.error'), 'Failed to update extensions');
+      openAlert(t('plugins.error'), t('errors.failed_to_update_extensions'));
     } finally {
       setIsRefreshing(false);
     }
@@ -1076,7 +1075,7 @@ const PluginsScreen: React.FC = () => {
     const inputUrl = validUrlOverride || newRepositoryUrl;
 
     if (!inputUrl.trim()) {
-      openAlert('Error', 'Please enter a valid repository URL');
+      openAlert(i18n.t('plugin_status.error'), 'Please enter a valid repository URL');
       return;
     }
 
@@ -1166,7 +1165,7 @@ const PluginsScreen: React.FC = () => {
       openAlert(t('plugins.success'), `Repository "${repo?.name || t('plugins.unknown')}" ${enabled ? t('plugins.enabled').toLowerCase() : t('plugins.disabled').toLowerCase()} successfully`);
     } catch (error) {
       logger.error('[PluginSettings] Failed to toggle repository:', error);
-      openAlert(t('plugins.error'), 'Failed to update repository');
+      openAlert(t('plugins.error'), t('errors.failed_to_update_repo'));
     } finally {
       setSwitchingRepository(null);
     }
@@ -1179,7 +1178,7 @@ const PluginsScreen: React.FC = () => {
     // Special handling for the last repository
     const isLastRepository = repositories.length === 1;
 
-    const alertTitle = isLastRepository ? 'Remove Last Repository' : 'Remove Repository';
+    const alertTitle = isLastRepository ? t('components.remove_last_repository') : t('components.remove_repository');
     const alertMessage = isLastRepository
       ? `Are you sure you want to remove "${repo.name}"? This is your only repository, so you'll have no extensions available until you add a new repository.`
       : `Are you sure you want to remove "${repo.name}"? This will also remove all extensions from this repository.`;
@@ -1188,7 +1187,7 @@ const PluginsScreen: React.FC = () => {
       alertTitle,
       alertMessage,
       [
-        { label: 'Cancel', onPress: () => { } },
+        { label: t('components.cancel'), onPress: () => { } },
         {
           label: 'Remove',
           onPress: async () => {
@@ -1197,12 +1196,12 @@ const PluginsScreen: React.FC = () => {
               await loadRepositories();
               await loadPlugins();
               const successMessage = isLastRepository
-                ? 'Repository removed successfully. You can add a new repository using the "Add Repository" button.'
-                : 'Repository removed successfully';
+                ? t('errors.repo_removed_success_desc')
+                : t('errors.repo_removed_success');
               openAlert('Success', successMessage);
             } catch (error) {
               logger.error('[PluginSettings] Failed to remove repository:', error);
-              openAlert('Error', error instanceof Error ? error.message : 'Failed to remove repository');
+              openAlert(i18n.t('plugin_status.error'), error instanceof Error ? error.message : 'Failed to remove repository');
             }
           },
         },
@@ -1282,7 +1281,7 @@ const PluginsScreen: React.FC = () => {
 
   const handleSaveRepository = async () => {
     if (!repositoryUrl.trim()) {
-      openAlert('Error', 'Please enter a valid repository URL');
+      openAlert(i18n.t('plugin_status.error'), 'Please enter a valid repository URL');
       return;
     }
 
@@ -1290,7 +1289,7 @@ const PluginsScreen: React.FC = () => {
     const url = repositoryUrl.trim();
     if (!url.startsWith('https://raw.githubusercontent.com/') && !url.startsWith('http://')) {
       openAlert(
-        'Invalid URL Format',
+        t('components.invalid_url_format'),
         'Please use a valid GitHub raw URL format:\n\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch\n\nExample:\nhttps://raw.githubusercontent.com/your-username/your-repo/refs/heads/main'
       );
       return;
@@ -1304,7 +1303,7 @@ const PluginsScreen: React.FC = () => {
       openAlert(t('plugins.success'), t('plugins.alert_repo_saved'));
     } catch (error) {
       logger.error('[PluginSettings] Failed to save repository:', error);
-      openAlert(t('plugins.error'), 'Failed to save repository URL');
+      openAlert(t('plugins.error'), t('errors.failed_to_save_repo_url'));
     } finally {
       setIsLoading(false);
     }
@@ -1312,7 +1311,7 @@ const PluginsScreen: React.FC = () => {
 
   const handleRefreshRepository = async () => {
     if (!repositoryUrl.trim()) {
-      openAlert('Error', 'Please set a repository URL first');
+      openAlert(i18n.t('plugin_status.error'), 'Please set a repository URL first');
       return;
     }
 
@@ -1331,7 +1330,7 @@ const PluginsScreen: React.FC = () => {
       logger.error('[PluginsScreen] Failed to refresh repository:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       openAlert(
-        'Repository Error',
+        t('components.repository_error'),
         `Failed to refresh repository: ${errorMessage}\n\nPlease ensure your URL is correct and follows this format:\nhttps://raw.githubusercontent.com/username/repo/refs/heads/branch`
       );
     } finally {
@@ -1358,7 +1357,7 @@ const PluginsScreen: React.FC = () => {
       await loadPlugins();
     } catch (error) {
       logger.error('[PluginSettings] Failed to toggle plugin:', error);
-      openAlert(t('plugins.error'), 'Failed to update extension status');
+      openAlert(t('plugins.error'), t('errors.failed_to_update_ext_status'));
       setIsRefreshing(false);
     }
   };
@@ -1368,7 +1367,7 @@ const PluginsScreen: React.FC = () => {
       t('plugins.clear_all'),
       t('plugins.clear_all_desc'),
       [
-        { label: 'Cancel', onPress: () => { } },
+        { label: t('components.cancel'), onPress: () => { } },
         {
           label: 'Clear',
           onPress: async () => {
@@ -1378,7 +1377,7 @@ const PluginsScreen: React.FC = () => {
               openAlert(t('plugins.success'), t('plugins.alert_plugins_cleared'));
             } catch (error) {
               logger.error('[PluginSettings] Failed to clear plugins:', error);
-              openAlert(t('plugins.error'), 'Failed to clear extensions');
+              openAlert(t('plugins.error'), t('errors.failed_to_clear_ext'));
             }
           },
         },
@@ -1391,7 +1390,7 @@ const PluginsScreen: React.FC = () => {
       t('plugins.clear_cache'),
       t('plugins.clear_cache_desc'),
       [
-        { label: 'Cancel', onPress: () => { } },
+        { label: t('components.cancel'), onPress: () => { } },
         {
           label: 'Clear Cache',
           onPress: async () => {
@@ -1405,7 +1404,7 @@ const PluginsScreen: React.FC = () => {
               openAlert(t('plugins.success'), t('plugins.alert_cache_cleared'));
             } catch (error) {
               logger.error('[PluginSettings] Failed to clear cache:', error);
-              openAlert(t('plugins.error'), 'Failed to clear repository cache');
+              openAlert(t('plugins.error'), t('errors.failed_to_clear_repo_cache'));
             }
           },
         },
@@ -1861,7 +1860,7 @@ const PluginsScreen: React.FC = () => {
                     <View style={styles.pluginCardMetaItem}>
                       <Ionicons name="film" size={12} color={colors.mediumGray} />
                       <Text style={styles.pluginCardMetaText}>
-                        {plugin.supportedTypes?.join(', ') || 'Unknown'}
+                        {plugin.supportedTypes?.join(', ') || i18n.t('plugin_status.unknown')}
                       </Text>
                     </View>
                     {plugin.contentLanguage && plugin.contentLanguage.length > 0 && (
@@ -1884,7 +1883,7 @@ const PluginsScreen: React.FC = () => {
                     {plugin.repositoryId && repositories.length > 1 && (
                       <View style={styles.pluginRepositoryBadge}>
                         <Text style={styles.pluginRepositoryBadgeText}>
-                          {repositories.find(r => r.id === plugin.repositoryId)?.name || 'Unknown'}
+                          {repositories.find(r => r.id === plugin.repositoryId)?.name || i18n.t('plugin_status.unknown')}
                         </Text>
                       </View>
                     )}
@@ -1908,7 +1907,7 @@ const PluginsScreen: React.FC = () => {
                           numberOfLines={1}
                         />
                         {showboxSavedToken.length > 0 && (
-                          <TouchableOpacity onPress={() => setShowboxTokenVisible(v => !v)} accessibilityRole="button" accessibilityLabel={showboxTokenVisible ? 'Hide token' : 'Show token'} style={{ marginLeft: 10 }}>
+                          <TouchableOpacity onPress={() => setShowboxTokenVisible(v => !v)} accessibilityRole="button" accessibilityLabel={showboxTokenVisible ? t('components.hide_token') : t('components.show_token')} style={{ marginLeft: 10 }}>
                             <Ionicons name={showboxTokenVisible ? 'eye-off' : 'eye'} size={18} color={colors.primary} />
                           </TouchableOpacity>
                         )}
@@ -1927,7 +1926,7 @@ const PluginsScreen: React.FC = () => {
                                 });
                               }
                               setShowboxSavedToken(showboxUiToken);
-                              openAlert('Saved', 'ShowBox settings updated');
+                              openAlert('Saved', t('errors.showbox_settings_updated'));
                             }}
                           >
                             <Text style={styles.buttonText}>{t('plugins.save')}</Text>
@@ -2165,8 +2164,8 @@ const PluginsScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { alignItems: 'center', paddingVertical: 32 }]}>
             <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
-            <Text style={styles.modalTitle}>Installing Repository...</Text>
-            <Text style={styles.modalText}>Please wait while we fetch and install the repository.</Text>
+            <Text style={styles.modalTitle}>{i18n.t('components.installing_repo')}</Text>
+            <Text style={styles.modalText}>{i18n.t('components.installing_repo_desc')}</Text>
           </View>
         </View>
       </Modal>
@@ -2184,14 +2183,14 @@ const PluginsScreen: React.FC = () => {
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeader}>
                 <Ionicons name="add-circle" size={20} color={colors.primary} />
-                <Text style={styles.modalTitle}>Add Repository</Text>
+                <Text style={styles.modalTitle}>{i18n.t('components.add_repository')}</Text>
               </View>
 
               <TextInput
                 style={styles.compactTextInput}
                 value={newRepositoryUrl}
                 onChangeText={handleUrlChange}
-                placeholder="Repository URL"
+                placeholder={String(i18n.t('placeholders.repo_url'))}
                 placeholderTextColor={colors.mediumGray}
                 autoCapitalize="none"
                 autoCorrect={false}

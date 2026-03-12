@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect, useRef, useCallback, memo, Suspense } from 'react';
 import {
   View,
@@ -13,6 +14,7 @@ import {
 import FastImage from '@d11/react-native-fast-image';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 // Optional iOS Glass effect (expo-glass-effect) with safe fallback for ShowRatingsScreen
 let GlassViewComp: any = null;
@@ -118,8 +120,8 @@ const RatingCell = memo(({ episode, ratingSource, getTVMazeRating, getIMDbRating
   return (
     <Animated.View style={styles.ratingCellContainer}>
       <Animated.View style={[
-        styles.ratingCell, 
-        { 
+        styles.ratingCell,
+        {
           backgroundColor: getRatingColor(rating),
         }
       ]}>
@@ -135,7 +137,7 @@ const RatingSourceToggle = memo(({ ratingSource, setRatingSource, theme }: {
   theme: any;
 }) => (
   <View style={styles.ratingSourceContainer}>
-    <Text style={[styles.sectionTitle, { color: theme.colors.white }]}>Rating Source:</Text>
+    <Text style={[styles.sectionTitle, { color: theme.colors.white }]}>{i18n.t('components.rating_source')}</Text>
     <View style={styles.ratingSourceButtons}>
       {['tmdb', 'imdb', 'tvmaze'].map((source) => {
         const isActive = ratingSource === source;
@@ -149,7 +151,7 @@ const RatingSourceToggle = memo(({ ratingSource, setRatingSource, theme }: {
             ]}
             onPress={() => setRatingSource(source as RatingSource)}
           >
-            <Text 
+            <Text
               style={{
                 fontSize: 13,
                 fontWeight: isActive ? '700' : '600',
@@ -192,11 +194,10 @@ const ShowInfo = memo(({ show, theme }: { show: Show | null, theme: any }) => {
 
         <Text style={[styles.showYear, { color: theme.colors.lightGray }]}>
           {show?.first_air_date
-            ? `${new Date(show.first_air_date).getFullYear()} - ${
-                show.last_air_date
-                  ? new Date(show.last_air_date).getFullYear()
-                  : "Present"
-              }`
+            ? `${new Date(show.first_air_date).getFullYear()} - ${show.last_air_date
+              ? new Date(show.last_air_date).getFullYear()
+              : "Present"
+            }`
             : ""}
         </Text>
 
@@ -215,6 +216,7 @@ const ShowInfo = memo(({ show, theme }: { show: Show | null, theme: any }) => {
 
 const ShowRatingsScreen = ({ route }: Props) => {
   const { currentTheme } = useTheme();
+  const { t } = useTranslation();
   const { colors } = currentTheme;
   const { showId } = route.params;
   const [show, setShow] = useState<Show | null>(null);
@@ -227,13 +229,13 @@ const ShowRatingsScreen = ({ route }: Props) => {
   const [ratingSource, setRatingSource] = useState<RatingSource>('imdb');
   const [visibleSeasonRange, setVisibleSeasonRange] = useState({ start: 0, end: 8 });
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const ratingsCache = useRef<{[key: string]: number | null}>({});
+  const ratingsCache = useRef<{ [key: string]: number | null }>({});
 
   const fetchTVMazeData = async (imdbId: string) => {
     try {
       const lookupResponse = await axios.get(`https://api.tvmaze.com/lookup/shows?imdb=${imdbId}`);
       const tvmazeId = lookupResponse.data?.id;
-      
+
       if (tvmazeId) {
         const showResponse = await axios.get(`https://api.tvmaze.com/shows/${tvmazeId}?embed=episodes`);
         if (showResponse.data?._embedded?.episodes) {
@@ -252,8 +254,8 @@ const ShowRatingsScreen = ({ route }: Props) => {
     try {
       const tmdb = TMDBService.getInstance();
       const seasonsToLoad = show.seasons
-        .filter(season => 
-          season.season_number > 0 && 
+        .filter(season =>
+          season.season_number > 0 &&
           !loadedSeasons.includes(season.season_number) &&
           season.season_number > visibleSeasonRange.start &&
           season.season_number <= visibleSeasonRange.end
@@ -262,7 +264,7 @@ const ShowRatingsScreen = ({ route }: Props) => {
       // Load seasons in parallel in larger batches
       const batchSize = 4; // Load 4 seasons at a time
       const batches = [];
-      
+
       for (let i = 0; i < seasonsToLoad.length; i += batchSize) {
         const batch = seasonsToLoad.slice(i, i + batchSize);
         batches.push(batch);
@@ -273,7 +275,7 @@ const ShowRatingsScreen = ({ route }: Props) => {
 
       for (const batch of batches) {
         const batchResults = await Promise.all(
-          batch.map(season => 
+          batch.map(season =>
             tmdb.getSeasonDetails(showId, season.season_number, show.name)
           )
         );
@@ -281,7 +283,7 @@ const ShowRatingsScreen = ({ route }: Props) => {
         const validResults = batchResults.filter((s): s is TMDBSeason => s !== null);
         setSeasons(prev => [...prev, ...validResults]);
         setLoadedSeasons(prev => [...prev, ...batch.map(s => s.season_number)]);
-        
+
         loadedCount += batch.length;
         setLoadingProgress((loadedCount / totalToLoad) * 100);
       }
@@ -296,7 +298,7 @@ const ShowRatingsScreen = ({ route }: Props) => {
   const onScroll = useCallback((event: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     const isCloseToRight = (contentOffset.x + layoutMeasurement.width) >= (contentSize.width * 0.8);
-    
+
     if (isCloseToRight && show && !loadingSeasons) {
       const maxSeasons = Math.max(...show.seasons.map(s => s.season_number));
       if (visibleSeasonRange.end < maxSeasons) {
@@ -312,26 +314,26 @@ const ShowRatingsScreen = ({ route }: Props) => {
     const fetchShowData = async () => {
       try {
         const tmdb = TMDBService.getInstance();
-        
+
         // Log the showId being used
         logger.log(`[ShowRatingsScreen] Fetching show details for ID: ${showId}`);
-        
+
         const showData = await tmdb.getTVShowDetails(showId);
         if (showData) {
           setShow(showData);
-          
+
           // Fetch IMDb ratings for all seasons
           const imdbRatingsData = await tmdb.getIMDbRatings(showId);
           if (imdbRatingsData) {
             setImdbRatings(imdbRatingsData);
           }
-          
+
           // Get external IDs to fetch TVMaze data
           const externalIds = await tmdb.getShowExternalIds(showId);
           if (externalIds?.imdb_id) {
             fetchTVMazeData(externalIds.imdb_id);
           }
-          
+
           // Set initial season range
           const initialEnd = Math.min(8, Math.max(...showData.seasons.map(s => s.season_number)));
           setVisibleSeasonRange({ start: 0, end: initialEnd });
@@ -361,16 +363,16 @@ const ShowRatingsScreen = ({ route }: Props) => {
     // Flatten all episodes from all seasons and find the matching one
     for (const season of imdbRatings) {
       if (!season.episodes) continue;
-      
+
       const episode = season.episodes.find(
         ep => ep.season_number === seasonNumber && ep.episode_number === episodeNumber
       );
-      
+
       if (episode) {
         return episode.vote_average || null;
       }
     }
-    
+
     return null;
   }, [imdbRatings]);
 
@@ -385,7 +387,7 @@ const ShowRatingsScreen = ({ route }: Props) => {
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.lightGray }]}>Loading show data...</Text>
+            <Text style={[styles.loadingText, { color: colors.lightGray }]}>{t('components.loading_show_data')}</Text>
           </View>
         </SafeAreaView>
       </View>
@@ -417,49 +419,49 @@ const ShowRatingsScreen = ({ route }: Props) => {
         <Suspense fallback={
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.lightGray }]}>Loading content...</Text>
+            <Text style={[styles.loadingText, { color: colors.lightGray }]}>{t('components.loading_content')}</Text>
           </View>
         }>
-          <ScrollView 
+          <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
             contentContainerStyle={styles.scrollViewContent}
           >
             <View style={styles.content}>
-              <Animated.View 
+              <Animated.View
                 entering={FadeIn.duration(300)}
                 style={styles.showInfoContainer}
               >
                 <ShowInfo show={show} theme={currentTheme} />
               </Animated.View>
-              
-              <Animated.View 
+
+              <Animated.View
                 entering={FadeIn.delay(100).duration(300)}
                 style={styles.section}
               >
-                <RatingSourceToggle 
-                  ratingSource={ratingSource} 
-                  setRatingSource={setRatingSource} 
-                  theme={currentTheme} 
+                <RatingSourceToggle
+                  ratingSource={ratingSource}
+                  setRatingSource={setRatingSource}
+                  theme={currentTheme}
                 />
               </Animated.View>
 
-              <Animated.View 
+              <Animated.View
                 entering={FadeIn.delay(200).duration(300)}
                 style={styles.section}
               >
                 {/* Legend */}
                 <View style={[styles.legend, { backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.darkBackground }]}>
-                  <Text style={[styles.sectionTitle, { color: colors.white }]}>Rating Scale</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.white }]}>{t('show_ratings.rating_scale')}</Text>
                   <View style={styles.legendItems}>
                     {[
-                      { color: '#186A3B', text: 'Awesome (9.0+)' },
-                      { color: '#28B463', text: 'Great (8.0-8.9)' },
-                      { color: '#F4D03F', text: 'Good (7.5-7.9)' },
-                      { color: '#F39C12', text: 'Regular (7.0-7.4)' },
-                      { color: '#E74C3C', text: 'Bad (6.0-6.9)' },
-                      { color: '#633974', text: 'Garbage (<6.0)' }
+                      { color: '#186A3B', text: t('ratings_legend.awesome') },
+                      { color: '#28B463', text: t('ratings_legend.great') },
+                      { color: '#F4D03F', text: t('ratings_legend.good') },
+                      { color: '#F39C12', text: t('ratings_legend.regular') },
+                      { color: '#E74C3C', text: t('ratings_legend.bad') },
+                      { color: '#633974', text: t('ratings_legend.garbage') }
                     ].map((item, index) => (
                       <View key={index} style={styles.legendItem}>
                         <View style={[styles.legendColor, { backgroundColor: item.color }]} />
@@ -470,18 +472,18 @@ const ShowRatingsScreen = ({ route }: Props) => {
                 </View>
               </Animated.View>
 
-              <Animated.View 
+              <Animated.View
                 entering={FadeIn.delay(300).duration(300)}
                 style={styles.section}
               >
                 {/* Ratings Grid */}
-                <Text style={[styles.sectionTitle, { color: colors.white }]}>Episode Ratings</Text>
+                <Text style={[styles.sectionTitle, { color: colors.white }]}>{t('show_ratings.episode_ratings')}</Text>
                 <View style={[styles.ratingsGrid, { backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.darkBackground }]}>
                   <View style={styles.gridContainer}>
                     {/* Fixed Episode Column */}
                     <View style={[styles.fixedColumn, { borderRightColor: colors.black + '40' }]}>
                       <View style={styles.episodeColumn}>
-                        <Text style={[styles.headerText, { color: colors.white }]}>EPs</Text>
+                        <Text style={[styles.headerText, { color: colors.white }]}>{t('components.eps')}</Text>
                       </View>
                       {Array.from({ length: Math.max(...seasons.map(s => s.episodes.length)) }).map((_, episodeIndex) => (
                         <View key={`e${episodeIndex + 1}`} style={styles.episodeCell}>
@@ -491,8 +493,8 @@ const ShowRatingsScreen = ({ route }: Props) => {
                     </View>
 
                     {/* Scrollable Seasons */}
-                    <ScrollView 
-                      horizontal 
+                    <ScrollView
+                      horizontal
                       showsHorizontalScrollIndicator={false}
                       style={styles.seasonsScrollView}
                       onScroll={onScroll}
@@ -502,8 +504,8 @@ const ShowRatingsScreen = ({ route }: Props) => {
                         {/* Seasons Header */}
                         <View style={[styles.gridHeader, { borderBottomColor: colors.black + '40' }]}>
                           {seasons.map((season) => (
-                            <Animated.View 
-                              key={`s${season.season_number}`} 
+                            <Animated.View
+                              key={`s${season.season_number}`}
                               style={styles.ratingColumn}
                               entering={FadeIn.delay(season.season_number * 20).duration(200)}
                             >
@@ -528,12 +530,12 @@ const ShowRatingsScreen = ({ route }: Props) => {
                         {Array.from({ length: Math.max(...seasons.map(s => s.episodes.length)) }).map((_, episodeIndex) => (
                           <View key={`e${episodeIndex + 1}`} style={styles.gridRow}>
                             {seasons.map((season) => (
-                              <Animated.View 
-                                key={`s${season.season_number}e${episodeIndex + 1}`} 
+                              <Animated.View
+                                key={`s${season.season_number}e${episodeIndex + 1}`}
                                 style={styles.ratingColumn}
                                 entering={FadeIn.delay((season.season_number + episodeIndex) * 5).duration(200)}
                               >
-                                {season.episodes[episodeIndex] && 
+                                {season.episodes[episodeIndex] &&
                                   <RatingCell
                                     episode={season.episodes[episodeIndex]}
                                     ratingSource={ratingSource}

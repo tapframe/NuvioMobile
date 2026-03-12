@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useRealtimeConfig } from '../hooks/useRealtimeConfig';
@@ -185,7 +186,7 @@ const SettingsScreen: React.FC = () => {
   ) => {
     setAlertTitle(title);
     setAlertMessage(message);
-    setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
+    setAlertActions(actions && actions.length > 0 ? actions : [{ label: i18n.t('common.ok'), onPress: () => { } }]);
     setAlertVisible(true);
   };
 
@@ -336,9 +337,9 @@ const SettingsScreen: React.FC = () => {
       'Clear MDBList Cache',
       'Are you sure you want to clear all cached MDBList data? This cannot be undone.',
       [
-        { label: 'Cancel', onPress: () => { } },
+        { label: t('components.cancel'), onPress: () => { } },
         {
-          label: 'Clear',
+          label: t('components.clear'),
           onPress: async () => {
             try {
               await mmkvStorage.removeItem('mdblist_cache');
@@ -426,7 +427,7 @@ const SettingsScreen: React.FC = () => {
       case 'appearance':
         return (
           <>
-            <SettingsCard title="GENERAL" isTablet={isTablet}>
+            <SettingsCard title={t('settings.general_title')} isTablet={isTablet}>
               <SettingItem
                 title={t('settings.language')}
                 description={t(`settings.${LOCALES.find(l => l.code === i18n.language)?.key}`)}
@@ -504,9 +505,9 @@ const SettingsScreen: React.FC = () => {
                   t('settings.clear_data'),
                   t('settings.clear_data_desc'),
                   [
-                    { label: 'Cancel', onPress: () => { } },
+                    { label: t('components.cancel'), onPress: () => { } },
                     {
-                      label: 'Clear',
+                      label: t('components.clear'),
                       onPress: async () => {
                         try {
                           await mmkvStorage.clear();
@@ -705,8 +706,8 @@ const SettingsScreen: React.FC = () => {
               <SettingsCard title={t('settings.account').toUpperCase()}>
                 {showCloudSyncItem && (
                   <SettingItem
-                    title="Nuvio Sync"
-                    description="Sync data across your Nuvio devices"
+                    title={t('settings.cloud_sync.title')}
+                    description={t('settings.cloud_sync.description')}
                     customIcon={
                       <FastImage
                         source={require('../../assets/nuvio-sync-icon-og.png')}
@@ -749,7 +750,7 @@ const SettingsScreen: React.FC = () => {
               (settingsConfig?.categories?.['integrations']?.visible !== false) ||
               (settingsConfig?.categories?.['playback']?.visible !== false)
             ) && (
-                <SettingsCard title="GENERAL">
+                <SettingsCard title={t('settings.general_title')}>
                   <SettingItem
                     title={t('settings.language')}
                     description={t(`settings.${LOCALES.find(l => l.code === i18n.language)?.key}`)
@@ -803,7 +804,7 @@ const SettingsScreen: React.FC = () => {
               (settingsConfig?.categories?.['backup']?.visible !== false) ||
               (settingsConfig?.categories?.['updates']?.visible !== false)
             ) && (
-                <SettingsCard title="DATA">
+                <SettingsCard title={t('settings.data_title')}>
                   {(settingsConfig?.categories?.['backup']?.visible !== false) && (
                     <SettingItem
                       title={t('settings.backup_restore')}
@@ -835,7 +836,7 @@ const SettingsScreen: React.FC = () => {
 
             {/* Cache - only if MDBList is set */}
             {mdblistKeySet && (
-              <SettingsCard title="CACHE">
+              <SettingsCard title={t('settings.cache_title')}>
                 <SettingItem
                   title={t('settings.clear_mdblist_cache')}
                   icon="database"

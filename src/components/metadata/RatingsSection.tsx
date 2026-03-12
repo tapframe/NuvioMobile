@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Image, Animated, Dimensions } from 'react-native';
 import { MaterialIcons as MaterialIconsWrapper } from '@expo/vector-icons';
@@ -43,11 +44,11 @@ export const RATING_PROVIDERS = {
     color: '#00E054',
   },
   tomatoes: {
-    name: 'Rotten Tomatoes',
+    name: i18n.t('components.rotten_tomatoes'),
     color: '#FA320A',
   },
   audience: {
-    name: 'Audience Score',
+    name: i18n.t('components.audience_score'),
     color: '#FA320A',
   },
   metacritic: {
@@ -210,14 +211,14 @@ export const RatingsSection: React.FC<RatingsSectionProps> = ({ imdbId, type }) 
       transform: (value: number) => value.toFixed(1)
     },
     tomatoes: {
-      name: 'Rotten Tomatoes',
+      name: i18n.t('components.rotten_tomatoes'),
       icon: RottenTomatoesIcon,
       isImage: false,
       color: '#FA320A',
       transform: (value: number) => Math.round(value).toString() + '%'
     },
     audience: {
-      name: 'Audience Score',
+      name: i18n.t('components.audience_score'),
       icon: AudienceScoreIcon,
       isImage: true,
       color: '#FA320A',

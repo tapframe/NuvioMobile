@@ -11,6 +11,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import i18n from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -233,12 +234,12 @@ const AndroidUpdatePopup: React.FC<AndroidUpdatePopupProps> = ({
               {isInstalling ? (
                 <>
                   <MaterialIcons name="install-mobile" size={18} color="white" />
-                  <Text style={styles.buttonText}>Installing...</Text>
+                  <Text style={styles.buttonText}>{i18n.t('components.installing')}</Text>
                 </>
               ) : (
                 <>
                   <MaterialIcons name="download" size={18} color="white" />
-                  <Text style={styles.buttonText}>Update Now</Text>
+                  <Text style={styles.buttonText}>{i18n.t('components.update_now')}</Text>
                 </>
               )}
             </TouchableOpacity>

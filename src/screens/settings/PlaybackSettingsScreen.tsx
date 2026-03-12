@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, StatusBar, Platform, Text, TouchableOpacity, Dimensions, TextInput, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -22,53 +23,53 @@ const INTRODB_LOGO_URI = 'https://introdb.app/images/logo-vector.svg';
 
 // Available languages for audio/subtitle selection
 const AVAILABLE_LANGUAGES = [
-    { code: 'en', name: 'English' },
-    { code: 'es', name: 'Spanish' },
-    { code: 'fr', name: 'French' },
-    { code: 'de', name: 'German' },
-    { code: 'it', name: 'Italian' },
-    { code: 'ja', name: 'Japanese' },
-    { code: 'ko', name: 'Korean' },
-    { code: 'zh', name: 'Chinese' },
-    { code: 'ru', name: 'Russian' },
-    { code: 'pt', name: 'Portuguese' },
-    { code: 'hi', name: 'Hindi' },
-    { code: 'ar', name: 'Arabic' },
-    { code: 'nl', name: 'Dutch' },
-    { code: 'sv', name: 'Swedish' },
-    { code: 'no', name: 'Norwegian' },
-    { code: 'fi', name: 'Finnish' },
-    { code: 'da', name: 'Danish' },
-    { code: 'pl', name: 'Polish' },
-    { code: 'tr', name: 'Turkish' },
-    { code: 'cs', name: 'Czech' },
-    { code: 'hu', name: 'Hungarian' },
-    { code: 'el', name: 'Greek' },
-    { code: 'th', name: 'Thai' },
-    { code: 'vi', name: 'Vietnamese' },
-    { code: 'id', name: 'Indonesian' },
-    { code: 'ms', name: 'Malay' },
-    { code: 'ta', name: 'Tamil' },
-    { code: 'te', name: 'Telugu' },
-    { code: 'bn', name: 'Bengali' },
-    { code: 'uk', name: 'Ukrainian' },
-    { code: 'he', name: 'Hebrew' },
-    { code: 'fa', name: 'Persian' },
-    { code: 'hr', name: 'Croatian' }, 
-    { code: 'sr', name: 'Serbian' }, 
-    { code: 'bg', name: 'Bulgarian' }, 
-    { code: 'sl', name: 'Slovenian' }, 
-    { code: 'mk', name: 'Macedonian' }, 
-    { code: 'fil', name: 'Filipino' },
-    { code: 'ro', name: 'Romanian' },
-    { code: 'sq', name: 'Albanian' },
-    { code: 'ca', name: 'Catalan' },
+    { code: 'en', name: i18n.t('languages.english') },
+    { code: 'es', name: i18n.t('languages.spanish') },
+    { code: 'fr', name: i18n.t('languages.french') },
+    { code: 'de', name: i18n.t('languages.german') },
+    { code: 'it', name: i18n.t('languages.italian') },
+    { code: 'ja', name: i18n.t('languages.japanese') },
+    { code: 'ko', name: i18n.t('languages.korean') },
+    { code: 'zh', name: i18n.t('languages.chinese') },
+    { code: 'ru', name: i18n.t('languages.russian') },
+    { code: 'pt', name: i18n.t('languages.portuguese') },
+    { code: 'hi', name: i18n.t('languages.hindi') },
+    { code: 'ar', name: i18n.t('languages.arabic') },
+    { code: 'nl', name: i18n.t('languages.dutch') },
+    { code: 'sv', name: i18n.t('languages.swedish') },
+    { code: 'no', name: i18n.t('languages.norwegian') },
+    { code: 'fi', name: i18n.t('languages.finnish') },
+    { code: 'da', name: i18n.t('languages.danish') },
+    { code: 'pl', name: i18n.t('languages.polish') },
+    { code: 'tr', name: i18n.t('languages.turkish') },
+    { code: 'cs', name: i18n.t('languages.czech') },
+    { code: 'hu', name: i18n.t('languages.hungarian') },
+    { code: 'el', name: i18n.t('languages.greek') },
+    { code: 'th', name: i18n.t('languages.thai') },
+    { code: 'vi', name: i18n.t('languages.vietnamese') },
+    { code: 'id', name: i18n.t('languages.indonesian') },
+    { code: 'ms', name: i18n.t('languages.malay') },
+    { code: 'ta', name: i18n.t('languages.tamil') },
+    { code: 'te', name: i18n.t('languages.telugu') },
+    { code: 'bn', name: i18n.t('languages.bengali') },
+    { code: 'uk', name: i18n.t('languages.ukrainian') },
+    { code: 'he', name: i18n.t('languages.hebrew') },
+    { code: 'fa', name: i18n.t('languages.persian') },
+    { code: 'hr', name: i18n.t('languages.croatian') }, 
+    { code: 'sr', name: i18n.t('languages.serbian') }, 
+    { code: 'bg', name: i18n.t('languages.bulgarian') }, 
+    { code: 'sl', name: i18n.t('languages.slovenian') }, 
+    { code: 'mk', name: i18n.t('languages.macedonian') }, 
+    { code: 'fil', name: i18n.t('languages.filipino') },
+    { code: 'ro', name: i18n.t('languages.romanian') },
+    { code: 'sq', name: i18n.t('languages.albanian') },
+    { code: 'ca', name: i18n.t('languages.catalan') },
 ];
 
 const SUBTITLE_SOURCE_OPTIONS = [
-    { value: 'internal', label: 'Internal First', description: 'Prefer embedded subtitles, then external' },
-    { value: 'external', label: 'External First', description: 'Prefer addon subtitles, then embedded' },
-    { value: 'any', label: 'Any Available', description: 'Use first available subtitle track' },
+    { value: 'internal', label: i18n.t('subtitle_prefs.internal_first'), description: i18n.t('subtitle_prefs.internal_desc') },
+    { value: 'external', label: i18n.t('subtitle_prefs.external_first'), description: i18n.t('subtitle_prefs.external_desc') },
+    { value: 'any', label: i18n.t('subtitle_prefs.any_available'), description: i18n.t('subtitle_prefs.any_desc') },
 ];
 
 // Props for the reusable content component
@@ -107,7 +108,7 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
     const handleApiKeySubmit = async () => {
         if (!apiKeyInput.trim()) {
             updateSetting('introDbApiKey', '');
-            toastService.success(t('settings.items.api_key_cleared', { defaultValue: 'API Key Cleared' }));
+            toastService.success(t('settings.items.api_key_cleared', { defaultValue: t('settings.api_key_cleared') }));
             return;
         }
 
@@ -119,9 +120,9 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
 
         if (isValid) {
             updateSetting('introDbApiKey', apiKeyInput);
-            toastService.success(t('settings.items.api_key_saved', { defaultValue: 'API Key Saved' }));
+            toastService.success(t('settings.items.api_key_saved', { defaultValue: t('settings.api_key_saved') }));
         } else {
-            toastService.error(t('settings.items.api_key_invalid', { defaultValue: 'Invalid API Key' }));
+            toastService.error(t('settings.items.api_key_invalid', { defaultValue: t('settings.invalid_api_key') }));
         }
     };
 
@@ -298,7 +299,7 @@ export const PlaybackSettingsContent: React.FC<PlaybackSettingsContentProps> = (
                                 style={[styles.input, { flex: 1, marginRight: 10, color: currentTheme.colors.highEmphasis }]}
                                 value={apiKeyInput}
                                 onChangeText={setApiKeyInput}
-                                placeholder="Enter your API key"
+                                placeholder={String(i18n.t('placeholders.api_key'))}
                                 placeholderTextColor={currentTheme.colors.mediumEmphasis}
                                 autoCapitalize="none"
                                 autoCorrect={false}

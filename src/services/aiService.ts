@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { mmkvStorage } from './mmkvStorage';
 
 export interface ChatMessage {
@@ -357,7 +358,7 @@ Answer questions about this movie using only the verified database information a
     conversationHistory: ChatMessage[] = []
   ): Promise<string> {
     if (!await this.isConfigured()) {
-      throw new Error('AI service not configured. Please add your OpenRouter API key in settings.');
+      throw new Error(i18n.t('errors.ai_not_configured'));
     }
 
     try {

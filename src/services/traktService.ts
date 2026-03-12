@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { mmkvStorage } from './mmkvStorage';
 import { AppState, AppStateStatus } from 'react-native';
 import { logger } from '../utils/logger';
@@ -595,7 +596,7 @@ export type TraktContentCommentLegacy =
 
 
 const TRAKT_MAINTENANCE_MODE = false;
-const TRAKT_MAINTENANCE_MESSAGE = 'Trakt integration is temporarily unavailable for maintenance. Please try again later.';
+const TRAKT_MAINTENANCE_MESSAGE = i18n.t('errors.unavailable_maintenance');
 
 export class TraktService {
   private static instance: TraktService;
@@ -952,7 +953,7 @@ export class TraktService {
     }
 
     if (!this.accessToken) {
-      throw new Error('Not authenticated');
+      throw new Error(i18n.t('errors.not_authenticated'));
     }
 
     const headers: HeadersInit = {
@@ -1061,7 +1062,7 @@ export class TraktService {
           id: 0,
           action: 'not_found',
           progress: body?.progress || 0,
-          error: 'Content not found in Trakt database'
+          error: i18n.t('errors.content_not_in_trakt')
         } as any;
       }
 

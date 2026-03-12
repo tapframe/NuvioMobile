@@ -11,6 +11,7 @@ import Animated, {
 import { useSettings } from '../../../hooks/useSettings';
 import { introService, SkipType } from '../../../services/introService';
 import { toastService } from '../../../services/toastService';
+import i18n from '../../../i18n';
 
 interface SubmitIntroModalProps {
   visible: boolean;
@@ -86,7 +87,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
     const endSec = parseTimeToSeconds(endTimeStr);
 
     if (startSec === null || endSec === null) {
-      toastService.error('Invalid format', 'Please use MM:SS format');
+      toastService.error('Invalid format', i18n.t('components.please_use_mmss'));
       return;
     }
 
@@ -113,10 +114,10 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
       );
 
       if (success) {
-        toastService.success(t('player_ui.intro_submitted', { defaultValue: 'Segment submitted successfully' }));
+        toastService.success(t('player_ui.intro_submitted', { defaultValue: i18n.t('components.segment_submitted_successfully') }));
         onClose();
       } else {
-        toastService.error(t('player_ui.intro_submit_failed', { defaultValue: 'Failed to submit segment' }));
+        toastService.error(t('player_ui.intro_submit_failed', { defaultValue: i18n.t('errors.failed_to_submit_segment') }));
       }
     } catch (error) {
       toastService.error('Error', 'An unexpected error occurred');
@@ -148,7 +149,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
           style={[localStyles.modalContainer, { width: Math.min(width * 0.85, 380) }]}
         >
           <View style={localStyles.header}>
-            <Text style={localStyles.title}>Submit Timestamps</Text>
+            <Text style={localStyles.title}>{i18n.t('components.submit_timestamps')}</Text>
             <TouchableOpacity onPress={onClose} style={localStyles.closeButton}>
               <Ionicons name="close" size={24} color="rgba(255,255,255,0.5)" />
             </TouchableOpacity>
@@ -157,7 +158,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={localStyles.content}>
             {/* Segment Type Selector */}
             <View>
-              <Text style={localStyles.label}>Segment Type</Text>
+              <Text style={localStyles.label}>{i18n.t('components.segment_type')}</Text>
               <View style={localStyles.typeRow}>
                 {segmentTypes.map((type) => (
                   <TouchableOpacity
@@ -187,7 +188,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
             {/* Start Time Input */}
             <View style={localStyles.inputRow}>
               <View style={{ flex: 1 }}>
-                <Text style={localStyles.label}>Start Time (MM:SS)</Text>
+                <Text style={localStyles.label}>{i18n.t('components.start_time')}</Text>
                 <TextInput
                   style={localStyles.input}
                   value={startTimeStr}
@@ -199,14 +200,14 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
               </View>
               <TouchableOpacity onPress={handleCaptureStart} style={localStyles.captureBtn}>
                 <MaterialIcons name="my-location" size={20} color="white" />
-                <Text style={localStyles.captureText}>Capture</Text>
+                <Text style={localStyles.captureText}>{i18n.t('components.capture')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* End Time Input */}
             <View style={localStyles.inputRow}>
               <View style={{ flex: 1 }}>
-                <Text style={localStyles.label}>End Time (MM:SS)</Text>
+                <Text style={localStyles.label}>{i18n.t('components.end_time')}</Text>
                 <TextInput
                   style={localStyles.input}
                   value={endTimeStr}
@@ -218,7 +219,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
               </View>
               <TouchableOpacity onPress={handleCaptureEnd} style={localStyles.captureBtn}>
                 <MaterialIcons name="my-location" size={20} color="white" />
-                <Text style={localStyles.captureText}>Capture</Text>
+                <Text style={localStyles.captureText}>{i18n.t('components.capture')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -229,7 +230,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
                 disabled={isSubmitting}
                 style={[localStyles.cancelBtn, isSubmitting && { opacity: 0.5 }]}
               >
-                <Text style={localStyles.cancelBtnText}>Cancel</Text>
+                <Text style={localStyles.cancelBtnText}>{i18n.t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -242,7 +243,7 @@ export const SubmitIntroModal: React.FC<SubmitIntroModalProps> = ({
                 ) : (
                   <>
                     <MaterialIcons name="send" size={18} color="black" />
-                    <Text style={localStyles.submitBtnText}>Submit</Text>
+                    <Text style={localStyles.submitBtnText}>{i18n.t('components.submit')}</Text>
                   </>
                 )}
               </TouchableOpacity>

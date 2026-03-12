@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FastImage from '@d11/react-native-fast-image';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import i18n from '../../../i18n';
 
 // Delay before showing pause overlay (in milliseconds)
 const PAUSE_OVERLAY_DELAY = 5000;
@@ -166,7 +167,7 @@ export const PauseOverlay: React.FC<PauseOverlayProps> = ({
                                     }}
                                 >
                                     <MaterialIcons name="arrow-back" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                                    <Text style={{ color: '#B8B8B8', fontSize: Math.min(14, screenDimensions.width * 0.02) }}>Back to details</Text>
+                                    <Text style={{ color: '#B8B8B8', fontSize: Math.min(14, screenDimensions.width * 0.02) }}>{i18n.t('components.back_to_details')}</Text>
                                 </TouchableOpacity>
 
                                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', width: '100%' }}>
@@ -200,7 +201,7 @@ export const PauseOverlay: React.FC<PauseOverlayProps> = ({
                     ) : (
                         <Animated.View style={{ flex: 1, justifyContent: 'space-between', opacity: metadataOpacity, transform: [{ scale: metadataScale }] }}>
                             <View>
-                                <Text style={{ color: '#B8B8B8', fontSize: Math.min(18, screenDimensions.width * 0.025), marginBottom: 8 }}>You're watching</Text>
+                                <Text style={{ color: '#B8B8B8', fontSize: Math.min(18, screenDimensions.width * 0.025), marginBottom: 8 }}>{i18n.t('components.youre_watching')}</Text>
                                 <Text style={{ color: '#FFFFFF', fontSize: Math.min(48, screenDimensions.width * 0.06), fontWeight: '800', marginBottom: 10 }} numberOfLines={2}>
                                     {title}
                                 </Text>
@@ -221,7 +222,7 @@ export const PauseOverlay: React.FC<PauseOverlayProps> = ({
                                 )}
                                 {cast && cast.length > 0 && (
                                     <View style={{ marginTop: 16 }}>
-                                        <Text style={{ color: '#B8B8B8', fontSize: Math.min(16, screenDimensions.width * 0.022), marginBottom: 8 }}>Cast</Text>
+                                        <Text style={{ color: '#B8B8B8', fontSize: Math.min(16, screenDimensions.width * 0.022), marginBottom: 8 }}>{i18n.t('components.cast')}</Text>
                                         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                                             {cast.slice(0, 6).map((castMember: any, index: number) => (
                                                 <TouchableOpacity

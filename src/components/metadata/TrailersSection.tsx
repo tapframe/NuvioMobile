@@ -303,7 +303,7 @@ const TrailersSection: React.FC<TrailersSectionProps> = memo(({
           setSelectedCategory(preferredCategory);
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load trailers';
+        const errorMessage = err instanceof Error ? err.message : t('components.failed_to_load_trailers');
         setError(errorMessage);
         logger.error('TrailersSection', 'Error fetching trailers:', err);
       } finally {

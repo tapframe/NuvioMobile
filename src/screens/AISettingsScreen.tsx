@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -34,7 +35,7 @@ const AISettingsScreen: React.FC = () => {
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertActions, setAlertActions] = useState<Array<{ label: string; onPress: () => void; style?: object }>>([
-    { label: 'OK', onPress: () => setAlertVisible(false) },
+    { label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) },
   ]);
 
   const openAlert = (
@@ -53,7 +54,7 @@ const AISettingsScreen: React.FC = () => {
         }))
       );
     } else {
-      setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+      setAlertActions([{ label: i18n.t('common.ok'), onPress: () => setAlertVisible(false) }]);
     }
     setAlertVisible(true);
   };

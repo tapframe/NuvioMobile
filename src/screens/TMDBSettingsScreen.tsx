@@ -801,7 +801,7 @@ const TMDBSettingsScreen = () => {
               {/* Production Info */}
               <View style={styles.settingRow}>
                 <View style={styles.settingTextContainer}>
-                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>Production Info</Text>
+                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>{t('tmdb_settings.production_info')}</Text>
                   <Text style={[styles.settingDescription, { color: currentTheme.colors.mediumEmphasis }]}>
                     Networks & production companies with logos
                   </Text>
@@ -818,7 +818,7 @@ const TMDBSettingsScreen = () => {
               {/* Movie Details */}
               <View style={styles.settingRow}>
                 <View style={styles.settingTextContainer}>
-                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>Movie Details</Text>
+                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>{t('tmdb_settings.movie_details')}</Text>
                   <Text style={[styles.settingDescription, { color: currentTheme.colors.mediumEmphasis }]}>
                     Budget, revenue, runtime, tagline
                   </Text>
@@ -835,7 +835,7 @@ const TMDBSettingsScreen = () => {
               {/* TV Details */}
               <View style={styles.settingRow}>
                 <View style={styles.settingTextContainer}>
-                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>TV Show Details</Text>
+                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>{t('tmdb_settings.tv_details')}</Text>
                   <Text style={[styles.settingDescription, { color: currentTheme.colors.mediumEmphasis }]}>
                     Status, seasons count, networks, creators
                   </Text>
@@ -852,7 +852,7 @@ const TMDBSettingsScreen = () => {
               {/* Collections */}
               <View style={[styles.settingRow, { marginBottom: 0 }]}>
                 <View style={styles.settingTextContainer}>
-                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>Movie Collections</Text>
+                  <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>{t('tmdb_settings.movie_collections')}</Text>
                   <Text style={[styles.settingDescription, { color: currentTheme.colors.mediumEmphasis }]}>
                     Franchise movies (Marvel, Star Wars, etc.)
                   </Text>
@@ -873,7 +873,7 @@ const TMDBSettingsScreen = () => {
         <View style={[styles.sectionCard, { backgroundColor: currentTheme.colors.elevation2 }]}>
           <View style={styles.sectionHeader}>
             <MaterialIcons name="api" size={20} color={currentTheme.colors.primary} />
-            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>API Configuration</Text>
+            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>{t('settings.api_configuration')}</Text>
           </View>
           <Text style={[styles.sectionDescription, { color: currentTheme.colors.mediumEmphasis }]}>
             Configure your TMDb API access for enhanced functionality.
@@ -881,7 +881,7 @@ const TMDBSettingsScreen = () => {
 
           <View style={styles.settingRow}>
             <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>Custom API Key</Text>
+              <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>{t('tmdb_settings.custom_api_key')}</Text>
               <Text style={[styles.settingDescription, { color: currentTheme.colors.mediumEmphasis }]}>
                 Use your own TMDb API key for better performance and dedicated rate limits.
               </Text>
@@ -952,7 +952,7 @@ const TMDBSettingsScreen = () => {
                     style={[styles.button, { backgroundColor: currentTheme.colors.primary }]}
                     onPress={saveApiKey}
                   >
-                    <Text style={[styles.buttonText, { color: currentTheme.colors.white }]}>Save</Text>
+                    <Text style={[styles.buttonText, { color: currentTheme.colors.white }]}>{t('tmdb_settings.save')}</Text>
                   </TouchableOpacity>
 
                   {isKeySet && (
@@ -960,7 +960,7 @@ const TMDBSettingsScreen = () => {
                       style={[styles.button, styles.clearButton, { borderColor: currentTheme.colors.error }]}
                       onPress={clearApiKey}
                     >
-                      <Text style={[styles.buttonText, { color: currentTheme.colors.error }]}>Clear</Text>
+                      <Text style={[styles.buttonText, { color: currentTheme.colors.error }]}>{t('tmdb_settings.clear')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1012,7 +1012,7 @@ const TMDBSettingsScreen = () => {
 
           <View style={styles.settingRow}>
             <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>Cache Size</Text>
+              <Text style={[styles.settingTitle, { color: currentTheme.colors.text }]}>{t('tmdb_settings.cache_size')}</Text>
               <Text style={[styles.settingDescription, { color: currentTheme.colors.mediumEmphasis }]}>
                 {cacheSize}
               </Text>
@@ -1025,7 +1025,7 @@ const TMDBSettingsScreen = () => {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <MaterialIcons name="delete-outline" size={18} color={currentTheme.colors.white} />
-              <Text style={[styles.buttonText, { color: currentTheme.colors.white, marginLeft: 8 }]}>Clear Cache</Text>
+              <Text style={[styles.buttonText, { color: currentTheme.colors.white, marginLeft: 8 }]}>{t('tmdb_settings.clear_cache')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -1069,8 +1069,8 @@ const TMDBSettingsScreen = () => {
                   {/* Header */}
                   <View style={styles.modalHeader}>
                     <View style={[styles.dragHandle, { backgroundColor: currentTheme.colors.elevation3 }]} />
-                    <Text style={[styles.modalTitle, { color: currentTheme.colors.text }]}>Choose Language</Text>
-                    <Text style={[styles.modalSubtitle, { color: currentTheme.colors.mediumEmphasis }]}>Select your preferred language for TMDb content</Text>
+                    <Text style={[styles.modalTitle, { color: currentTheme.colors.text }]}>{t('tmdb_settings.choose_language')}</Text>
+                    <Text style={[styles.modalSubtitle, { color: currentTheme.colors.mediumEmphasis }]}>{t('tmdb_settings.choose_language_desc')}</Text>
                   </View>
 
                   {/* Search Section */}
@@ -1097,7 +1097,7 @@ const TMDBSettingsScreen = () => {
                   {/* Popular Languages */}
                   {languageSearch.length === 0 && (
                     <View style={styles.popularSection}>
-                      <Text style={[styles.sectionTitle, { color: currentTheme.colors.mediumEmphasis }]}>Popular</Text>
+                      <Text style={[styles.sectionTitle, { color: currentTheme.colors.mediumEmphasis }]}>{t('tmdb_settings.popular')}</Text>
                       <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -1244,7 +1244,7 @@ const TMDBSettingsScreen = () => {
                                   onPress={() => setLanguageSearch('')}
                                   style={[styles.clearSearchButton, { backgroundColor: currentTheme.colors.elevation1 }]}
                                 >
-                                  <Text style={[styles.clearSearchButtonText, { color: currentTheme.colors.primary }]}>Clear search</Text>
+                                  <Text style={[styles.clearSearchButtonText, { color: currentTheme.colors.primary }]}>{t('tmdb_settings.clear_search')}</Text>
                                 </TouchableOpacity>
                               </View>
                             )}
@@ -1260,13 +1260,13 @@ const TMDBSettingsScreen = () => {
                       onPress={() => setLanguagePickerVisible(false)}
                       style={styles.cancelButton}
                     >
-                      <Text style={[styles.cancelButtonText, { color: currentTheme.colors.text }]}>Cancel</Text>
+                      <Text style={[styles.cancelButtonText, { color: currentTheme.colors.text }]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => setLanguagePickerVisible(false)}
                       style={[styles.doneButton, { backgroundColor: currentTheme.colors.primary }]}
                     >
-                      <Text style={[styles.doneButtonText, { color: currentTheme.colors.white }]}>Done</Text>
+                      <Text style={[styles.doneButtonText, { color: currentTheme.colors.white }]}>{t('tmdb_settings.done')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

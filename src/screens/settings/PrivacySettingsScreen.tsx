@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
@@ -57,7 +58,7 @@ export const PrivacySettingsContent: React.FC<PrivacySettingsContentProps> = ({
         message: string,
         actions?: Array<{ label: string; onPress: () => void; style?: object }>
     ) => {
-        const alertActions = (actions || [{ label: 'OK', onPress: () => { } }]).map(action => ({
+        const alertActions = (actions || [{ label: i18n.t('common.ok'), onPress: () => { } }]).map(action => ({
             text: action.label,
             onPress: action.onPress,
             style: undefined as 'default' | 'cancel' | 'destructive' | undefined,

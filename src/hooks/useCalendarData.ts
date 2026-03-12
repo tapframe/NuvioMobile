@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLibrary } from './useLibrary';
 import { useTraktContext } from '../contexts/TraktContext';
@@ -268,7 +269,7 @@ export const useCalendarData = (): UseCalendarDataReturn => {
                 data: {
                   id: series.id,
                   seriesId: series.id,
-                  title: 'No upcoming episodes',
+                  title: i18n.t('components.no_upcoming'),
                   seriesName: series.name || episodeData?.seriesName || '',
                   poster: series.poster || episodeData?.poster || '',
                   releaseDate: '',
@@ -289,7 +290,7 @@ export const useCalendarData = (): UseCalendarDataReturn => {
               data: {
                 id: series.id,
                 seriesId: series.id,
-                title: 'No upcoming episodes',
+                title: i18n.t('components.no_upcoming'),
                 seriesName: series.name || '',
                 poster: series.poster || '',
                 releaseDate: '',
@@ -444,19 +445,19 @@ export const useCalendarData = (): UseCalendarDataReturn => {
 
       const sections: CalendarSection[] = [];
       if (thisWeekEpisodes.length > 0) {
-        sections.push({ title: 'This Week', data: thisWeekEpisodes });
+        sections.push({ title: i18n.t('components.this_week'), data: thisWeekEpisodes });
         logger.log(`[CalendarData] Added 'This Week' section with ${thisWeekEpisodes.length} episodes`);
       }
       if (upcomingEpisodes.length > 0) {
-        sections.push({ title: 'Upcoming', data: upcomingEpisodes });
+        sections.push({ title: i18n.t('components.upcoming'), data: upcomingEpisodes });
         logger.log(`[CalendarData] Added 'Upcoming' section with ${upcomingEpisodes.length} episodes`);
       }
       if (recentEpisodes.length > 0) {
-        sections.push({ title: 'Recently Released', data: recentEpisodes });
+        sections.push({ title: i18n.t('components.recently_released'), data: recentEpisodes });
         logger.log(`[CalendarData] Added 'Recently Released' section with ${recentEpisodes.length} episodes`);
       }
       if (seriesWithoutEpisodes.length > 0) {
-        sections.push({ title: 'Series with No Scheduled Episodes', data: seriesWithoutEpisodes });
+        sections.push({ title: i18n.t('components.series_no_scheduled'), data: seriesWithoutEpisodes });
         logger.log(`[CalendarData] Added 'Series with No Scheduled Episodes' section with ${seriesWithoutEpisodes.length} episodes`);
       }
 

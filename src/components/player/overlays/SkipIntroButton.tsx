@@ -1,3 +1,4 @@
+import i18n from '../../../i18n';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Text, TouchableOpacity, StyleSheet, Platform, View } from 'react-native';
 import Animated, {
@@ -184,21 +185,21 @@ export const SkipIntroButton: React.FC<SkipIntroButtonProps> = ({
 
     // Get display text based on skip type
     const getButtonText = () => {
-        if (!currentInterval) return 'Skip';
+        if (!currentInterval) return i18n.t('components.skip');
 
         switch (currentInterval.type) {
             case 'op':
             case 'mixed-op':
             case 'intro':
-                return 'Skip Intro';
+                return i18n.t('components.skip_intro');
             case 'ed':
             case 'mixed-ed':
             case 'outro':
-                return 'Skip Ending';
+                return i18n.t('components.skip_ending');
             case 'recap':
-                return 'Skip Recap';
+                return i18n.t('components.skip_recap');
             default:
-                return 'Skip';
+                return i18n.t('components.skip');
         }
     };
 

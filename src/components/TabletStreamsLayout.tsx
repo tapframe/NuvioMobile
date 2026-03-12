@@ -36,6 +36,7 @@ import { RootStackNavigationProp } from '../navigation/AppNavigator';
 import ProviderFilter from './ProviderFilter';
 import PulsingChip from './PulsingChip';
 import StreamCard from './StreamCard';
+import i18n from '../i18n';
 
 interface TabletStreamsLayoutProps {
   // Background and content props
@@ -302,7 +303,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
       return (
         <View style={[styles.noStreams, { paddingTop: 50 }]}>
           <MaterialIcons name="error-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.noStreamsText}>No streaming sources available</Text>
+          <Text style={styles.noStreamsText}>{i18n.t('components.no_streaming_sources')}</Text>
           <Text style={styles.noStreamsSubText}>
             Please add streaming sources in settings
           </Text>
@@ -310,7 +311,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
             style={styles.addSourcesButton}
             onPress={() => navigation.navigate('Addons')}
           >
-            <Text style={styles.addSourcesButtonText}>Add Sources</Text>
+            <Text style={styles.addSourcesButtonText}>{i18n.t('components.add_sources')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -332,7 +333,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
         return (
           <View style={[styles.noStreams, { paddingTop: 50 }]}>
             <MaterialIcons name="error-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.noStreamsText}>No streams available</Text>
+            <Text style={styles.noStreamsText}>{i18n.t('components.no_streams')}</Text>
           </View>
         );
       }
@@ -398,7 +399,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
       return (
         <View style={styles.footerLoading}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.footerLoadingText}>Loading more sources...</Text>
+          <Text style={styles.footerLoadingText}>{i18n.t('components.loading_sources')}</Text>
         </View>
       );
     };
@@ -470,7 +471,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
           </View>
         ) : (
           <View style={styles.tabletEmptyLeftPanel}>
-            <Text style={styles.tabletEmptyLeftPanelText}>No content information available</Text>
+            <Text style={styles.tabletEmptyLeftPanelText}>{i18n.t('components.no_content_info')}</Text>
           </View>
         )}
       </Animated.View>
@@ -504,7 +505,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
                 {/* Active Scrapers Status */}
                 {activeFetchingScrapers.length > 0 && (
                   <View style={styles.activeScrapersContainer}>
-                    <Text style={styles.activeScrapersTitle}>Fetching from:</Text>
+                    <Text style={styles.activeScrapersTitle}>{i18n.t('components.fetching_from')}</Text>
                     <View style={styles.activeScrapersRow}>
                       {activeFetchingScrapers.map((scraperName, index) => (
                         <PulsingChip key={scraperName} text={scraperName} delay={index * 200} />
@@ -520,7 +521,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
                     <View style={styles.autoplayOverlay}>
                       <View style={styles.autoplayIndicator}>
                         <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={styles.autoplayText}>Starting best stream...</Text>
+                        <Text style={styles.autoplayText}>{i18n.t('components.starting_best')}</Text>
                       </View>
                     </View>
                   )}
@@ -556,7 +557,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
               {/* Active Scrapers Status */}
               {activeFetchingScrapers.length > 0 && (
                 <View style={styles.activeScrapersContainer}>
-                  <Text style={styles.activeScrapersTitle}>Fetching from:</Text>
+                  <Text style={styles.activeScrapersTitle}>{i18n.t('components.fetching_from')}</Text>
                   <View style={styles.activeScrapersRow}>
                     {activeFetchingScrapers.map((scraperName, index) => (
                       <PulsingChip key={scraperName} text={scraperName} delay={index * 200} />
@@ -572,7 +573,7 @@ const TabletStreamsLayout: React.FC<TabletStreamsLayoutProps> = ({
                   <View style={styles.autoplayOverlay}>
                     <View style={styles.autoplayIndicator}>
                       <ActivityIndicator size="small" color={colors.primary} />
-                      <Text style={styles.autoplayText}>Starting best stream...</Text>
+                      <Text style={styles.autoplayText}>{i18n.t('components.starting_best')}</Text>
                     </View>
                   </View>
                 )}

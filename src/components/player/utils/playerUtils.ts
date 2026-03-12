@@ -1,3 +1,4 @@
+import i18n from '../../../i18n';
 import { logger } from '../../../utils/logger';
 import { useEffect } from 'react';
 import { SubtitleCue } from './playerTypes';
@@ -92,7 +93,7 @@ export const formatLanguage = (code?: string): string => {
 
 // Helper function to extract a display name from the track's name property
 export const getTrackDisplayName = (track: { name?: string, id: number, language?: string }): string => {
-  if (!track) return 'Unknown Track';
+  if (!track) return i18n.t('components.unknown_track');
 
   // If no name, use track number
   if (!track.name) return `Track ${track.id}`;

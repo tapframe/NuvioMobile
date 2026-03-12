@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { mmkvStorage } from './mmkvStorage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
@@ -183,7 +184,7 @@ export class BackupService {
       return fileUri;
     } catch (error) {
       logger.error('[BackupService] Failed to create backup:', error);
-      throw new Error(`Failed to create backup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to create backup: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
     }
   }
 
@@ -336,7 +337,7 @@ export class BackupService {
       logger.info('[BackupService] Backup restore completed successfully');
     } catch (error) {
       logger.error('[BackupService] Failed to restore backup:', error);
-      throw new Error(`Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to restore backup: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
     }
   }
 
@@ -358,7 +359,7 @@ export class BackupService {
       };
     } catch (error) {
       logger.error('[BackupService] Failed to read backup info:', error);
-      throw new Error(`Invalid backup file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Invalid backup file: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
     }
   }
 
@@ -386,7 +387,7 @@ export class BackupService {
       logger.info('[BackupService] Backup file deleted:', fileUri);
     } catch (error) {
       logger.error('[BackupService] Failed to delete backup:', error);
-      throw new Error(`Failed to delete backup: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to delete backup: ${error instanceof Error ? error.message : i18n.t('errors.unknown_error')}`);
     }
   }
 

@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dimensions, Platform, Linking } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -180,7 +181,7 @@ export const useStreamsScreen = () => {
       try {
         setAlertTitle(title);
         setAlertMessage(message);
-        setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
+        setAlertActions(actions && actions.length > 0 ? actions : [{ label: i18n.t('components.ok'), onPress: () => { } }]);
         setAlertVisible(true);
       } catch (error) {
         console.warn('[StreamsScreen] Error showing alert:', error);
@@ -463,7 +464,7 @@ export const useStreamsScreen = () => {
 
         // Block magnet links
         if (typeof stream.url === 'string' && stream.url.startsWith('magnet:')) {
-          openAlert('Not supported', 'Torrent streaming is not supported yet.');
+          openAlert('Not supported', i18n.t('components.torrent_not_supported'));
           return;
         }
 
@@ -767,7 +768,7 @@ export const useStreamsScreen = () => {
         }
       });
 
-      const filterChips: FilterItem[] = [{ id: 'all', name: 'All Providers' }];
+      const filterChips: FilterItem[] = [{ id: 'all', name: i18n.t('components.all_providers') }];
 
       addonProviders
         .sort((a, b) => {
@@ -810,7 +811,7 @@ export const useStreamsScreen = () => {
     }
 
     return [
-      { id: 'all', name: 'All Providers' },
+      { id: 'all', name: i18n.t('components.all_providers') },
       ...Array.from(allProviders)
         .sort((a, b) => {
           const indexA = installedAddons.findIndex(addon => addon.installationId === a || addon.id === a);

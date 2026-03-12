@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
@@ -407,7 +408,7 @@ const MetadataDetails: React.FC<MetadataDetailsProps> = ({
                     fontSize: isTV ? 16 : isLargeTablet ? 15 : isTablet ? 14 : 14
                   }
                 ]}>
-                  {isFullDescriptionOpen ? 'Show Less' : 'Show More'}
+                  {isFullDescriptionOpen ? i18n.t('components.show_less') : i18n.t('components.show_more')}
                 </Text>
                 <MaterialIcons
                   name={isFullDescriptionOpen ? "keyboard-arrow-up" : "keyboard-arrow-down"}

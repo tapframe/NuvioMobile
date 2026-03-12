@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, StatusBar, StyleSheet, Animated, Dimensions, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -533,7 +534,7 @@ const KSPlayerCore: React.FC = () => {
   };
 
   const handleError = (error: any) => {
-    let msg = 'Unknown Error';
+    let msg = i18n.t('errors.unknown_error');
     try {
       if (typeof error === 'string') {
         msg = error;
@@ -549,7 +550,7 @@ const KSPlayerCore: React.FC = () => {
         msg = JSON.stringify(error);
       }
     } catch (e) {
-      msg = 'Error parsing error details';
+      msg = i18n.t('errors.error_parsing_details');
     }
 
     if (__DEV__) {

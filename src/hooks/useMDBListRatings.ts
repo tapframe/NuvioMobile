@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useState, useEffect } from 'react';
 import { mdblistService, MDBListRatings } from '../services/mdblistService';
 import { logger } from '../utils/logger';
@@ -33,7 +34,7 @@ export const useMDBListRatings = (imdbId: string, mediaType: 'movie' | 'show') =
         logger.log('[useMDBListRatings] Received ratings:', data);
         setRatings(data);
       } catch (err) {
-        const errorMessage = 'Failed to fetch ratings';
+        const errorMessage = i18n.t('errors.failed_to_fetch_ratings');
         logger.error('[useMDBListRatings] Error:', err);
         setError(errorMessage);
       } finally {

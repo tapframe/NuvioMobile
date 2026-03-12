@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -52,7 +53,7 @@ const ProfilesScreen: React.FC = () => {
   ) => {
     setAlertTitle(title);
     setAlertMessage(message);
-    setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
+    setAlertActions(actions && actions.length > 0 ? actions : [{ label: i18n.t('common.ok'), onPress: () => { } }]);
     setAlertVisible(true);
   };
 
@@ -161,12 +162,12 @@ const ProfilesScreen: React.FC = () => {
     }
 
     openAlert(
-      'Delete Profile',
-      'Are you sure you want to delete this profile? This action cannot be undone.',
+      i18n.t('components.delete_profile'),
+      i18n.t('components.delete_profile_confirm'),
       [
-        { label: 'Cancel', onPress: () => { } },
+        { label: i18n.t('components.cancel'), onPress: () => { } },
         {
-          label: 'Delete',
+          label: i18n.t('components.delete'),
           onPress: () => {
             const updatedProfiles = profiles.filter(profile => profile.id !== id);
             setProfiles(updatedProfiles);
@@ -299,7 +300,7 @@ const ProfilesScreen: React.FC = () => {
                   borderColor: currentTheme.colors.border
                 }
               ]}
-              placeholder="Profile Name"
+              placeholder={String(i18n.t('placeholders.profile_name'))}
               placeholderTextColor={currentTheme.colors.textMuted}
               value={newProfileName}
               onChangeText={setNewProfileName}
@@ -314,7 +315,7 @@ const ProfilesScreen: React.FC = () => {
                   setShowAddModal(false);
                 }}
               >
-                <Text style={{ color: currentTheme.colors.textMuted }}>Cancel</Text>
+                <Text style={{ color: currentTheme.colors.textMuted }}>{i18n.t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -324,7 +325,7 @@ const ProfilesScreen: React.FC = () => {
                 ]}
                 onPress={handleAddProfile}
               >
-                <Text style={{ color: '#fff' }}>Create</Text>
+                <Text style={{ color: '#fff' }}>{i18n.t('profiles.create')}</Text>
               </TouchableOpacity>
             </View>
           </View>

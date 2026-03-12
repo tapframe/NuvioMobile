@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Platform, Linking, Dimensions, Alert, TextInput, Modal, KeyboardAvoidingView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -57,7 +58,7 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
         visible: false,
         title: '',
         message: '',
-        actions: [{ label: 'OK', onPress: () => { } }]
+        actions: [{ label: i18n.t('common.ok'), onPress: () => { } }]
     });
 
     const showAlert = (title: string, message: string, actions?: Array<{ label: string; onPress: () => void; style?: object }>) => {
@@ -65,7 +66,7 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
             visible: true,
             title,
             message,
-            actions: actions || [{ label: 'OK', onPress: () => { } }]
+            actions: actions || [{ label: i18n.t('common.ok'), onPress: () => { } }]
         });
     };
 
@@ -136,16 +137,16 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
                 setDeveloperModeEnabled(true);
                 onDevModeChange?.(true);
                 showAlert(
-                    t('settings.developer_mode.enabled_title', 'Developer Mode Enabled'),
-                    t('settings.developer_mode.enabled_message', 'Developer tools are now available in Settings.')
+                    t('settings.developer_mode.enabled_title', t('settings.dev_mode_enabled')),
+                    t('settings.developer_mode.enabled_message', t('settings.dev_tools_available'))
                 );
             } catch (error) {
                 console.error('Failed to save developer mode state:', error);
             }
         } else {
             showAlert(
-                t('settings.developer_mode.invalid_code_title', 'Invalid Code'),
-                t('settings.developer_mode.invalid_code_message', 'The code you entered is incorrect.')
+                t('settings.developer_mode.invalid_code_title', t('settings.invalid_code')),
+                t('settings.developer_mode.invalid_code_message', t('settings.incorrect_code'))
             );
         }
         setCodeInput('');
@@ -153,8 +154,8 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
 
     const handleDisableDeveloperMode = () => {
         showAlert(
-            t('settings.developer_mode.disable_title', 'Disable Developer Mode'),
-            t('settings.developer_mode.disable_message', 'Are you sure you want to disable developer mode?'),
+            t('settings.developer_mode.disable_title', t('settings.disable_dev_mode')),
+            t('settings.developer_mode.disable_message', t('settings.disable_dev_mode_confirm')),
             [
                 {
                     label: t('common.cancel', 'Cancel'),
@@ -168,8 +169,8 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
                             setDeveloperModeEnabled(false);
                             onDevModeChange?.(false);
                             showAlert(
-                                t('settings.developer_mode.disabled_title', 'Developer Mode Disabled'),
-                                t('settings.developer_mode.disabled_message', 'Developer tools are now hidden.')
+                                t('settings.developer_mode.disabled_title', t('settings.dev_mode_disabled')),
+                                t('settings.developer_mode.disabled_message', t('settings.dev_tools_hidden'))
                             );
                         } catch (error) {
                             console.error('Failed to save developer mode state:', error);
@@ -262,7 +263,7 @@ export const AboutSettingsContent: React.FC<AboutSettingsContentProps> = ({
                             style={modalStyles.input}
                             value={codeInput}
                             onChangeText={setCodeInput}
-                            placeholder="Enter code"
+                            placeholder={String(i18n.t('placeholders.code'))}
                             placeholderTextColor="#888"
                             secureTextEntry
                             keyboardType="number-pad"

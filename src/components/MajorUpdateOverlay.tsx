@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import i18n from '../i18n';
 
 interface Props {
   visible: boolean;
@@ -30,7 +31,7 @@ const MajorUpdateOverlay: React.FC<Props> = ({ visible, latestTag, releaseNotes,
             <View style={[styles.iconCircle, { backgroundColor: `${currentTheme.colors.primary}22` }]}>
               <MaterialIcons name="new-releases" size={28} color={currentTheme.colors.primary} />
             </View>
-            <Text style={[styles.title, { color: currentTheme.colors.highEmphasis }]}>Major update available</Text>
+            <Text style={[styles.title, { color: currentTheme.colors.highEmphasis }]}>{i18n.t('components.major_update')}</Text>
             {!!latestTag && (
               <Text style={[styles.version, { color: currentTheme.colors.mediumEmphasis }]}>Latest: {latestTag}</Text>
             )}
@@ -60,10 +61,10 @@ const MajorUpdateOverlay: React.FC<Props> = ({ visible, latestTag, releaseNotes,
 
             <View style={styles.secondaryRow}>
               <TouchableOpacity style={[styles.secondaryBtn, { borderColor: currentTheme.colors.elevation3 }]} onPress={onLater}>
-                <Text style={[styles.secondaryText, { color: currentTheme.colors.mediumEmphasis }]}>Later</Text>
+                <Text style={[styles.secondaryText, { color: currentTheme.colors.mediumEmphasis }]}>{i18n.t('components.later')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.secondaryBtn, { borderColor: currentTheme.colors.elevation3 }]} onPress={onDismiss}>
-                <Text style={[styles.secondaryText, { color: currentTheme.colors.mediumEmphasis }]}>Dismiss</Text>
+                <Text style={[styles.secondaryText, { color: currentTheme.colors.mediumEmphasis }]}>{i18n.t('components.dismiss')}</Text>
               </TouchableOpacity>
             </View>
           </View>
