@@ -21,6 +21,7 @@ interface CustomAlertProps {
   visible: boolean;
   title: string;
   message: string;
+  subtitle?: string;
   onClose: () => void;
   actions?: Array<{
     label: string;
@@ -33,6 +34,7 @@ export const CustomAlert = ({
   visible,
   title,
   message,
+  subtitle,
   onClose,
   actions = [
     { label: 'OK', onPress: onClose }
@@ -109,6 +111,13 @@ export const CustomAlert = ({
               <Text style={styles.message}>
                 {message}
               </Text>
+
+              {/* Subtitle / tooltip */}
+              {subtitle ? (
+                <Text style={styles.subtitle}>
+                  {subtitle}
+                </Text>
+              ) : null}
 
               {/* Actions */}
               <View style={[
@@ -200,9 +209,17 @@ const styles = StyleSheet.create({
   message: {
     color: '#AAAAAA',
     fontSize: 15,
-    marginBottom: 24,
+    marginBottom: 8,
     textAlign: 'center',
     lineHeight: 22,
+    letterSpacing: 0.1,
+  },
+  subtitle: {
+    color: '#666666',
+    fontSize: 12,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 18,
     letterSpacing: 0.1,
   },
   actionsRow: {

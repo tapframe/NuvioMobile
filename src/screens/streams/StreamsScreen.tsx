@@ -35,6 +35,7 @@ export const StreamsScreen = () => {
     alertVisible,
     alertTitle,
     alertMessage,
+    alertSubtitle,
     alertActions,
     openAlert,
     closeAlert,
@@ -206,6 +207,7 @@ export const StreamsScreen = () => {
           visible={alertVisible}
           title={alertTitle}
           message={alertMessage}
+          subtitle={alertSubtitle}
           actions={alertActions}
           onClose={closeAlert}
         />
