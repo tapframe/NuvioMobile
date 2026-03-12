@@ -47,6 +47,10 @@ class MalAuthService {
     return this.token;
   }
 
+  isAuthenticated(): boolean {
+    return this.getToken() !== null;
+  }
+
   saveToken(token: MalToken) {
     this.token = token;
     mmkvStorage.setString(KEYS.ACCESS, token.accessToken);

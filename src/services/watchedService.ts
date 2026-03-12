@@ -219,10 +219,9 @@ class WatchedService {
             }
 
             // Sync to MAL
-            const malToken = MalAuth.getToken();
-            if (malToken) {
+            if (MalAuth.isAuthenticated()) {
                 MalSync.scrobbleEpisode(
-                    title || '', // Use real title if provided for search fallback
+                    title || 'Movie', // Use real title or generic fallback
                     1, 
                     1, 
                     'movie', 
@@ -300,8 +299,7 @@ class WatchedService {
             }
 
             // Sync to MAL
-            const malToken = MalAuth.getToken();
-            if (malToken && (showImdbId || malId || tmdbId)) {
+            if (MalAuth.isAuthenticated() && (showImdbId || malId || tmdbId)) {
                 // Strategy 0: Direct Match (if malId is provided)
                 let synced = false;
                 if (malId) {

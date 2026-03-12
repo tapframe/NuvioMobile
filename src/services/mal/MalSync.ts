@@ -188,7 +188,7 @@ export const MalSync = {
       const isEnabled = mmkvStorage.getBoolean('mal_enabled') ?? true;
       const isAutoUpdate = mmkvStorage.getBoolean('mal_auto_update') ?? true;
       
-      if (!isEnabled || !isAutoUpdate) {
+      if (!isEnabled || !isAutoUpdate || !MalAuth.isAuthenticated()) {
           return;
       }
 
@@ -286,10 +286,10 @@ export const MalSync = {
    */
   scrobbleDirect: async (malId: number, episodeNumber: number) => {
       try {
-          // Respect user settings
+          // Respect user settings and login status
           const isEnabled = mmkvStorage.getBoolean('mal_enabled') ?? true;
           const isAutoUpdate = mmkvStorage.getBoolean('mal_auto_update') ?? true;
-          if (!isEnabled || !isAutoUpdate) return;
+          if (!isEnabled || !isAutoUpdate || !MalAuth.isAuthenticated()) return;
 
           // Check current status
           const currentInfo = await MalApiService.getMyListStatus(malId);
@@ -325,6 +325,7 @@ export const MalSync = {
    * Import MAL list items into local library
    */
   syncMalToLibrary: async () => {
+      if (!MalAuth.isAuthenticated()) return false;
       try {
           let allItems: MalAnimeNode[] = [];
           let offset = 0;
@@ -366,6 +367,7 @@ export const MalSync = {
    * Automatically adds MAL 'watching' items to the Nuvio Library
    */
   syncMalWatchingToLibrary: async () => {
+      if (!MalAuth.isAuthenticated()) return;
       try {
           logger.log('[MalSync] Auto-syncing MAL watching items to library...');
           
