@@ -40,6 +40,15 @@
     </array>
     <key>CFBundleVersion</key>
     <string>37</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>vlc</string>
+      <string>vlc-x-callback</string>
+      <string>infuse</string>
+      <string>outplayer</string>
+      <string>open-vidhub</string>
+      <string>livecontainer</string>
+    </array>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>

@@ -33,7 +33,15 @@
           "audio"
         ],
         "LSSupportsOpeningDocumentsInPlace": true,
-        "UIFileSharingEnabled": true
+        "UIFileSharingEnabled": true,
+        "LSApplicationQueriesSchemes": [
+          "vlc",
+          "vlc-x-callback",
+          "infuse",
+          "outplayer",
+          "open-vidhub",
+          "livecontainer"
+        ]
       },
       "bundleIdentifier": "com.nuvio.hub",
       "associatedDomains": [],

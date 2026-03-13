@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger';
 import { Platform } from 'react-native';
-import { YouTubeExtractor } from './youtubeExtractor';
+import { YouTubeExtractionResult, YouTubeExtractor } from './youtubeExtractor';
 
 export interface TrailerData {
   url: string;
@@ -8,8 +8,14 @@ export interface TrailerData {
   year: number;
 }
 
+export interface TrailerPlaybackSource {
+  videoUrl: string;
+  audioUrl: string | null;
+  quality?: string;
+}
+
 interface CacheEntry {
-  url: string;
+  source: TrailerPlaybackSource;
   expiresAt: number;
 }
 
@@ -31,6 +37,15 @@ export class TrailerService {
     title?: string,
     year?: number
   ): Promise<string | null> {
+    const source = await this.getTrailerPlaybackSourceFromVideoId(youtubeVideoId, title, year);
+    return source?.videoUrl ?? null;
+  }
+
+  static async getTrailerPlaybackSourceFromVideoId(
+    youtubeVideoId: string,
+    title?: string,
+    year?: number
+  ): Promise<TrailerPlaybackSource | null> {
     if (!youtubeVideoId) return null;
 
     logger.info('TrailerService', `getTrailerFromVideoId: ${youtubeVideoId} (${title ?? '?'} ${year ?? ''})`);
@@ -43,11 +58,12 @@ export class TrailerService {
 
     try {
       const platform = Platform.OS === 'android' ? 'android' : 'ios';
-      const url = await YouTubeExtractor.getBestStreamUrl(youtubeVideoId, platform);
-      if (url) {
+      const extracted = await YouTubeExtractor.extract(youtubeVideoId, platform);
+      if (extracted) {
+        const source = this.toPlaybackSource(extracted);
         logger.info('TrailerService', `Extraction succeeded for ${youtubeVideoId}`);
-        this.setCache(youtubeVideoId, url);
-        return url;
+        this.setCache(youtubeVideoId, source);
+        return source;
       }
       logger.warn('TrailerService', `Extraction returned null for ${youtubeVideoId}`);
     } catch (err) {
@@ -66,6 +82,15 @@ export class TrailerService {
     title?: string,
     year?: string
   ): Promise<string | null> {
+    const source = await this.getTrailerPlaybackSourceFromYouTubeUrl(youtubeUrl, title, year);
+    return source?.videoUrl ?? null;
+  }
+
+  static async getTrailerPlaybackSourceFromYouTubeUrl(
+    youtubeUrl: string,
+    title?: string,
+    year?: string
+  ): Promise<TrailerPlaybackSource | null> {
     logger.info('TrailerService', `getTrailerFromYouTubeUrl: ${youtubeUrl}`);
 
     const videoId = YouTubeExtractor.parseVideoId(youtubeUrl);
@@ -74,7 +99,7 @@ export class TrailerService {
       return null;
     }
 
-    return this.getTrailerFromVideoId(
+    return this.getTrailerPlaybackSourceFromVideoId(
       videoId,
       title,
       year ? parseInt(year, 10) : undefined
@@ -135,7 +160,7 @@ export class TrailerService {
   // Private — cache
   // ---------------------------------------------------------------------------
 
-  private static getCached(key: string): string | null {
+  private static getCached(key: string): TrailerPlaybackSource | null {
     const entry = this.urlCache.get(key);
     if (!entry) return null;
     if (Date.now() > entry.expiresAt) {
@@ -144,9 +169,9 @@ export class TrailerService {
     }
     // Check the URL's own CDN expiry — googlevideo.com URLs carry an `expire`
     // param (Unix timestamp). Treat as stale if it expires within 2 minutes.
-    if (entry.url.includes('googlevideo.com')) {
+    if (entry.source.videoUrl.includes('googlevideo.com')) {
       try {
-        const u = new URL(entry.url);
+        const u = new URL(entry.source.videoUrl);
         const expire = u.searchParams.get('expire');
         if (expire) {
           const expiresAt = parseInt(expire, 10) * 1000;
@@ -158,15 +183,23 @@ export class TrailerService {
         }
       } catch { /* ignore */ }
     }
-    return entry.url;
+    return entry.source;
   }
 
-  private static setCache(key: string, url: string): void {
-    this.urlCache.set(key, { url, expiresAt: Date.now() + this.CACHE_TTL_MS });
+  private static setCache(key: string, source: TrailerPlaybackSource): void {
+    this.urlCache.set(key, { source, expiresAt: Date.now() + this.CACHE_TTL_MS });
     if (this.urlCache.size > 100) {
       const oldest = this.urlCache.keys().next().value;
       if (oldest) this.urlCache.delete(oldest);
     }
+  }
+
+  private static toPlaybackSource(extracted: YouTubeExtractionResult): TrailerPlaybackSource {
+    return {
+      videoUrl: extracted.videoUrl,
+      audioUrl: extracted.audioUrl,
+      quality: extracted.quality,
+    };
   }
 }
 

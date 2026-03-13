@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTrailer } from '../../contexts/TrailerContext';
 import { logger } from '../../utils/logger';
-import TrailerService from '../../services/trailerService';
+import TrailerService, { TrailerPlaybackSource } from '../../services/trailerService';
 import Video, { VideoRef, OnLoadData, OnProgressData } from 'react-native-video';
 
 const { width, height } = Dimensions.get('window');
@@ -36,6 +36,14 @@ interface TrailerModalProps {
   onClose: () => void;
   trailer: TrailerVideo | null;
   contentTitle: string;
+}
+
+function isUnsupportedIosMediaFormat(error: any): boolean {
+  if (Platform.OS !== 'ios') return false;
+
+  const errorCode = error?.error?.code;
+  const errorDomain = error?.error?.domain;
+  return errorDomain === 'AVFoundationErrorDomain' && errorCode === -11828;
 }
 
 const TrailerModal: React.FC<TrailerModalProps> = memo(({
@@ -67,7 +75,7 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
   }, [t]);
 
   const videoRef = React.useRef<VideoRef>(null);
-  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+  const [playbackSource, setPlaybackSource] = useState<TrailerPlaybackSource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -79,7 +87,7 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
       loadTrailer();
     } else {
       // Reset state when modal closes
-      setTrailerUrl(null);
+      setPlaybackSource(null);
       setLoading(false);
       setError(null);
       setIsPlaying(false);
@@ -87,7 +95,7 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
     }
   }, [visible, trailer]);
 
-  const loadTrailer = useCallback(async () => {
+  const loadTrailer = useCallback(async (resetRetryCount = true) => {
     if (!trailer) return;
 
     // Pause hero section trailer when modal opens
@@ -100,8 +108,10 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
 
     setLoading(true);
     setError(null);
-    setTrailerUrl(null);
-    setRetryCount(0); // Reset retry count when starting fresh load
+    setPlaybackSource(null);
+    if (resetRetryCount) {
+      setRetryCount(0);
+    }
 
     try {
       const youtubeUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
@@ -109,14 +119,14 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
       logger.info('TrailerModal', `Loading trailer: ${trailer.name} (${youtubeUrl})`);
 
       // Use the direct YouTube URL method - much more efficient!
-      const directUrl = await TrailerService.getTrailerFromYouTubeUrl(
+      const source = await TrailerService.getTrailerPlaybackSourceFromYouTubeUrl(
         youtubeUrl,
         `${contentTitle} - ${trailer.name}`,
         new Date(trailer.published_at).getFullYear().toString()
       );
 
-      if (directUrl) {
-        setTrailerUrl(directUrl);
+      if (source) {
+        setPlaybackSource(source);
         setIsPlaying(true);
         logger.info('TrailerModal', `Successfully loaded direct trailer URL for: ${trailer.name}`);
       } else {
@@ -159,12 +169,20 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
   const handleVideoError = useCallback((error: any) => {
     logger.error('TrailerModal', 'Video error:', error);
 
+    if (isUnsupportedIosMediaFormat(error)) {
+      logger.error('TrailerModal', 'Unsupported iOS trailer format:', error);
+      setError('This trailer format is not supported on iOS.');
+      setLoading(false);
+      setIsPlaying(false);
+      return;
+    }
+
     if (retryCount < 2) {
       logger.info('TrailerModal', `Re-extracting trailer (attempt ${retryCount + 1}/2)`);
       setRetryCount(prev => prev + 1);
       // Invalidate cache so loadTrailer gets a fresh URL, not the same bad one
       if (trailer?.key) TrailerService.invalidateCache(trailer.key);
-      loadTrailer();
+      loadTrailer(false);
       return;
     }
 
@@ -242,7 +260,9 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
                 </Text>
                 <TouchableOpacity
                   style={[styles.retryButton, { backgroundColor: currentTheme.colors.primary }]}
-                  onPress={loadTrailer}
+                  onPress={() => {
+                    void loadTrailer(true);
+                  }}
                 >
                   <Text style={styles.retryButtonText}>{t('common.try_again')}</Text>
                 </TouchableOpacity>
@@ -250,21 +270,28 @@ const TrailerModal: React.FC<TrailerModalProps> = memo(({
             )}
 
             {/* Render the Video as soon as we have a URL; keep spinner overlay until onLoad */}
-            {trailerUrl && !error && (
+            {playbackSource?.videoUrl && !error && (
               <View style={styles.playerWrapper}>
                 <Video
                   ref={videoRef}
                   source={(() => {
-                    const lower = (trailerUrl || '').toLowerCase();
+                    const lower = playbackSource.videoUrl.toLowerCase();
                     const looksLikeHls = /\.m3u8(\b|$)/.test(lower) || /hls|playlist|m3u/.test(lower);
                     if (Platform.OS === 'android') {
                       const headers = { 'User-Agent': 'Nuvio/1.0 (Android)' };
                       if (looksLikeHls) {
-                        return { uri: trailerUrl, type: 'm3u8', headers } as any;
+                        return { uri: playbackSource.videoUrl, type: 'm3u8', headers } as any;
                       }
-                      return { uri: trailerUrl, headers } as any;
+                      return {
+                        uri: playbackSource.videoUrl,
+                        headers,
+                        ...(playbackSource.audioUrl ? { audioUri: playbackSource.audioUrl } : null),
+                      } as any;
                     }
-                    return { uri: trailerUrl } as any;
+                    return {
+                      uri: playbackSource.videoUrl,
+                      ...(playbackSource.audioUrl ? { audioUri: playbackSource.audioUrl } : null),
+                    } as any;
                   })()}
                   style={styles.player}
                   controls={true}

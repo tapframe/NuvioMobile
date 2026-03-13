@@ -77,7 +77,6 @@ const DEFAULT_HEADERS: Record<string, string> = {
   'user-agent': DEFAULT_USER_AGENT,
 };
 
-const PREFERRED_ADAPTIVE_CLIENT = 'android_vr';
 const REQUEST_TIMEOUT_MS = 6000;        // player API + HLS manifest requests
 const WATCH_PAGE_TIMEOUT_MS = 3000;    // watch page scrape — best-effort only
 const MAX_RETRIES = 2;                  // retry extraction up to 2 times on total failure
@@ -182,6 +181,12 @@ function getMimeBase(mimeType?: string): string {
   return (mimeType ?? '').split(';')[0].trim();
 }
 
+function getCodecs(mimeType?: string): string[] {
+  const match = (mimeType ?? '').match(/codecs="([^"]+)"/i);
+  if (!match) return [];
+  return match[1].split(',').map(codec => codec.trim().toLowerCase()).filter(Boolean);
+}
+
 function getExt(mimeType?: string): 'mp4' | 'webm' | 'm4a' | 'other' {
   const base = getMimeBase(mimeType);
   if (base === 'video/mp4' || base === 'audio/mp4') return 'mp4';
@@ -260,16 +265,6 @@ async function validateUrl(url: string, userAgent: string): Promise<boolean> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// android_vr preferred selection — only fall back to other clients if
-// android_vr returned zero formats (likely PO token required for others)
-// ---------------------------------------------------------------------------
-
-function filterPreferAndroidVr(items: StreamCandidate[]): StreamCandidate[] {
-  const fromVr = items.filter(c => c.client === 'android_vr');
-  return fromVr.length > 0 ? fromVr : items;
-}
-
 function sortCandidates(items: StreamCandidate[]): StreamCandidate[] {
   return [...items].sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
@@ -279,13 +274,39 @@ function sortCandidates(items: StreamCandidate[]): StreamCandidate[] {
   });
 }
 
-function pickBestForClient(
+async function findBestValidatedCandidate(
   items: StreamCandidate[],
-  preferredClient: string,
-): StreamCandidate | null {
-  const fromPreferred = items.filter(c => c.client === preferredClient);
-  const pool = fromPreferred.length > 0 ? fromPreferred : items;
-  return sortCandidates(pool)[0] ?? null;
+  userAgent: string,
+  label: string,
+): Promise<StreamCandidate | null> {
+  for (const candidate of sortCandidates(items)) {
+    const valid = await validateUrl(candidate.url, userAgent);
+    if (valid) return candidate;
+    logger.warn('YouTubeExtractor', `${label} URL invalid, trying next candidate`);
+  }
+  return null;
+}
+
+function getHlsQualityScore(variant: HlsVariant): number {
+  return variant.height * 1_000_000_000 + variant.bandwidth;
+}
+
+function isIosCompatibleSeparateVideo(candidate: StreamCandidate): boolean {
+  if (getMimeBase(candidate.mimeType) !== 'video/mp4') return false;
+  const codecs = getCodecs(candidate.mimeType);
+  if (codecs.length === 0) return true;
+  return codecs.some(codec =>
+    codec.startsWith('avc1') ||
+    codec.startsWith('hvc1') ||
+    codec.startsWith('hev1'),
+  );
+}
+
+function isIosCompatibleSeparateAudio(candidate: StreamCandidate): boolean {
+  if (getMimeBase(candidate.mimeType) !== 'audio/mp4') return false;
+  const codecs = getCodecs(candidate.mimeType);
+  if (codecs.length === 0) return true;
+  return codecs.some(codec => codec.startsWith('mp4a'));
 }
 
 // ---------------------------------------------------------------------------
@@ -580,12 +601,8 @@ export class YouTubeExtractor {
    * Matches the Kotlin InAppYouTubeExtractor approach:
    * 1. Fetch watch page for dynamic API key + visitor data
    * 2. Try ALL clients, collect formats from all that succeed
-   * 3. Pick best HLS variant (by resolution/bandwidth) as primary
-   * 4. Fall back to best progressive (muxed) if no HLS
-   *
-   * Note: Unlike the Kotlin version, we do not return separate videoUrl/audioUrl
-   * for adaptive streams — react-native-video cannot merge two sources. HLS
-   * provides the best quality without needing a separate audio track.
+   * 3. Prefer separate adaptive video+audio when available
+   * 4. Fall back to HLS/progressive muxed sources
    */
   static async extract(
     videoIdOrUrl: string,
@@ -650,63 +667,140 @@ export class YouTubeExtractor {
       }
     }
 
-    // Prefer android_vr formats exclusively — other clients may require PO tokens
-    // and return URLs that 403 at the CDN level during playback
-    const preferredProgressive = sortCandidates(filterPreferAndroidVr(progressive));
-    const bestAdaptiveVideo = pickBestForClient(adaptiveVideo, PREFERRED_ADAPTIVE_CLIENT);
-    const bestAdaptiveAudio = pickBestForClient(adaptiveAudio, PREFERRED_ADAPTIVE_CLIENT);
+    const progressiveCandidates = sortCandidates(progressive);
+    const adaptiveVideoCandidates = sortCandidates(adaptiveVideo);
+    const adaptiveAudioCandidates = sortCandidates(adaptiveAudio);
+    const compatibleAdaptiveVideoCandidates =
+      effectivePlatform === 'ios'
+        ? adaptiveVideoCandidates.filter(isIosCompatibleSeparateVideo)
+        : adaptiveVideoCandidates;
+    const compatibleAdaptiveAudioCandidates =
+      effectivePlatform === 'ios'
+        ? adaptiveAudioCandidates.filter(isIosCompatibleSeparateAudio)
+        : adaptiveAudioCandidates;
 
     if (bestHls) logger.info('YouTubeExtractor', `Best HLS: ${bestHls.height}p ${bestHls.bandwidth}bps`);
-    if (preferredProgressive[0]) logger.info('YouTubeExtractor', `Best progressive: ${preferredProgressive[0].height}p client=${preferredProgressive[0].client}`);
-    if (bestAdaptiveVideo) logger.info('YouTubeExtractor', `Best adaptive video: ${bestAdaptiveVideo.height}p client=${bestAdaptiveVideo.client}`);
-    if (bestAdaptiveAudio) logger.info('YouTubeExtractor', `Best adaptive audio: ${bestAdaptiveAudio.bitrate}bps client=${bestAdaptiveAudio.client}`);
+    if (progressiveCandidates[0]) logger.info('YouTubeExtractor', `Best progressive: ${progressiveCandidates[0].height}p client=${progressiveCandidates[0].client}`);
+    if (adaptiveVideoCandidates[0]) logger.info('YouTubeExtractor', `Best adaptive video: ${adaptiveVideoCandidates[0].height}p client=${adaptiveVideoCandidates[0].client}`);
+    if (adaptiveAudioCandidates[0]) logger.info('YouTubeExtractor', `Best adaptive audio: ${adaptiveAudioCandidates[0].bitrate}bps client=${adaptiveAudioCandidates[0].client}`);
+    if (effectivePlatform === 'ios') {
+      if (compatibleAdaptiveVideoCandidates[0]) {
+        logger.info(
+          'YouTubeExtractor',
+          `Best iOS-compatible adaptive video: ${compatibleAdaptiveVideoCandidates[0].height}p client=${compatibleAdaptiveVideoCandidates[0].client} mime=${compatibleAdaptiveVideoCandidates[0].mimeType}`
+        );
+      }
+      if (compatibleAdaptiveAudioCandidates[0]) {
+        logger.info(
+          'YouTubeExtractor',
+          `Best iOS-compatible adaptive audio: ${compatibleAdaptiveAudioCandidates[0].bitrate}bps client=${compatibleAdaptiveAudioCandidates[0].client} mime=${compatibleAdaptiveAudioCandidates[0].mimeType}`
+        );
+      }
+    }
 
     // VR client user agent used for CDN URL validation
     const vrUserAgent = CLIENTS.find(c => c.key === 'android_vr')!.userAgent;
 
-    // Step 4: select final source with URL validation
-    // Priority: HLS > progressive muxed
-    // HLS manifests don't need validation — they're not CDN segment URLs
-    if (bestHls) {
-      // Return the specific best variant URL, not the master playlist.
-      // Master playlist lets the player pick quality adaptively (often starts low).
-      // Pinning to the best variant ensures consistent high quality playback.
-      logger.info('YouTubeExtractor', `Using HLS variant: ${summarizeUrl(bestHls.url)} ${bestHls.height}p`);
+    // Step 4: validate the best candidates per source type, then pick the
+    // highest-quality playable result.
+    const validatedAdaptiveVideo = await findBestValidatedCandidate(
+      compatibleAdaptiveVideoCandidates,
+      vrUserAgent,
+      'Adaptive video',
+    );
+    const validatedAdaptiveAudio = await findBestValidatedCandidate(
+      compatibleAdaptiveAudioCandidates,
+      vrUserAgent,
+      'Adaptive audio',
+    );
+    const validatedProgressive = await findBestValidatedCandidate(
+      progressiveCandidates,
+      vrUserAgent,
+      'Progressive',
+    );
+
+    const adaptivePlayback =
+      validatedAdaptiveVideo && validatedAdaptiveAudio
+        ? {
+            type: 'adaptive' as const,
+            videoUrl: validatedAdaptiveVideo.url,
+            audioUrl: validatedAdaptiveAudio.url,
+            quality: `${validatedAdaptiveVideo.height}p`,
+            score: validatedAdaptiveVideo.score,
+            height: validatedAdaptiveVideo.height,
+            audioBitrate: validatedAdaptiveAudio.bitrate,
+            videoClient: validatedAdaptiveVideo.client,
+            videoMimeType: validatedAdaptiveVideo.mimeType,
+            videoExt: validatedAdaptiveVideo.ext,
+            audioClient: validatedAdaptiveAudio.client,
+            audioMimeType: validatedAdaptiveAudio.mimeType,
+            audioExt: validatedAdaptiveAudio.ext,
+          }
+        : null;
+
+    const progressivePlayback = validatedProgressive
+      ? {
+          type: 'progressive' as const,
+          videoUrl: validatedProgressive.url,
+          audioUrl: null,
+          quality: `${validatedProgressive.height}p`,
+          score: validatedProgressive.score,
+          height: validatedProgressive.height,
+        }
+      : null;
+
+    const hlsPlayback = bestHls
+      ? {
+          type: 'hls' as const,
+          videoUrl: bestHls.manifestUrl,
+          audioUrl: null,
+          quality: `${bestHls.height}p`,
+          score: getHlsQualityScore(bestHls),
+          height: bestHls.height,
+          bandwidth: bestHls.bandwidth,
+        }
+      : null;
+
+    const bestPlayable = [adaptivePlayback, progressivePlayback, hlsPlayback]
+      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
+      .sort((a, b) => b.score - a.score)[0] ?? null;
+
+    if (bestPlayable) {
+      if (bestPlayable.type === 'adaptive') {
+        logger.info(
+          'YouTubeExtractor',
+          `Using separate adaptive streams: video=${bestPlayable.height}p ` +
+          `videoClient=${bestPlayable.videoClient} videoMime=${bestPlayable.videoMimeType} videoExt=${bestPlayable.videoExt} ` +
+          `audio=${bestPlayable.audioBitrate}bps audioClient=${bestPlayable.audioClient} ` +
+          `audioMime=${bestPlayable.audioMimeType} audioExt=${bestPlayable.audioExt}`
+        );
+      } else if (bestPlayable.type === 'progressive') {
+        logger.info(
+          'YouTubeExtractor',
+          `Using progressive: ${summarizeUrl(bestPlayable.videoUrl)} ${bestPlayable.height}p`
+        );
+      } else {
+        logger.info(
+          'YouTubeExtractor',
+          `Using HLS manifest: ${summarizeUrl(bestPlayable.videoUrl)} ${bestPlayable.height}p`
+        );
+      }
       return {
-        videoUrl: bestHls.url,
-        audioUrl: null,
-        quality: `${bestHls.height}p`,
+        videoUrl: bestPlayable.videoUrl,
+        audioUrl: bestPlayable.audioUrl,
+        quality: bestPlayable.quality,
         videoId,
       };
     }
 
-    // Validate progressive candidates in order, return first valid one
-    for (const candidate of preferredProgressive) {
-      const valid = await validateUrl(candidate.url, vrUserAgent);
-      if (valid) {
-        logger.info('YouTubeExtractor', `Using progressive: ${summarizeUrl(candidate.url)} ${candidate.height}p`);
-        return {
-          videoUrl: candidate.url,
-          audioUrl: null,
-          quality: `${candidate.height}p`,
-          videoId,
-        };
-      }
-      logger.warn('YouTubeExtractor', `Progressive URL invalid, trying next candidate`);
-    }
-
-    // Last resort: video-only adaptive (no audio, but beats nothing)
-    if (bestAdaptiveVideo) {
-      const valid = await validateUrl(bestAdaptiveVideo.url, vrUserAgent);
-      if (valid) {
-        logger.warn('YouTubeExtractor', `Using video-only adaptive (no audio): ${bestAdaptiveVideo.height}p`);
-        return {
-          videoUrl: bestAdaptiveVideo.url,
-          audioUrl: null,
-          quality: `${bestAdaptiveVideo.height}p`,
-          videoId,
-        };
-      }
+    if (validatedAdaptiveVideo) {
+      logger.warn('YouTubeExtractor', `Using video-only adaptive fallback (no audio): ${validatedAdaptiveVideo.height}p`);
+      return {
+        videoUrl: validatedAdaptiveVideo.url,
+        audioUrl: null,
+        quality: `${validatedAdaptiveVideo.height}p`,
+        videoId,
+      };
     }
 
     logger.warn('YouTubeExtractor', `No playable source for videoId=${videoId}`);

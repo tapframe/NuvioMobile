@@ -472,15 +472,12 @@ const DownloadsScreen: React.FC = () => {
           case 'infuse':
             externalPlayerUrls = [
               `infuse://x-callback-url/play?url=${streamUrl}`,
-              `infuse://play?url=${streamUrl}`,
-              `infuse://${streamUrl}`
             ];
             break;
 
           case 'vidhub':
             externalPlayerUrls = [
-              `vidhub://play?url=${streamUrl}`,
-              `vidhub://${streamUrl}`
+              `open-vidhub://x-callback-url/open?url=${streamUrl}`,
             ];
             break;
 

@@ -28,6 +28,7 @@ const isTablet = width >= 768;
 
 interface TrailerPlayerProps {
   trailerUrl: string;
+  audioUrl?: string | null;
   autoPlay?: boolean;
   muted?: boolean;
   onLoadStart?: () => void;
@@ -46,6 +47,7 @@ interface TrailerPlayerProps {
 
 const TrailerPlayer = React.forwardRef<any, TrailerPlayerProps>(({
   trailerUrl,
+  audioUrl,
   autoPlay = true,
   muted = true,
   onLoadStart,
@@ -381,9 +383,16 @@ const TrailerPlayer = React.forwardRef<any, TrailerPlayerProps>(({
             if (looksLikeHls) {
               return { uri: trailerUrl, type: 'm3u8', headers: androidHeaders } as any;
             }
-            return { uri: trailerUrl, headers: androidHeaders } as any;
+            return {
+              uri: trailerUrl,
+              headers: androidHeaders,
+              ...(audioUrl ? { audioUri: audioUrl } : null),
+            } as any;
           }
-          return { uri: trailerUrl } as any;
+          return {
+            uri: trailerUrl,
+            ...(audioUrl ? { audioUri: audioUrl } : null),
+          } as any;
         })()}
         style={styles.video}
         resizeMode="cover"

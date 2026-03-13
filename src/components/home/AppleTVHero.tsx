@@ -40,7 +40,7 @@ import { logger } from '../../utils/logger';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettings } from '../../hooks/useSettings';
 import { useTrailer } from '../../contexts/TrailerContext';
-import TrailerService from '../../services/trailerService';
+import TrailerService, { TrailerPlaybackSource } from '../../services/trailerService';
 import TrailerPlayer from '../video/TrailerPlayer';
 import { useLibrary } from '../../hooks/useLibrary';
 import { useToast } from '../../contexts/ToastContext';
@@ -202,7 +202,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Trailer state
-  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+  const [trailerSource, setTrailerSource] = useState<TrailerPlaybackSource | null>(null);
   const [trailerLoading, setTrailerLoading] = useState(false);
   const [trailerError, setTrailerError] = useState(false);
   const [trailerReady, setTrailerReady] = useState(false);
@@ -392,14 +392,14 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
       setTrailerShouldBePaused(false);
 
       // If trailer was ready and loaded, restore the video opacity
-      if (trailerReady && trailerUrl) {
+      if (trailerReady && trailerSource?.videoUrl) {
         logger.info('[AppleTVHero] Screen in focus and in view - restoring trailer');
         thumbnailOpacity.value = withTiming(0, { duration: 800 });
         trailerOpacity.value = withTiming(1, { duration: 800 });
         setTrailerPlaying(true);
       }
     }
-  }, [isFocused, isOutOfView, setTrailerPlaying, trailerOpacity, thumbnailOpacity, trailerReady, trailerUrl]);
+  }, [isFocused, isOutOfView, setTrailerPlaying, trailerOpacity, thumbnailOpacity, trailerReady, trailerSource]);
 
   // Listen to navigation events to stop trailer when navigating to other screens
   useEffect(() => {
@@ -425,7 +425,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
 
     const fetchTrailer = async () => {
       if (!currentItem || !showTrailersEnabled.current) {
-        setTrailerUrl(null);
+        setTrailerSource(null);
         return;
       }
 
@@ -448,7 +448,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
 
         if (!tmdbId) {
           logger.info('[AppleTVHero] No TMDB ID for:', currentItem.name, '- skipping trailer');
-          setTrailerUrl(null);
+          setTrailerSource(null);
           setTrailerLoading(false);
           return;
         }
@@ -467,7 +467,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
 
         if (!videosRes.ok) {
           logger.warn('[AppleTVHero] TMDB videos fetch failed:', videosRes.status);
-          setTrailerUrl(null);
+          setTrailerSource(null);
           setTrailerLoading(false);
           return;
         }
@@ -485,31 +485,31 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
 
         if (!pick) {
           logger.info('[AppleTVHero] No YouTube video found for:', currentItem.name);
-          setTrailerUrl(null);
+          setTrailerSource(null);
           setTrailerLoading(false);
           return;
         }
 
         logger.info('[AppleTVHero] Extracting stream for videoId:', pick.key, currentItem.name);
 
-        const url = await TrailerService.getTrailerFromVideoId(
+        const source = await TrailerService.getTrailerPlaybackSourceFromVideoId(
           pick.key,
           currentItem.name
         );
 
         if (!alive) return;
 
-        if (url) {
-          setTrailerUrl(url);
+        if (source) {
+          setTrailerSource(source);
         } else {
           logger.info('[AppleTVHero] No stream extracted for:', currentItem.name);
-          setTrailerUrl(null);
+          setTrailerSource(null);
         }
       } catch (error) {
         if (!alive) return;
         logger.error('[AppleTVHero] Error fetching trailer:', error);
         setTrailerError(true);
-        setTrailerUrl(null);
+        setTrailerSource(null);
       } finally {
         if (alive) {
           setTrailerLoading(false);
@@ -1094,11 +1094,12 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
           )}
 
           {/* Hidden preload trailer player */}
-          {settings?.showTrailers && trailerUrl && !trailerLoading && !trailerError && !trailerPreloaded && (
+          {settings?.showTrailers && trailerSource?.videoUrl && !trailerLoading && !trailerError && !trailerPreloaded && (
             <View style={[StyleSheet.absoluteFillObject, { opacity: 0, pointerEvents: 'none' }]}>
               <TrailerPlayer
-                key={`preload-${trailerUrl}`}
-                trailerUrl={trailerUrl}
+                key={`preload-${trailerSource.videoUrl}-${trailerSource.audioUrl ?? 'no-audio'}`}
+                trailerUrl={trailerSource.videoUrl}
+                audioUrl={trailerSource.audioUrl}
                 autoPlay={false}
                 muted={true}
                 style={StyleSheet.absoluteFillObject}
@@ -1112,13 +1113,14 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
           )}
 
           {/* Visible trailer player - 60% height with 5% zoom and smooth fade */}
-          {settings?.showTrailers && trailerUrl && !trailerLoading && !trailerError && trailerPreloaded && (
+          {settings?.showTrailers && trailerSource?.videoUrl && !trailerLoading && !trailerError && trailerPreloaded && (
             <Animated.View style={[trailerContainerStyle, trailerParallaxStyle]}>
               <Animated.View style={trailerVideoStyle}>
                 <TrailerPlayer
-                  key={`visible-${trailerUrl}`}
+                  key={`visible-${trailerSource.videoUrl}-${trailerSource.audioUrl ?? 'no-audio'}`}
                   ref={trailerVideoRef}
-                  trailerUrl={trailerUrl}
+                  trailerUrl={trailerSource.videoUrl}
+                  audioUrl={trailerSource.audioUrl}
                   autoPlay={!trailerShouldBePaused}
                   muted={trailerMuted}
                   style={StyleSheet.absoluteFillObject}
@@ -1168,7 +1170,7 @@ const AppleTVHero: React.FC<AppleTVHeroProps> = ({
         </View>
 
         {/* Trailer control buttons (unmute and fullscreen) */}
-        {settings?.showTrailers && trailerReady && trailerUrl && (
+        {settings?.showTrailers && trailerReady && trailerSource?.videoUrl && (
           <Animated.View style={{
             position: 'absolute',
             top: (Platform.OS === 'android' ? 60 : 70) + insets.top,
