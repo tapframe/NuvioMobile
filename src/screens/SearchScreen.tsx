@@ -84,7 +84,7 @@ const SearchScreen = () => {
   // Discover section state
   const [discoverCatalogs, setDiscoverCatalogs] = useState<DiscoverCatalog[]>([]);
   const [selectedCatalog, setSelectedCatalog] = useState<DiscoverCatalog | null>(null);
-  const [selectedDiscoverType, setSelectedDiscoverType] = useState<'movie' | 'series'>('movie');
+  const [selectedDiscoverType, setSelectedDiscoverType] = useState<string>('movie');
   const [selectedDiscoverGenre, setSelectedDiscoverGenre] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -127,7 +127,7 @@ const SearchScreen = () => {
       try {
         // Load saved type
         const savedType = await mmkvStorage.getItem(DISCOVER_TYPE_KEY);
-        if (savedType && (savedType === 'movie' || savedType === 'series')) {
+        if (savedType) {
           setSelectedDiscoverType(savedType);
         }
 
@@ -141,7 +141,7 @@ const SearchScreen = () => {
   }, []);
 
   // Save discover settings when they change
-  const saveDiscoverSettings = useCallback(async (type: 'movie' | 'series', catalog: DiscoverCatalog | null, genre: string | null) => {
+  const saveDiscoverSettings = useCallback(async (type: string, catalog: DiscoverCatalog | null, genre: string | null) => {
     try {
       // Save type
       await mmkvStorage.setItem(DISCOVER_TYPE_KEY, type);
@@ -267,10 +267,8 @@ const SearchScreen = () => {
         if (isMounted.current) {
           const allCatalogs: DiscoverCatalog[] = [];
           for (const [type, catalogs] of Object.entries(filters.catalogsByType)) {
-            if (type === 'movie' || type === 'series') {
-              for (const catalog of catalogs) {
-                allCatalogs.push({ ...catalog, type });
-              }
+            for (const catalog of catalogs) {
+              allCatalogs.push({ ...catalog, type });
             }
           }
           setDiscoverCatalogs(allCatalogs);
@@ -636,9 +634,10 @@ const SearchScreen = () => {
   };
 
   const availableGenres = useMemo(() => selectedCatalog?.genres || [], [selectedCatalog]);
+  const availableTypes = useMemo(() => [...new Set(discoverCatalogs.map(c => c.type))], [discoverCatalogs]);
   const filteredCatalogs = useMemo(() => discoverCatalogs.filter(c => c.type === selectedDiscoverType), [discoverCatalogs, selectedDiscoverType]);
 
-  const handleTypeSelect = (type: 'movie' | 'series') => {
+  const handleTypeSelect = (type: string) => {
     setSelectedDiscoverType(type);
 
     // Save type setting
@@ -893,6 +892,7 @@ const SearchScreen = () => {
         selectedDiscoverGenre={selectedDiscoverGenre}
         filteredCatalogs={filteredCatalogs}
         availableGenres={availableGenres}
+        availableTypes={availableTypes}
         onTypeSelect={handleTypeSelect}
         onCatalogSelect={handleCatalogSelect}
         onGenreSelect={handleGenreSelect}
