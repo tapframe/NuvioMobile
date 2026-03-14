@@ -335,7 +335,6 @@ class StremioService {
       if (lowerPrefix.endsWith(':') || lowerPrefix.endsWith('_')) return true;
       return lowerId.length > lowerPrefix.length;
     });
-    if (__DEV__) console.log(`🔍 [isValidContentId] Prefix match result: ${result} for ID '${id}'`);
     return result;
   }
 

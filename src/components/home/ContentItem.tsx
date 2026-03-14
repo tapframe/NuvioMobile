@@ -193,38 +193,36 @@ const ContentItem = ({ item, onPress, shouldLoadImage: shouldLoadImageProp, defe
       case 'watched': {
         const targetWatched = !isWatched;
         setIsWatched(targetWatched);
-        try {
-          await mmkvStorage.setItem(`watched:${item.type}:${item.id}`, targetWatched ? 'true' : 'false');
-        } catch { }
-        showInfo(targetWatched ? t('library.marked_watched') : t('library.marked_unwatched'), targetWatched ? t('library.item_marked_watched') : t('library.item_marked_unwatched'));
-        setTimeout(() => {
-          DeviceEventEmitter.emit('watchedStatusChanged');
-        }, 100);
-
-        // Best-effort sync: record local progress and push to Trakt if available
-        if (targetWatched) {
-          try {
-            await storageService.setWatchProgress(
-              item.id,
-              item.type,
-              { currentTime: 1, duration: 1, lastUpdated: Date.now() },
-              undefined,
-              { forceNotify: true, forceWrite: true }
-            );
-          } catch { }
-
-          if (item.type === 'movie') {
-            try {
-              const trakt = TraktService.getInstance();
-              if (await trakt.isAuthenticated()) {
-                await trakt.addToWatchedMovies(item.id);
-                try {
-                  await storageService.updateTraktSyncStatus(item.id, item.type, true, 100);
-                } catch { }
-              }
-            } catch { }
+        
+        // Use the centralized watchedService to handle all the sync logic (Supabase, Trakt, Simkl, MAL)
+        import('../../services/watchedService').then(({ watchedService }) => {
+          if (targetWatched) {
+            if (item.type === 'movie') {
+              // Pass the title so it correctly populates the database instead of defaulting to IMDb ID
+              watchedService.markMovieAsWatched(item.id, new Date(), undefined, undefined, item.name);
+            } else {
+              // For series from the homescreen drop-down, we mark S1E1 as watched as a baseline
+              watchedService.markEpisodeAsWatched(item.id, item.id, 1, 1, new Date(), undefined, item.name);
+            }
+          } else {
+            if (item.type === 'movie') {
+              watchedService.unmarkMovieAsWatched(item.id);
+            } else {
+              // Unmarking a series from the top level is tricky as we don't know the exact episodes.
+              // For safety and consistency with old behavior, we just clear the legacy flag.
+              mmkvStorage.removeItem(`watched:${item.type}:${item.id}`);
+            }
           }
-        }
+          
+          showInfo(
+            targetWatched ? t('library.marked_watched') : t('library.marked_unwatched'), 
+            targetWatched ? t('library.item_marked_watched') : t('library.item_marked_unwatched')
+          );
+          setTimeout(() => {
+            DeviceEventEmitter.emit('watchedStatusChanged');
+          }, 100);
+        });
+
         setMenuVisible(false);
         break;
       }

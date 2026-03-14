@@ -22,7 +22,7 @@ interface DiscoverSectionProps {
     pendingDiscoverResults: StreamingContent[];
     loadingMore: boolean;
     selectedCatalog: DiscoverCatalog | null;
-    selectedDiscoverType: 'movie' | 'series';
+    selectedDiscoverType: string;
     selectedDiscoverGenre: string | null;
     availableGenres: string[];
     typeSheetRef: React.RefObject<BottomSheetModal>;
@@ -78,7 +78,11 @@ export const DiscoverSection = ({
                     onPress={() => typeSheetRef.current?.present()}
                 >
                     <Text style={[styles.discoverSelectorText, { color: currentTheme.colors.white }]} numberOfLines={1}>
-                        {selectedDiscoverType === 'movie' ? t('search.movies') : t('search.tv_shows')}
+                        {selectedDiscoverType === 'movie' ? t('search.movies')
+                            : selectedDiscoverType === 'series' ? t('search.tv_shows')
+                            : selectedDiscoverType === 'anime.movie' ? t('search.anime_movies')
+                            : selectedDiscoverType === 'anime.series' ? t('search.anime_series')
+                            : selectedDiscoverType.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </Text>
                     <MaterialIcons name="keyboard-arrow-down" size={20} color={currentTheme.colors.lightGray} />
                 </TouchableOpacity>
@@ -112,8 +116,13 @@ export const DiscoverSection = ({
             {selectedCatalog && (
                 <View style={styles.discoverFilterSummary}>
                     <Text style={[styles.discoverFilterSummaryText, { color: currentTheme.colors.lightGray }]}>
-                        {selectedCatalog.addonName} • {selectedCatalog.type === 'movie' ? t('search.movies') : t('search.tv_shows')}
-                        {selectedDiscoverGenre ? ` • ${selectedDiscoverGenre}` : ''}
+                        {selectedCatalog.addonName} • {
+                            selectedCatalog.type === 'movie' ? t('search.movies')
+                            : selectedCatalog.type === 'series' ? t('search.tv_shows')
+                            : selectedCatalog.type === 'anime.movie' ? t('search.anime_movies')
+                            : selectedCatalog.type === 'anime.series' ? t('search.anime_series')
+                            : selectedCatalog.type.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                        }{selectedDiscoverGenre ? ` • ${selectedDiscoverGenre}` : ''}
                     </Text>
                 </View>
             )}

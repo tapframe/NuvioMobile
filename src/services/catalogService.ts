@@ -363,6 +363,8 @@ class CatalogService {
   }
 
   private canBrowseCatalog(catalog: StreamingCatalog): boolean {
+    // Exclude non-standard types like anime.series, anime.movie from discover browsing
+    if (catalog.type && catalog.type.includes('.')) return false;
     const requiredExtras = this.getRequiredCatalogExtras(catalog);
     return requiredExtras.every(extraName => extraName === 'genre');
   }
@@ -1534,9 +1536,24 @@ class CatalogService {
               return;
             }
 
-            // Dedupe within addon and against global
+            // Within this addon's results, if the same ID appears under both a generic
+            // type (e.g. "series") and a specific type (e.g. "anime.series"), keep only
+            // the specific one. This handles addons that expose both catalog types.
+            const bestByIdWithinAddon = new Map<string, StreamingContent>();
+            for (const item of addonResults) {
+              const existing = bestByIdWithinAddon.get(item.id);
+              if (!existing) {
+                bestByIdWithinAddon.set(item.id, item);
+              } else if (!existing.type.includes('.') && item.type.includes('.')) {
+                // Prefer the more specific type
+                bestByIdWithinAddon.set(item.id, item);
+              }
+            }
+            const deduped = Array.from(bestByIdWithinAddon.values());
+
+            // Dedupe against global seen (keyed by type:id to avoid cross-addon ID collisions)
             const localSeen = new Set<string>();
-            const unique = addonResults.filter(item => {
+            const unique = deduped.filter(item => {
               const key = `${item.type}:${item.id}`;
               if (localSeen.has(key) || globalSeen.has(key)) return false;
               localSeen.add(key);
@@ -1626,6 +1643,12 @@ class CatalogService {
         const items = metas.map(meta => {
           const content = this.convertMetaToStreamingContent(meta);
           content.addonId = manifest.id;
+          // The meta's own type field may be generic (e.g. "series") even when
+          // the catalog it came from is more specific (e.g. "anime.series").
+          // Stamp the catalog type so grouping in the UI is correct.
+          if (type && content.type !== type) {
+            content.type = type;
+          }
           return content;
         });
         logger.log(`Found ${items.length} results from ${manifest.name}`);

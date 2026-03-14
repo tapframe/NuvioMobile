@@ -14,6 +14,24 @@ interface AddonSectionProps {
     currentTheme: any;
 }
 
+const TYPE_LABELS: Record<string, string> = {
+    'movie': 'search.movies',
+    'series': 'search.tv_shows',
+    'anime.movie': 'search.anime_movies',
+    'anime.series': 'search.anime_series',
+};
+
+const subtitleStyle = (currentTheme: any) => ({
+    color: currentTheme.colors.lightGray,
+    fontSize: isTV ? 18 : isLargeTablet ? 17 : isTablet ? 16 : 14,
+    marginBottom: isTV ? 14 : isLargeTablet ? 13 : isTablet ? 12 : 8,
+    paddingHorizontal: isTV ? 24 : isLargeTablet ? 20 : isTablet ? 16 : 16,
+});
+
+const containerStyle = {
+    marginBottom: isTV ? 40 : isLargeTablet ? 36 : isTablet ? 32 : 24,
+};
+
 export const AddonSection = React.memo(({
     addonGroup,
     addonIndex,
@@ -23,18 +41,27 @@ export const AddonSection = React.memo(({
 }: AddonSectionProps) => {
     const { t } = useTranslation();
 
-    const movieResults = useMemo(() =>
-        addonGroup.results.filter(item => item.type === 'movie'),
-        [addonGroup.results]
-    );
-    const seriesResults = useMemo(() =>
-        addonGroup.results.filter(item => item.type === 'series'),
-        [addonGroup.results]
-    );
-    const otherResults = useMemo(() =>
-        addonGroup.results.filter(item => item.type !== 'movie' && item.type !== 'series'),
-        [addonGroup.results]
-    );
+    // Group results by their exact type, preserving order of first appearance
+    const groupedByType = useMemo(() => {
+        const order: string[] = [];
+        const groups: Record<string, StreamingContent[]> = {};
+
+        for (const item of addonGroup.results) {
+            if (!groups[item.type]) {
+                order.push(item.type);
+                groups[item.type] = [];
+            }
+            groups[item.type].push(item);
+        }
+
+        return order.map(type => ({ type, items: groups[type] }));
+    }, [addonGroup.results]);
+
+    const getLabelForType = (type: string): string => {
+        if (TYPE_LABELS[type]) return t(TYPE_LABELS[type]);
+        // Fallback: capitalise and replace dots/underscores for unknown types
+        return type.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    };
 
     return (
         <View>
@@ -50,22 +77,13 @@ export const AddonSection = React.memo(({
                 </View>
             </View>
 
-            {/* Movies */}
-            {movieResults.length > 0 && (
-                <View style={[styles.carouselContainer, { marginBottom: isTV ? 40 : isLargeTablet ? 36 : isTablet ? 32 : 24 }]}>
-                    <Text style={[
-                        styles.carouselSubtitle,
-                        {
-                            color: currentTheme.colors.lightGray,
-                            fontSize: isTV ? 18 : isLargeTablet ? 17 : isTablet ? 16 : 14,
-                            marginBottom: isTV ? 14 : isLargeTablet ? 13 : isTablet ? 12 : 8,
-                            paddingHorizontal: isTV ? 24 : isLargeTablet ? 20 : isTablet ? 16 : 16
-                        }
-                    ]}>
-                        {t('search.movies')} ({movieResults.length})
+            {groupedByType.map(({ type, items }) => (
+                <View key={type} style={[styles.carouselContainer, containerStyle]}>
+                    <Text style={[styles.carouselSubtitle, subtitleStyle(currentTheme)]}>
+                        {getLabelForType(type)} ({items.length})
                     </Text>
                     <FlatList
-                        data={movieResults}
+                        data={items}
                         renderItem={({ item, index }) => (
                             <SearchResultItem
                                 item={item}
@@ -74,81 +92,16 @@ export const AddonSection = React.memo(({
                                 onLongPress={onItemLongPress}
                             />
                         )}
-                        keyExtractor={item => `${addonGroup.addonId}-movie-${item.id}`}
+                        keyExtractor={item => `${addonGroup.addonId}-${type}-${item.id}`}
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.horizontalListContent}
                     />
                 </View>
-            )}
-
-            {/* TV Shows */}
-            {seriesResults.length > 0 && (
-                <View style={[styles.carouselContainer, { marginBottom: isTV ? 40 : isLargeTablet ? 36 : isTablet ? 32 : 24 }]}>
-                    <Text style={[
-                        styles.carouselSubtitle,
-                        {
-                            color: currentTheme.colors.lightGray,
-                            fontSize: isTV ? 18 : isLargeTablet ? 17 : isTablet ? 16 : 14,
-                            marginBottom: isTV ? 14 : isLargeTablet ? 13 : isTablet ? 12 : 8,
-                            paddingHorizontal: isTV ? 24 : isLargeTablet ? 20 : isTablet ? 16 : 16
-                        }
-                    ]}>
-                        {t('search.tv_shows')} ({seriesResults.length})
-                    </Text>
-                    <FlatList
-                        data={seriesResults}
-                        renderItem={({ item, index }) => (
-                            <SearchResultItem
-                                item={item}
-                                index={index}
-                                onPress={onItemPress}
-                                onLongPress={onItemLongPress}
-                            />
-                        )}
-                        keyExtractor={item => `${addonGroup.addonId}-series-${item.id}`}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.horizontalListContent}
-                    />
-                </View>
-            )}
-
-            {/* Other types */}
-            {otherResults.length > 0 && (
-                <View style={[styles.carouselContainer, { marginBottom: isTV ? 40 : isLargeTablet ? 36 : isTablet ? 32 : 24 }]}>
-                    <Text style={[
-                        styles.carouselSubtitle,
-                        {
-                            color: currentTheme.colors.lightGray,
-                            fontSize: isTV ? 18 : isLargeTablet ? 17 : isTablet ? 16 : 14,
-                            marginBottom: isTV ? 14 : isLargeTablet ? 13 : isTablet ? 12 : 8,
-                            paddingHorizontal: isTV ? 24 : isLargeTablet ? 20 : isTablet ? 16 : 16
-                        }
-                    ]}>
-                        {otherResults[0].type.charAt(0).toUpperCase() + otherResults[0].type.slice(1)} ({otherResults.length})
-                    </Text>
-                    <FlatList
-                        data={otherResults}
-                        renderItem={({ item, index }) => (
-                            <SearchResultItem
-                                item={item}
-                                index={index}
-                                onPress={onItemPress}
-                                onLongPress={onItemLongPress}
-                            />
-                        )}
-                        keyExtractor={item => `${addonGroup.addonId}-${item.type}-${item.id}`}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.horizontalListContent}
-                    />
-                </View>
-            )}
+            ))}
         </View>
     );
 }, (prev, next) => {
-    // Only re-render if this section's reference changed
     return prev.addonGroup === next.addonGroup && prev.addonIndex === next.addonIndex;
 });
 

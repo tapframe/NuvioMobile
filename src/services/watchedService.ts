@@ -175,13 +175,22 @@ class WatchedService {
             .filter((item) => Boolean(item.content_id));
 
         // Guard: do not wipe local watched data if backend temporarily returns empty.
+
         if (normalizedRemote.length === 0) {
+            logger.log('[WatchedService] reconcileRemoteWatchedItems: remote is empty, doing nothing');
             return;
         }
+
+        const currentLocal = await this.loadWatchedItems();
+        const remoteKeys = new Set(normalizedRemote.map(r => this.watchedKey(r)));
+
+        // Find local items that need to be removed because they don't exist remotely
+        const toRemove = currentLocal.filter(l => !remoteKeys.has(this.watchedKey(l)));
 
         await this.saveWatchedItems(normalizedRemote);
         this.notifyWatchedSubscribers();
 
+        // 1. Set watched status for all remote items
         for (const item of normalizedRemote) {
             if (item.content_type === 'movie') {
                 await this.setLocalWatchedStatus(item.content_id, 'movie', true, undefined, new Date(item.watched_at));
@@ -192,8 +201,27 @@ class WatchedService {
             const episodeId = `${item.content_id}:${item.season}:${item.episode}`;
             await this.setLocalWatchedStatus(item.content_id, 'series', true, episodeId, new Date(item.watched_at));
         }
+
+        // 2. Unset watched status for local items that were deleted remotely
+        for (const item of toRemove) {
+            if (item.content_type === 'movie') {
+                await this.setLocalWatchedStatus(item.content_id, 'movie', false);
+            } else if (item.season != null && item.episode != null) {
+                const episodeId = `${item.content_id}:${item.season}:${item.episode}`;
+                await this.setLocalWatchedStatus(item.content_id, 'series', false, episodeId);
+            }
+        }
+
+        if (toRemove.length > 0) {
+            logger.log(`[WatchedService] reconcileRemoteWatchedItems: Removed ${toRemove.length} local items that were deleted remotely`);
+        }
     }
 
+    /**
+     * Mark a movie as watched
+     * @param imdbId - The IMDb ID of the movie
+     * @param watchedAt - Optional date when watched
+     */
     /**
      * Mark a movie as watched
      * @param imdbId - The IMDb ID of the movie
@@ -207,7 +235,7 @@ class WatchedService {
         title?: string
     ): Promise<{ success: boolean; syncedToTrakt: boolean }> {
         try {
-            logger.log(`[WatchedService] Marking movie as watched: ${imdbId}`);
+            logger.log(`[WatchedService] Marking movie as watched: ${imdbId} (${title || 'No title'})`);
 
             const isTraktAuth = await this.traktService.isAuthenticated();
             let syncedToTrakt = false;
@@ -222,10 +250,10 @@ class WatchedService {
             if (MalAuth.isAuthenticated()) {
                 MalSync.scrobbleEpisode(
                     title || 'Movie', // Use real title or generic fallback
-                    1, 
-                    1, 
-                    'movie', 
-                    undefined, 
+                    1,
+                    1,
+                    'movie',
+                    undefined,
                     imdbId,
                     undefined,
                     malId,
@@ -247,7 +275,7 @@ class WatchedService {
                 {
                     content_id: imdbId,
                     content_type: 'movie',
-                    title: imdbId,
+                    title: title || imdbId,
                     season: null,
                     episode: null,
                     watched_at: watchedAt.getTime(),
@@ -342,7 +370,7 @@ class WatchedService {
                         'series',
                         season,
                         showImdbId,
-                        releaseDate, 
+                        releaseDate,
                         malId,
                         dayIndex,
                         tmdbId
@@ -373,7 +401,7 @@ class WatchedService {
                 {
                     content_id: showImdbId,
                     content_type: 'series',
-                    title: showImdbId,
+                    title: showTitle || showImdbId,
                     season,
                     episode,
                     watched_at: watchedAt.getTime(),
@@ -398,7 +426,8 @@ class WatchedService {
         showImdbId: string,
         showId: string,
         episodes: Array<{ season: number; episode: number }>,
-        watchedAt: Date = new Date()
+        watchedAt: Date = new Date(),
+        showTitle?: string
     ): Promise<{ success: boolean; syncedToTrakt: boolean; count: number }> {
         try {
             if (episodes.length === 0) {
@@ -479,7 +508,8 @@ class WatchedService {
         showId: string,
         season: number,
         episodeNumbers: number[],
-        watchedAt: Date = new Date()
+        watchedAt: Date = new Date(),
+        showTitle?: string
     ): Promise<{ success: boolean; syncedToTrakt: boolean; count: number }> {
         try {
             logger.log(`[WatchedService] Marking season ${season} as watched for ${showImdbId}`);
@@ -525,7 +555,7 @@ class WatchedService {
                 episodeNumbers.map((episode) => ({
                     content_id: showImdbId,
                     content_type: 'series' as const,
-                    title: showImdbId,
+                    title: showTitle || showImdbId,
                     season,
                     episode,
                     watched_at: watchedAt.getTime(),

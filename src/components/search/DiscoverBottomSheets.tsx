@@ -11,12 +11,13 @@ interface DiscoverBottomSheetsProps {
     typeSheetRef: RefObject<BottomSheetModal>;
     catalogSheetRef: RefObject<BottomSheetModal>;
     genreSheetRef: RefObject<BottomSheetModal>;
-    selectedDiscoverType: 'movie' | 'series';
+    selectedDiscoverType: string;
     selectedCatalog: DiscoverCatalog | null;
     selectedDiscoverGenre: string | null;
     filteredCatalogs: DiscoverCatalog[];
     availableGenres: string[];
-    onTypeSelect: (type: 'movie' | 'series') => void;
+    availableTypes: string[];
+    onTypeSelect: (type: string) => void;
     onCatalogSelect: (catalog: DiscoverCatalog) => void;
     onGenreSelect: (genre: string | null) => void;
     currentTheme: any;
@@ -31,6 +32,7 @@ export const DiscoverBottomSheets = ({
     selectedDiscoverGenre,
     filteredCatalogs,
     availableGenres,
+    availableTypes,
     onTypeSelect,
     onCatalogSelect,
     onGenreSelect,
@@ -38,7 +40,20 @@ export const DiscoverBottomSheets = ({
 }: DiscoverBottomSheetsProps) => {
     const { t } = useTranslation();
 
-    const typeSnapPoints = useMemo(() => ['25%'], []);
+    const TYPE_LABELS: Record<string, string> = {
+        'movie': t('search.movies'),
+        'series': t('search.tv_shows'),
+        'anime.movie': t('search.anime_movies'),
+        'anime.series': t('search.anime_series'),
+    };
+    const getLabelForType = (type: string) =>
+        TYPE_LABELS[type] ?? type.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    const typeSnapPoints = useMemo(() => {
+        const itemCount = availableTypes.length;
+        const snapPct = Math.min(20 + itemCount * 10, 60);
+        return [`${snapPct}%`];
+    }, [availableTypes]);
     const catalogSnapPoints = useMemo(() => ['50%'], []);
     const genreSnapPoints = useMemo(() => ['50%'], []);
     const [activeBottomSheetRef, setActiveBottomSheetRef] = useState(null);
@@ -225,47 +240,25 @@ export const DiscoverBottomSheets = ({
                     style={{ backgroundColor: currentTheme.colors.darkGray || '#0A0C0C' }}
                     contentContainerStyle={styles.bottomSheetContent}
                 >
-                    {/* Movies option */}
-                    <TouchableOpacity
-                        style={[
-                            styles.bottomSheetItem,
-                            selectedDiscoverType === 'movie' && styles.bottomSheetItemSelected
-                        ]}
-                        onPress={() => onTypeSelect('movie')}
-                    >
-                        <View style={styles.bottomSheetItemContent}>
-                            <Text style={[styles.bottomSheetItemTitle, { color: currentTheme.colors.white }]}>
-                                {t('search.movies')}
-                            </Text>
-                            <Text style={[styles.bottomSheetItemSubtitle, { color: currentTheme.colors.lightGray }]}>
-                                {t('search.browse_movies')}
-                            </Text>
-                        </View>
-                        {selectedDiscoverType === 'movie' && (
-                            <MaterialIcons name="check" size={24} color={currentTheme.colors.primary} />
-                        )}
-                    </TouchableOpacity>
-
-                    {/* TV Shows option */}
-                    <TouchableOpacity
-                        style={[
-                            styles.bottomSheetItem,
-                            selectedDiscoverType === 'series' && styles.bottomSheetItemSelected
-                        ]}
-                        onPress={() => onTypeSelect('series')}
-                    >
-                        <View style={styles.bottomSheetItemContent}>
-                            <Text style={[styles.bottomSheetItemTitle, { color: currentTheme.colors.white }]}>
-                                {t('search.tv_shows')}
-                            </Text>
-                            <Text style={[styles.bottomSheetItemSubtitle, { color: currentTheme.colors.lightGray }]}>
-                                {t('search.browse_tv')}
-                            </Text>
-                        </View>
-                        {selectedDiscoverType === 'series' && (
-                            <MaterialIcons name="check" size={24} color={currentTheme.colors.primary} />
-                        )}
-                    </TouchableOpacity>
+                    {availableTypes.map((type) => (
+                        <TouchableOpacity
+                            key={type}
+                            style={[
+                                styles.bottomSheetItem,
+                                selectedDiscoverType === type && styles.bottomSheetItemSelected
+                            ]}
+                            onPress={() => onTypeSelect(type)}
+                        >
+                            <View style={styles.bottomSheetItemContent}>
+                                <Text style={[styles.bottomSheetItemTitle, { color: currentTheme.colors.white }]}>
+                                    {getLabelForType(type)}
+                                </Text>
+                            </View>
+                            {selectedDiscoverType === type && (
+                                <MaterialIcons name="check" size={24} color={currentTheme.colors.primary} />
+                            )}
+                        </TouchableOpacity>
+                    ))}
                 </BottomSheetScrollView>
             </BottomSheetModal>
         </>

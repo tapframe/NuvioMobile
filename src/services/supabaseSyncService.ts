@@ -1135,8 +1135,16 @@ class SupabaseSyncService {
   }
 
   private async isExternalProgressSyncConnected(): Promise<boolean> {
-    if (await this.isTraktConnected()) return true;
-    return await this.isSimklConnected();
+    const trakt = await this.isTraktConnected();
+    if (trakt) {
+      logger.log('[SupabaseSyncService] isExternalProgressSyncConnected: Trakt is connected, returning true');
+      return true;
+    }
+    const simkl = await this.isSimklConnected();
+    if (simkl) {
+      logger.log('[SupabaseSyncService] isExternalProgressSyncConnected: Simkl is connected, returning true');
+    }
+    return simkl;
   }
 
   private async pullPluginsToLocal(): Promise<void> {
@@ -1409,62 +1417,90 @@ class SupabaseSyncService {
 
   private async pushWatchProgressFromLocal(): Promise<void> {
     const all = await storageService.getAllWatchProgress();
+    const allKeys = Object.keys(all);
+
     const nextSeenKeys = new Set<string>();
     const changedEntries: Array<{ key: string; row: WatchProgressRow; signature: string }> = [];
+    let skippedSameSignature = 0;
+    let skippedParseFailure = 0;
 
     for (const [key, value] of Object.entries(all)) {
       nextSeenKeys.add(key);
       const signature = this.getWatchProgressEntrySignature(value);
       if (this.watchProgressPushedSignatures.get(key) === signature) {
+        skippedSameSignature++;
         continue;
       }
 
       const parsed = this.parseWatchProgressKey(key);
       if (!parsed) {
+        skippedParseFailure++;
         continue;
       }
 
-      changedEntries.push({
-        key,
-        signature,
-        row: {
-          content_id: parsed.contentId,
-          content_type: parsed.contentType,
-          video_id: parsed.videoId,
-          season: parsed.season,
-          episode: parsed.episode,
-          position: this.secondsToMsLong(value.currentTime),
-          duration: this.secondsToMsLong(value.duration),
-          last_watched: this.normalizeEpochMs(value.lastUpdated || Date.now()),
-          progress_key: parsed.progressKey,
-        },
-      });
+      const row: WatchProgressRow = {
+        content_id: parsed.contentId,
+        content_type: parsed.contentType,
+        video_id: parsed.videoId,
+        season: parsed.season,
+        episode: parsed.episode,
+        position: this.secondsToMsLong(value.currentTime),
+        duration: this.secondsToMsLong(value.duration),
+        last_watched: this.normalizeEpochMs(value.lastUpdated || Date.now()),
+        progress_key: parsed.progressKey,
+      };
+
+      changedEntries.push({ key, signature, row });
     }
 
     // Prune signatures for entries no longer present locally (deletes are handled separately).
+    let prunedSignatures = 0;
     for (const existingKey of Array.from(this.watchProgressPushedSignatures.keys())) {
       if (!nextSeenKeys.has(existingKey)) {
         this.watchProgressPushedSignatures.delete(existingKey);
+        prunedSignatures++;
       }
     }
+
+    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: skippedSameSignature=${skippedSameSignature} skippedParseFailure=${skippedParseFailure} prunedStaleSignatures=${prunedSignatures}`);
 
     if (changedEntries.length === 0) {
       logger.log('[SupabaseSyncService] pushWatchProgressFromLocal: no changed entries; skipping push');
       return;
     }
 
-    await this.callRpc<void>('sync_push_watch_progress', {
-      p_entries: changedEntries.map((entry) => entry.row),
-    });
+    const rpcPayload = changedEntries.map((entry) => entry.row);
+    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: calling sync_push_watch_progress with ${rpcPayload.length} entries`);
+    try {
+      await this.callRpc<void>('sync_push_watch_progress', {
+        p_entries: rpcPayload,
+      });
+      logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: RPC success`);
+    } catch (rpcError: any) {
+      logger.error(`[SupabaseSyncService] pushWatchProgressFromLocal: RPC FAILED`, rpcError?.message || rpcError);
+      throw rpcError;
+    }
 
     for (const entry of changedEntries) {
       this.watchProgressPushedSignatures.set(entry.key, entry.signature);
     }
-    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: pushedChanged=${changedEntries.length} totalLocal=${Object.keys(all).length}`);
+    logger.log(`[SupabaseSyncService] pushWatchProgressFromLocal: pushedChanged=${changedEntries.length} totalLocal=${allKeys.length}`);
   }
 
   private async pullLibraryToLocal(): Promise<void> {
-    const rows = await this.callRpc<LibraryRow[]>('sync_pull_library', {});
+    const PAGE_SIZE = 500;
+    const rows: LibraryRow[] = [];
+    let offset = 0;
+    while (true) {
+      const page = await this.callRpc<LibraryRow[]>('sync_pull_library', {
+        p_limit: PAGE_SIZE,
+        p_offset: offset,
+      });
+      if (!page || page.length === 0) break;
+      rows.push(...page);
+      if (page.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
     const localItems = await catalogService.getLibraryItems();
     const existing = new Set(localItems.map((item) => `${item.type}:${item.id}`));
     const remoteSet = new Set<string>();
@@ -1532,6 +1568,8 @@ class SupabaseSyncService {
 
   private async pushWatchedItemsFromLocal(): Promise<void> {
     const items = await watchedService.getAllWatchedItems();
+    if (items.length === 0) return;
+
     const payload: WatchedRow[] = items.map((item) => ({
       content_id: item.content_id,
       content_type: item.content_type,
@@ -1540,7 +1578,13 @@ class SupabaseSyncService {
       episode: item.episode,
       watched_at: item.watched_at,
     }));
-    await this.callRpc<void>('sync_push_watched_items', { p_items: payload });
+
+    try {
+      await this.callRpc<void>('sync_push_watched_items', { p_items: payload });
+    } catch (rpcError: any) {
+      logger.error(`[SupabaseSyncService] pushWatchedItemsFromLocal: RPC FAILED`, rpcError?.message || rpcError);
+      throw rpcError;
+    }
   }
 }
 
