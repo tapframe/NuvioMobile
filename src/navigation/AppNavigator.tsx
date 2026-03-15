@@ -1366,6 +1366,7 @@ const InnerNavigator = ({ initialRouteName }: { initialRouteName?: keyof RootSta
                 contentStyle: {
                   backgroundColor: '#000000', // Pure black for video player
                 },
+                autoHideHomeIndicator: true,
                 // iPad-specific fullscreen options
                 statusBarHidden: true,
                 statusBarAnimation: 'none',
