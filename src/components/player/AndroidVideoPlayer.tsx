@@ -1046,7 +1046,10 @@ const AndroidVideoPlayer: React.FC = () => {
           onLongPressActivated={speedControl.activateSpeedBoost}
           onLongPressEnd={speedControl.deactivateSpeedBoost}
           onLongPressStateChange={(e) => {
-            if (e.nativeEvent.state !== 4 && e.nativeEvent.state !== 2) speedControl.deactivateSpeedBoost();
+            const state = e.nativeEvent.state;
+            if (state === 5 || state === 3 || state === 1) { // END, CANCELLED, FAILED
+                speedControl.deactivateSpeedBoost();
+            }
           }}
           toggleControls={toggleControls}
           showControls={playerState.showControls}

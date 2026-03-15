@@ -63,23 +63,22 @@ export const useSpeedControl = (initialSpeed: number = 1.0) => {
             useNativeDriver: true
         }).start();
 
-        setTimeout(() => {
-            Animated.timing(speedActivatedOverlayOpacity, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: true
-            }).start(() => setShowSpeedActivatedOverlay(false));
-        }, 2000);
-
-    }, [holdToSpeedEnabled, isSpeedBoosted, playbackSpeed, holdToSpeedValue]);
+    }, [holdToSpeedEnabled, isSpeedBoosted, playbackSpeed, holdToSpeedValue, speedActivatedOverlayOpacity]);
 
     const deactivateSpeedBoost = useCallback(() => {
         if (isSpeedBoosted) {
             setPlaybackSpeed(originalSpeed);
             setIsSpeedBoosted(false);
-            Animated.timing(speedActivatedOverlayOpacity, { toValue: 0, duration: 100, useNativeDriver: true }).start();
+
+            Animated.timing(speedActivatedOverlayOpacity, { 
+                toValue: 0, 
+                duration: 100, 
+                useNativeDriver: true 
+            }).start(() => {
+                setShowSpeedActivatedOverlay(false);
+            });
         }
-    }, [isSpeedBoosted, originalSpeed]);
+    }, [isSpeedBoosted, originalSpeed, speedActivatedOverlayOpacity]);
 
     return {
         playbackSpeed,

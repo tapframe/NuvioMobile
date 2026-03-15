@@ -191,13 +191,9 @@ export const GestureControls: React.FC<GestureControlsProps> = ({
         height: '100%' as const,
     };
 
-    // Full gesture area style
+    // Full gesture area style covering the entire video
     const gestureAreaStyle = {
-        position: 'absolute' as const,
-        top: screenDimensions.height * 0.15,
-        left: 0,
-        width: screenDimensions.width,
-        height: screenDimensions.height * 0.7,
+        ...StyleSheet.absoluteFillObject,
         zIndex: 10,
     };
 
@@ -237,41 +233,39 @@ export const GestureControls: React.FC<GestureControlsProps> = ({
                 failOffsetY={[-20, 20]}
                 maxPointers={1}
             >
-                <View style={gestureAreaStyle}>
-                    {/* Left side gestures */}
-                    <TapGestureHandler
-                        ref={leftDoubleTapRef}
-                        numberOfTaps={2}
-                        onActivated={handleLeftDoubleTap}
-                    >
-                        <View style={leftSideStyle}>
-                            <LongPressGestureHandler
-                                onActivated={onLongPressActivated}
-                                onEnded={onLongPressEnd}
-                                onHandlerStateChange={onLongPressStateChange}
-                                minDurationMs={500}
-                            >
-                                <View style={StyleSheet.absoluteFill}>
-                                    <PanGestureHandler
-                                        ref={leftVerticalPanRef}
-                                        onGestureEvent={gestureControls.onBrightnessGestureEvent}
-                                        activeOffsetY={[-10, 10]}
-                                        failOffsetX={[-20, 20]}
-                                        maxPointers={1}
-                                    >
-                                        <View style={StyleSheet.absoluteFill}>
-                                            <TapGestureHandler
-                                                waitFor={leftDoubleTapRef}
-                                                onActivated={toggleControls}
-                                            >
-                                                <View style={StyleSheet.absoluteFill} />
-                                            </TapGestureHandler>
-                                        </View>
-                                    </PanGestureHandler>
-                                </View>
-                            </LongPressGestureHandler>
-                        </View>
-                    </TapGestureHandler>
+                <LongPressGestureHandler
+                    onActivated={onLongPressActivated}
+                    onEnded={onLongPressEnd}
+                    onHandlerStateChange={onLongPressStateChange}
+                    minDurationMs={500}
+                    maxDist={100000}
+                >
+                    <View style={gestureAreaStyle}>
+                        {/* Left side gestures */}
+                        <TapGestureHandler
+                            ref={leftDoubleTapRef}
+                            numberOfTaps={2}
+                            onActivated={handleLeftDoubleTap}
+                        >
+                            <View style={leftSideStyle}>
+                                <PanGestureHandler
+                                    ref={leftVerticalPanRef}
+                                    onGestureEvent={gestureControls.onBrightnessGestureEvent}
+                                    activeOffsetY={[-10, 10]}
+                                    failOffsetX={[-20, 20]}
+                                    maxPointers={1}
+                                >
+                                    <View style={StyleSheet.absoluteFill}>
+                                        <TapGestureHandler
+                                            waitFor={leftDoubleTapRef}
+                                            onActivated={toggleControls}
+                                        >
+                                            <View style={StyleSheet.absoluteFill} />
+                                        </TapGestureHandler>
+                                    </View>
+                                </PanGestureHandler>
+                            </View>
+                        </TapGestureHandler>
 
                     {/* Center area tap handler */}
                     <TapGestureHandler
@@ -298,41 +292,33 @@ export const GestureControls: React.FC<GestureControlsProps> = ({
                         }} />
                     </TapGestureHandler>
 
-                    {/* Right side gestures */}
-                    <TapGestureHandler
-                        ref={rightDoubleTapRef}
-                        numberOfTaps={2}
-                        onActivated={handleRightDoubleTap}
-                    >
-                        <View style={rightSideStyle}>
-                            <LongPressGestureHandler
-                                onActivated={onLongPressActivated}
-                                onEnded={onLongPressEnd}
-                                onHandlerStateChange={onLongPressStateChange}
-                                minDurationMs={500}
-                            >
-                                <View style={StyleSheet.absoluteFill}>
-                                    <PanGestureHandler
-                                        ref={rightVerticalPanRef}
-                                        onGestureEvent={gestureControls.onVolumeGestureEvent}
-                                        activeOffsetY={[-10, 10]}
-                                        failOffsetX={[-20, 20]}
-                                        maxPointers={1}
-                                    >
-                                        <View style={StyleSheet.absoluteFill}>
-                                            <TapGestureHandler
-                                                waitFor={rightDoubleTapRef}
-                                                onActivated={toggleControls}
-                                            >
-                                                <View style={StyleSheet.absoluteFill} />
-                                            </TapGestureHandler>
-                                        </View>
-                                    </PanGestureHandler>
-                                </View>
-                            </LongPressGestureHandler>
-                        </View>
-                    </TapGestureHandler>
-                </View>
+                        {/* Right side gestures */}
+                        <TapGestureHandler
+                            ref={rightDoubleTapRef}
+                            numberOfTaps={2}
+                            onActivated={handleRightDoubleTap}
+                        >
+                            <View style={rightSideStyle}>
+                                <PanGestureHandler
+                                    ref={rightVerticalPanRef}
+                                    onGestureEvent={gestureControls.onVolumeGestureEvent}
+                                    activeOffsetY={[-10, 10]}
+                                    failOffsetX={[-20, 20]}
+                                    maxPointers={1}
+                                >
+                                    <View style={StyleSheet.absoluteFill}>
+                                        <TapGestureHandler
+                                            waitFor={rightDoubleTapRef}
+                                            onActivated={toggleControls}
+                                        >
+                                            <View style={StyleSheet.absoluteFill} />
+                                        </TapGestureHandler>
+                                    </View>
+                                </PanGestureHandler>
+                            </View>
+                        </TapGestureHandler>
+                    </View>
+                </LongPressGestureHandler>
             </PanGestureHandler>
 
             {/* Volume/Brightness Pill Overlay */}
