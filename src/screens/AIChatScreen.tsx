@@ -20,6 +20,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import FastImage from '@d11/react-native-fast-image';
 import { BlurView as ExpoBlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 // Lazy-safe community blur import (avoid bundling issues on web)
 let AndroidBlurView: any = null;
 if (Platform.OS === 'android') {
@@ -46,7 +47,7 @@ if (Platform.OS === 'ios') {
   }
 }
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
-import { aiService, ChatMessage, ContentContext, createMovieContext, createEpisodeContext, createSeriesContext, generateConversationStarters } from '../services/aiService';
+import { aiService, ChatMessage, ContentContext, createMovieContext, createEpisodeContext, createSeriesContext } from '../services/aiService';
 import { tmdbService } from '../services/tmdbService';
 import Markdown from 'react-native-markdown-display';
 import Animated, {
@@ -428,13 +429,17 @@ const SuggestionChip: React.FC<SuggestionChipProps> = React.memo(({ text, onPres
 }, (prev, next) => prev.text === next.text && prev.onPress === next.onPress && prev.index === next.index);
 
 const AIChatScreen: React.FC = () => {
+  const { t } = useTranslation();
+
   // CustomAlert state
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
-  const [alertActions, setAlertActions] = useState<Array<{ label: string; onPress: () => void; style?: object }>>([
-    { label: 'OK', onPress: () => setAlertVisible(false) },
-  ]);
+  const [alertActions, setAlertActions] = useState<Array<{ label: string; onPress: () => void; style?: object }>>([]);
+
+  const defaultAlertActions = useMemo(() => ([
+    { label: t('common.ok'), onPress: () => setAlertVisible(false) },
+  ]), [t]);
 
   const openAlert = (
     title: string,
@@ -452,7 +457,7 @@ const AIChatScreen: React.FC = () => {
         }))
       );
     } else {
-      setAlertActions([{ label: 'OK', onPress: () => setAlertVisible(false) }]);
+      setAlertActions(defaultAlertActions);
     }
     setAlertVisible(true);
   };
@@ -536,11 +541,42 @@ const AIChatScreen: React.FC = () => {
 
   useEffect(() => {
     if (context && messages.length === 0) {
-      // Generate conversation starters
-      const starters = generateConversationStarters(context);
+      const starters = (() => {
+        if ('episodesBySeason' in (context as any)) {
+          const series = context as any;
+          return [
+            t('ai_chat.starters.series.overall', { title: series.title }),
+            t('ai_chat.starters.series.arcs'),
+            t('ai_chat.starters.series.rated'),
+            t('ai_chat.starters.series.pivotal'),
+            t('ai_chat.starters.series.themes'),
+          ];
+        }
+
+        if ('showTitle' in (context as any)) {
+          const episode = context as any;
+          return [
+            t('ai_chat.starters.episode.overview', { showTitle: episode.showTitle }),
+            t('ai_chat.starters.episode.plot_points', { episodeTitle: episode.episodeTitle }),
+            t('ai_chat.starters.episode.character_development'),
+            t('ai_chat.starters.episode.hidden_details'),
+            t('ai_chat.starters.episode.story_arc'),
+          ];
+        }
+
+        const movie = context as any;
+        return [
+          t('ai_chat.starters.movie.overview', { title: movie.title }),
+          t('ai_chat.starters.movie.themes'),
+          t('ai_chat.starters.movie.ending'),
+          t('ai_chat.starters.movie.characters'),
+          t('ai_chat.starters.movie.production_facts'),
+        ];
+      })();
+
       setSuggestions(starters);
     }
-  }, [context, messages.length]);
+  }, [context, messages.length, t]);
 
   const loadContext = async () => {
     try {
@@ -597,7 +633,7 @@ const AIChatScreen: React.FC = () => {
       }
     } catch (error) {
       if (__DEV__) console.error('Error loading context:', error);
-      openAlert('Error', 'Failed to load content details for AI chat');
+      openAlert(t('common.error'), t('ai_chat.errors.load_content_details'));
     } finally {
       setIsLoadingContext(false);
       {/* CustomAlert at root */ }
@@ -692,18 +728,18 @@ const AIChatScreen: React.FC = () => {
     } catch (error) {
       if (__DEV__) console.error('Error sending message:', error);
 
-      let errorMessage = 'Sorry, I encountered an error. Please try again.';
+      let errorMessage = t('ai_chat.errors.generic');
       if (error instanceof Error) {
         if (error.message.includes('not configured')) {
-          errorMessage = 'Please configure your OpenRouter API key in Settings > AI Assistant.';
+          errorMessage = t('ai_chat.errors.not_configured');
         } else if (/401|unauthorized|invalid api key|authentication/i.test(error.message)) {
-          errorMessage = 'OpenRouter rejected your API key. Please verify the key in Settings > AI Assistant.';
+          errorMessage = t('ai_chat.errors.invalid_api_key');
         } else if (/insufficient|credit|quota|429/i.test(error.message)) {
-          errorMessage = 'OpenRouter quota/credits were rejected for this request. Please check your OpenRouter usage and limits.';
+          errorMessage = t('ai_chat.errors.quota');
         } else if (/model|provider|endpoint|unsupported|unavailable|not found/i.test(error.message)) {
-          errorMessage = 'The selected OpenRouter model is unavailable. Retry with `openrouter/free` or choose another custom model in Settings > AI Assistant.';
+          errorMessage = t('ai_chat.errors.model_unavailable');
         } else if (error.message.includes('API request failed')) {
-          errorMessage = 'Failed to connect to AI service. Please check your internet connection, API key, and OpenRouter model availability.';
+          errorMessage = t('ai_chat.errors.connection');
         }
       }
 
@@ -718,7 +754,7 @@ const AIChatScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [context, messages, isLoading]);
+  }, [context, messages, isLoading, t]);
 
   const handleSendPress = useCallback(() => {
     sendMessage(inputText);
@@ -767,7 +803,7 @@ const AIChatScreen: React.FC = () => {
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={currentTheme.colors.primary} />
         <Text style={[styles.loadingText, { color: currentTheme.colors.mediumEmphasis }]}>
-          Loading AI context...
+          {t('ai_chat.loading_context')}
         </Text>
       </View>
     );
@@ -820,7 +856,7 @@ const AIChatScreen: React.FC = () => {
 
             <View style={styles.headerInfo}>
               <Text style={[styles.headerTitle, { color: currentTheme.colors.highEmphasis }]}>
-                AI Chat
+                {t('ai_chat.title')}
               </Text>
               <Text style={[styles.headerSubtitle, { color: currentTheme.colors.mediumEmphasis }]}>
                 {getDisplayTitle()}
@@ -867,18 +903,18 @@ const AIChatScreen: React.FC = () => {
                   <MaterialIcons name="auto-awesome" size={34} color="white" />
                 </LinearGradient>
                 <Text style={[styles.welcomeTitle, { color: currentTheme.colors.highEmphasis }]}>
-                  Ask me anything about
+                  {t('ai_chat.welcome_title')}
                 </Text>
                 <Text style={[styles.welcomeSubtitle, { color: currentTheme.colors.primary }]}>
                   {getDisplayTitle()}
                 </Text>
                 <Text style={[styles.welcomeDescription, { color: currentTheme.colors.mediumEmphasis }]}>
-                  I have detailed knowledge about this content and can answer questions about plot, characters, themes, and more.
+                  {t('ai_chat.welcome_description')}
                 </Text>
 
                 <View style={styles.suggestionsContainer}>
                   <Text style={[styles.suggestionsTitle, { color: currentTheme.colors.mediumEmphasis }]}>
-                    Try asking:
+                    {t('ai_chat.try_asking')}
                   </Text>
                   <View style={styles.suggestionsGrid}>
                     {suggestions.map((suggestion, index) => (
@@ -942,7 +978,7 @@ const AIChatScreen: React.FC = () => {
                   ]}
                   value={inputText}
                   onChangeText={setInputText}
-                  placeholder="Ask about this content..."
+                  placeholder={t('ai_chat.placeholder')}
                   placeholderTextColor={currentTheme.colors.mediumEmphasis}
                   multiline
                   maxLength={500}

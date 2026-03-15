@@ -469,13 +469,13 @@
             "profanity": "Profanity",
             "alcohol": "Alcohol/Drugs",
             "frightening": "Frightening"
-    },
+        },
         "severity": {
             "severe": "Severe",
             "moderate": "Moderate",
             "mild": "Mild",
             "none": "None"
-    }
+        }
     },
     "addons": {
         "title": "Addons",
@@ -564,6 +564,43 @@
         "conflict_title": "Conflict",
         "conflict_msg": "You cannot connect to Simkl while Trakt is connected. Please disconnect Trakt first.",
         "disclaimer": "Nuvio is not affiliated with Simkl."
+    },
+    "mal_settings": {
+        "title": "MyAnimeList",
+        "connect_title": "Connect MyAnimeList",
+        "connect_desc": "Sync your watch history and manage your anime list.",
+        "sign_in": "Sign In with MyAnimeList",
+        "sign_out": "Disconnect",
+        "sign_out_confirm": "Are you sure you want to disconnect your MyAnimeList account?",
+        "auth_success_title": "Successfully Connected",
+        "auth_success_msg": "Your MyAnimeList account has been connected successfully.",
+        "auth_error_title": "Authentication Error",
+        "auth_error_msg": "Failed to complete authentication with MyAnimeList.",
+        "auth_error_generic": "An error occurred during authentication.",
+        "sync_complete_title": "Sync Complete",
+        "sync_error_title": "Sync Failed",
+        "sync_success_msg": "MyAnimeList data refreshed successfully.",
+        "sync_error_msg": "Failed to refresh MyAnimeList data. Please try again.",
+        "sync_now_button": "Sync Now",
+        "sync_settings_title": "Sync Settings",
+        "profile_id": "ID: {{id}}",
+        "stats_total": "Total",
+        "stats_days": "Days",
+        "stats_mean": "Mean",
+        "status_watching": "Watching",
+        "status_completed": "Completed",
+        "status_on_hold": "On Hold",
+        "status_dropped": "Dropped",
+        "sync_enabled_label": "Enable MyAnimeList Sync",
+        "sync_enabled_desc": "Global switch to enable or disable all MyAnimeList features.",
+        "auto_update_label": "Auto Episode Update",
+        "auto_update_desc": "Automatically update your progress on MyAnimeList when you finish watching an episode (>=90% completion).",
+        "auto_add_label": "Auto Add Anime",
+        "auto_add_desc": "If an anime is not in your MyAnimeList list, it will be added automatically when you start watching.",
+        "auto_library_sync_label": "Auto-Sync to Library",
+        "auto_library_sync_desc": "Automatically add items from your MyAnimeList \"Watching\" list to your Nuvio Library.",
+        "include_nsfw_label": "Include NSFW Content",
+        "include_nsfw_desc": "Allow NSFW entries to be returned when fetching your MyAnimeList list."
     },
     "tmdb_settings": {
         "title": "TMDb Settings",
@@ -915,6 +952,46 @@
         "confirm_remove_msg": "Are you sure you want to remove your OpenRouter API key? This will disable AI chat features.",
         "success_removed": "API key removed successfully",
         "error_remove": "Failed to remove API key"
+    },
+    "ai_chat": {
+        "title": "AI Chat",
+        "loading_context": "Loading AI context...",
+        "welcome_title": "Ask me anything about",
+        "welcome_description": "I have detailed knowledge about this content and can answer questions about plot, characters, themes, and more.",
+        "try_asking": "Try asking:",
+        "placeholder": "Ask about this content...",
+        "errors": {
+            "load_content_details": "Failed to load content details for AI chat",
+            "generic": "Sorry, I encountered an error. Please try again.",
+            "not_configured": "Please configure your OpenRouter API key in Settings > AI Assistant.",
+            "invalid_api_key": "OpenRouter rejected your API key. Please verify the key in Settings > AI Assistant.",
+            "quota": "OpenRouter quota/credits were rejected for this request. Please check your OpenRouter usage and limits.",
+            "model_unavailable": "The selected OpenRouter model is unavailable. Retry with `openrouter/free` or choose another custom model in Settings > AI Assistant.",
+            "connection": "Failed to connect to AI service. Please check your internet connection, API key, and OpenRouter model availability."
+        },
+        "starters": {
+            "series": {
+                "overall": "What is {{title}} about overall?",
+                "arcs": "Summarize key arcs across all seasons",
+                "rated": "Which episodes are the highest rated and why?",
+                "pivotal": "List pivotal episodes for character development",
+                "themes": "How did themes evolve from Season 1 onward?"
+            },
+            "episode": {
+                "overview": "What happened in this episode of {{showTitle}}?",
+                "plot_points": "Explain the main plot points of \"{{episodeTitle}}\"",
+                "character_development": "What character development occurred in this episode?",
+                "hidden_details": "Are there any hidden details or easter eggs I might have missed?",
+                "story_arc": "How does this episode connect to the overall story arc?"
+            },
+            "movie": {
+                "overview": "What is {{title}} about?",
+                "themes": "Explain the themes in this movie",
+                "ending": "What's the significance of the ending?",
+                "characters": "Tell me about the main characters and their development",
+                "production_facts": "Are there any interesting production facts about this film?"
+            }
+        }
     },
     "catalog_settings": {
         "title": "Catalogs",

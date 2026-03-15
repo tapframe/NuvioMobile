@@ -18,6 +18,7 @@ import Animated, {
   interpolate,
   Extrapolate,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { isMDBListEnabled } from '../../screens/MDBListSettingsScreen';
 import { getAgeRatingColor } from '../../utils/ageRatingColors';
@@ -53,6 +54,7 @@ const MetadataDetails: React.FC<MetadataDetailsProps> = ({
   contentId,
   loadingMetadata = false,
 }) => {
+  const { t } = useTranslation();
   const { currentTheme } = useTheme();
   const [isFullDescriptionOpen, setIsFullDescriptionOpen] = useState(false);
   const [isMDBEnabled, setIsMDBEnabled] = useState(false);
@@ -407,7 +409,7 @@ const MetadataDetails: React.FC<MetadataDetailsProps> = ({
                     fontSize: isTV ? 16 : isLargeTablet ? 15 : isTablet ? 14 : 14
                   }
                 ]}>
-                  {isFullDescriptionOpen ? 'Show Less' : 'Show More'}
+                  {isFullDescriptionOpen ? t('common.show_less') : t('common.show_more')}
                 </Text>
                 <MaterialIcons
                   name={isFullDescriptionOpen ? "keyboard-arrow-up" : "keyboard-arrow-down"}
@@ -533,4 +535,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(MetadataDetails); 
+export default React.memo(MetadataDetails);

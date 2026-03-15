@@ -550,6 +550,43 @@
         "conflict_msg": "Non puoi connettere Simkl mentre Trakt è connesso. Disconnetti prima Trakt.",
         "disclaimer": "Nuvio non è affiliato con Simkl."
     },
+    "mal_settings": {
+        "title": "MyAnimeList",
+        "connect_title": "Connetti MyAnimeList",
+        "connect_desc": "Sincronizza la tua cronologia di visione e gestisci la tua lista anime.",
+        "sign_in": "Accedi con MyAnimeList",
+        "sign_out": "Disconnetti",
+        "sign_out_confirm": "Sei sicuro di voler disconnettere il tuo account MyAnimeList?",
+        "auth_success_title": "Connessione riuscita",
+        "auth_success_msg": "Il tuo account MyAnimeList e stato collegato correttamente.",
+        "auth_error_title": "Errore di autenticazione",
+        "auth_error_msg": "Impossibile completare l'autenticazione con MyAnimeList.",
+        "auth_error_generic": "Si \u00e8 verificato un errore durante l'autenticazione.",
+        "sync_complete_title": "Sincronizzazione completata",
+        "sync_error_title": "Sincronizzazione fallita",
+        "sync_success_msg": "I dati MyAnimeList sono stati aggiornati correttamente.",
+        "sync_error_msg": "Impossibile aggiornare i dati MyAnimeList. Riprova.",
+        "sync_now_button": "Sincronizza ora",
+        "sync_settings_title": "Impostazioni sincronizzazione",
+        "profile_id": "ID: {{id}}",
+        "stats_total": "Totale",
+        "stats_days": "Giorni",
+        "stats_mean": "Media",
+        "status_watching": "In visione",
+        "status_completed": "Completati",
+        "status_on_hold": "In pausa",
+        "status_dropped": "Interrotti",
+        "sync_enabled_label": "Abilita sincronizzazione MyAnimeList",
+        "sync_enabled_desc": "Interruttore globale per abilitare o disabilitare tutte le funzioni MyAnimeList.",
+        "auto_update_label": "Aggiornamento automatico episodi",
+        "auto_update_desc": "Aggiorna automaticamente i tuoi progressi su MyAnimeList quando completi un episodio (>=90% completamento).",
+        "auto_add_label": "Aggiunta automatica anime",
+        "auto_add_desc": "Se un anime non e presente nella tua lista MyAnimeList, verra aggiunto automaticamente quando inizi a guardarlo.",
+        "auto_library_sync_label": "Sincronizzazione automatica con la Libreria",
+        "auto_library_sync_desc": "Aggiunge automaticamente alla Libreria Nuvio gli elementi presenti nella tua lista MyAnimeList \"Watching\".",
+        "include_nsfw_label": "Includi contenuti NSFW",
+        "include_nsfw_desc": "Consenti il recupero di contenuti NSFW quando viene caricata la tua lista MyAnimeList."
+    },
     "tmdb_settings": {
         "title": "Impostazioni TMDb",
         "metadata_enrichment": "Arricchimento metadati",
@@ -660,6 +697,7 @@
         "integrations": "Integrazioni",
         "playback": "Riproduzione",
         "backup_restore": "Backup e Ripristino",
+        "backup_restore_desc": "Crea e ripristina backup dell'app",
         "updates": "Aggiornamenti",
         "about": "Informazioni",
         "developer": "Sviluppatore",
@@ -690,7 +728,8 @@
             "media": "MEDIA",
             "notifications": "NOTIFICHE",
             "testing": "TEST",
-            "danger_zone": "ZONA PERICOLOSA"
+            "danger_zone": "ZONA PERICOLOSA",
+            "introdb_contribution": "Contributi IntroDB"
         },
         "items": {
             "legal": "Note Legali & Disclaimer",
@@ -751,7 +790,9 @@
             "reset_campaigns": "Ripristina Campagne",
             "reset_campaigns_desc": "Cancella le impressioni delle campagne",
             "clear_all_data": "Cancella tutti i dati",
-            "clear_all_data_desc": "Ripristina tutte le impostazioni e i dati memorizzati"
+            "clear_all_data_desc": "Ripristina tutte le impostazioni e i dati memorizzati",
+            "enable_intro_submission": "Abilita l'aggiunta di dati sulle intro",
+            "enable_intro_submission_desc": "Contribuisci alla community IntroDB"
         },
         "options": {
             "horizontal": "Orizzontale",
@@ -794,7 +835,7 @@
                 "description": "Aggiorna dal cloud (pull) o usa le impostazioni di questo dispositivo come sorgente principale (push).",
                 "pull_btn": "Pull dal Cloud",
                 "push_btn": "Push dal Dispositivo",
-                "manage_account": "Gestiscci Account",
+                "manage_account": "Gestisci Account",
                 "sign_out": "Disconnetti",
                 "sign_in_up": "Accedi / Registrati"
             },
@@ -899,6 +940,46 @@
         "confirm_remove_msg": "Sei sicuro di voler rimuovere la tua chiave API OpenRouter? Questo disabiliterà le funzioni di chat IA.",
         "success_removed": "Chiave API rimossa con successo",
         "error_remove": "Impossibile rimuovere la chiave API"
+    },
+    "ai_chat": {
+        "title": "Chat IA",
+        "loading_context": "Caricamento contesto IA...",
+        "welcome_title": "Chiedimi qualsiasi cosa su",
+        "welcome_description": "Ho una conoscenza dettagliata di questo contenuto e posso rispondere a domande su trama, personaggi, temi e altro.",
+        "try_asking": "Prova a chiedere:",
+        "placeholder": "Chiedi qualcosa su questo contenuto...",
+        "errors": {
+            "load_content_details": "Impossibile caricare i dettagli del contenuto per la chat IA",
+            "generic": "Mi dispiace, si \u00e8 verificato un errore. Riprova.",
+            "not_configured": "Configura la tua chiave API OpenRouter in Impostazioni > Assistente IA.",
+            "invalid_api_key": "OpenRouter ha rifiutato la tua chiave API. Verificala in Impostazioni > Assistente IA.",
+            "quota": "OpenRouter ha rifiutato la richiesta per limiti o crediti. Controlla utilizzo e limiti del tuo account.",
+            "model_unavailable": "Il modello OpenRouter selezionato non \u00e8 disponibile. Riprova con `openrouter/free` oppure scegli un altro modello personalizzato in Impostazioni > Assistente IA.",
+            "connection": "Impossibile connettersi al servizio IA. Controlla connessione internet, chiave API e disponibilit\u00e0 del modello OpenRouter."
+        },
+        "starters": {
+            "series": {
+                "overall": "Di cosa parla {{title}} nel complesso?",
+                "arcs": "Riassumi gli archi narrativi principali di tutte le stagioni",
+                "rated": "Quali episodi hanno la valutazione pi\u00f9 alta e perch\u00e9?",
+                "pivotal": "Elenca gli episodi chiave per lo sviluppo dei personaggi",
+                "themes": "Come si evolvono i temi dalla Stagione 1 in poi?"
+            },
+            "episode": {
+                "overview": "Cosa succede in questo episodio di {{showTitle}}?",
+                "plot_points": "Spiegami i punti principali della trama di \"{{episodeTitle}}\"",
+                "character_development": "Quale sviluppo dei personaggi avviene in questo episodio?",
+                "hidden_details": "Ci sono dettagli nascosti o easter egg che potrei essermi perso?",
+                "story_arc": "Come si collega questo episodio all'arco narrativo generale?"
+            },
+            "movie": {
+                "overview": "Di cosa parla {{title}}?",
+                "themes": "Spiegami i temi di questo film",
+                "ending": "Qual \u00e8 il significato del finale?",
+                "characters": "Parlami dei personaggi principali e della loro evoluzione",
+                "production_facts": "Ci sono curiosit\u00e0 interessanti sulla produzione di questo film?"
+            }
+        }
     },
     "catalog_settings": {
         "title": "Cataloghi",
@@ -1144,7 +1225,7 @@
         "sync_desc": "Sincronizza automaticamente le notifiche per tutte le serie nella tua libreria e nella watchlist/collezione di Trakt.",
         "section_advanced": "Avanzate",
         "reset_button": "Ripristina tutte le notifiche",
-        "test_button": "Test Notifica (5 sec)",
+        "test_button": "Test Invio Notifica (5 sec)",
         "test_notification_in": "Notifica tra {{seconds}}s...",
         "test_notification_text": "La notifica apparirà tra {{seconds}} secondi",
         "alert_reset_title": "Ripristina Notifiche",

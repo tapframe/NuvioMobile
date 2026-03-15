@@ -420,8 +420,8 @@ const SettingsScreen: React.FC = () => {
             )}
             {isItemVisible('mal') && (
               <SettingItem
-                title="MyAnimeList"
-                description="Sync with MyAnimeList"
+                title={t('mal_settings.title')}
+                description={t('mal_settings.connect_title')}
                 customIcon={<Image source={require('../../assets/rating-icons/mal-icon.png')} style={{ width: isTablet ? 24 : 20, height: isTablet ? 24 : 20, borderRadius: 4 }} resizeMode="contain" />}
                 renderControl={() => <ChevronRight />}
                 onPress={() => navigation.navigate('MalSettings')}
@@ -717,8 +717,8 @@ const SettingsScreen: React.FC = () => {
               <SettingsCard title={t('settings.account').toUpperCase()}>
                 {showCloudSyncItem && (
                   <SettingItem
-                    title="Nuvio Sync"
-                    description="Sync data across your Nuvio devices"
+                    title={t('settings.cloud_sync.title')}
+                    description={t('settings.cloud_sync.description')}
                     customIcon={
                       <FastImage
                         source={require('../../assets/nuvio-sync-icon-og.png')}
@@ -829,7 +829,7 @@ const SettingsScreen: React.FC = () => {
                   {(settingsConfig?.categories?.['backup']?.visible !== false) && (
                     <SettingItem
                       title={t('settings.backup_restore')}
-                      description="Create and restore app backups"
+                      description={t('settings.backup_restore_desc')}
                       icon="archive"
                       renderControl={() => <ChevronRight />}
                       onPress={() => navigation.navigate('Backup')}
