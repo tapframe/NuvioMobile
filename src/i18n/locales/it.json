@@ -794,7 +794,7 @@
                 "description": "Aggiorna dal cloud (pull) o usa le impostazioni di questo dispositivo come sorgente principale (push).",
                 "pull_btn": "Pull dal Cloud",
                 "push_btn": "Push dal Dispositivo",
-                "manage_account": "Gestiscci Account",
+                "manage_account": "Gestisci Account",
                 "sign_out": "Disconnetti",
                 "sign_in_up": "Accedi / Registrati"
             },
