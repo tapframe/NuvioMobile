@@ -1901,9 +1901,9 @@ const LibraryScreen = () => {
             style={styles.filtersContainer}
             contentContainerStyle={styles.filtersContent}
           >
-            {renderFilter('trakt', 'Trakt', 'pan-tool')}
-            {renderFilter('simkl', 'SIMKL', 'video-library')}
-            {renderFilter('mal', 'MAL', 'book')}
+            {renderFilter('trakt', 'Trakt')}
+            {renderFilter('simkl', 'SIMKL')}
+            {renderFilter('mal', 'MAL')}
             {renderFilter('movies', t('search.movies'), 'movie')}
             {renderFilter('series', t('search.tv_shows'), 'live-tv')}
           </ScrollView>

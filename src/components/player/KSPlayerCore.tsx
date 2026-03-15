@@ -214,6 +214,9 @@ const KSPlayerCore: React.FC = () => {
     episodeId
   });
 
+  const currentMalId = (metadata as any)?.mal_id || (metadata as any)?.external_ids?.mal_id;
+  const currentTmdbId = (metadata as any)?.tmdbId || (metadata as any)?.external_ids?.tmdb_id;
+
   const { segments: skipIntervals, outroSegment } = useSkipSegments({
     imdbId: imdbId || (id?.startsWith('tt') ? id : undefined),
     type,
@@ -221,6 +224,7 @@ const KSPlayerCore: React.FC = () => {
     episode,
     malId: (metadata as any)?.mal_id || (metadata as any)?.external_ids?.mal_id,
     kitsuId: id?.startsWith('kitsu:') ? id.split(':')[1] : undefined,
+    tmdbId: currentTmdbId,
     enabled: settings.skipIntroEnabled
   });
 
@@ -241,9 +245,6 @@ const KSPlayerCore: React.FC = () => {
       }, episodeId);
     }
   });
-
-  const currentMalId = (metadata as any)?.mal_id || (metadata as any)?.external_ids?.mal_id;
-  const currentTmdbId = (metadata as any)?.tmdbId || (metadata as any)?.external_ids?.tmdb_id;
 
   // Calculate dayIndex for same-day releases
   const currentDayIndex = useMemo(() => {

@@ -282,6 +282,71 @@ export const MalSync = {
     }
   },
 
+  unscrobbleEpisode: async (
+    animeTitle: string,
+    episodeNumber: number,
+    type: 'movie' | 'series' = 'series',
+    season?: number,
+    imdbId?: string,
+    releaseDate?: string,
+    providedMalId?: number,
+    dayIndex?: number,
+    tmdbId?: number
+  ) => {
+    try {
+      if (!MalAuth.isAuthenticated()) return;
+
+      let malId: number | null = providedMalId || null;
+      let finalEpisodeNumber = episodeNumber;
+
+      // Resolve ID using same strategies as scrobbling
+      if (!malId && tmdbId && releaseDate) {
+          const tmdbResult = await ArmSyncService.resolveByTmdb(tmdbId, releaseDate, dayIndex);
+          if (tmdbResult) {
+              malId = tmdbResult.malId;
+              finalEpisodeNumber = tmdbResult.episode;
+          }
+      }
+
+      if (!malId && imdbId && type === 'series' && releaseDate) {
+          const armResult = await ArmSyncService.resolveByDate(imdbId, releaseDate, dayIndex);
+          if (armResult) {
+              malId = armResult.malId;
+              finalEpisodeNumber = armResult.episode;
+          }
+      }
+
+      if (!malId) {
+          malId = await MalSync.getMalId(animeTitle, type, undefined, season, imdbId, episodeNumber, releaseDate, dayIndex, tmdbId);
+      }
+
+      if (!malId) return;
+
+      // Get current count
+      const currentInfo = await MalApiService.getMyListStatus(malId);
+      if (!currentInfo.my_list_status) return;
+
+      // Decrement logic: Only if the episode we are unmarking is the LAST one watched or current
+      const currentlyWatched = currentInfo.my_list_status.num_episodes_watched;
+      if (finalEpisodeNumber <= currentlyWatched) {
+          const newCount = Math.max(0, finalEpisodeNumber - 1);
+          let newStatus = currentInfo.my_list_status.status;
+          
+          // If we unmark everything, maybe move back to 'plan_to_watch' or keep 'watching'
+          if (newCount === 0 && newStatus === 'watching') {
+              // Optional: Move back to plan to watch if desired
+          } else if (newStatus === 'completed') {
+              newStatus = 'watching';
+          }
+
+          await MalApiService.updateStatus(malId, newStatus, newCount);
+          console.log(`[MalSync] Unscrobbled MAL ID ${malId} to Ep ${newCount}`);
+      }
+    } catch (e) {
+      console.error('[MalSync] Unscrobble failed:', e);
+    }
+  },
+
   /**
    * Direct scrobble with known MAL ID and Episode
    * Used when ArmSync has already resolved the exact details.

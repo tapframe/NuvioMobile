@@ -573,7 +573,10 @@ class WatchedService {
      * Unmark a movie as watched (remove from history)
      */
     public async unmarkMovieAsWatched(
-        imdbId: string
+        imdbId: string,
+        malId?: number,
+        tmdbId?: number,
+        title?: string
     ): Promise<{ success: boolean; syncedToTrakt: boolean }> {
         try {
             logger.log(`[WatchedService] Unmarking movie as watched: ${imdbId}`);
@@ -584,6 +587,21 @@ class WatchedService {
             if (isTraktAuth) {
                 syncedToTrakt = await this.traktService.removeMovieFromHistory(imdbId);
                 logger.log(`[WatchedService] Trakt remove result for movie: ${syncedToTrakt}`);
+            }
+
+            // Sync to MAL
+            if (MalAuth.isAuthenticated()) {
+                MalSync.unscrobbleEpisode(
+                    title || 'Movie',
+                    1,
+                    'movie',
+                    undefined,
+                    imdbId,
+                    undefined,
+                    malId,
+                    undefined,
+                    tmdbId
+                ).catch(err => logger.error('[WatchedService] MAL movie unsync failed:', err));
             }
 
             // Simkl Unmark
@@ -614,7 +632,12 @@ class WatchedService {
         showImdbId: string,
         showId: string,
         season: number,
-        episode: number
+        episode: number,
+        releaseDate?: string,
+        showTitle?: string,
+        malId?: number,
+        dayIndex?: number,
+        tmdbId?: number
     ): Promise<{ success: boolean; syncedToTrakt: boolean }> {
         try {
             logger.log(`[WatchedService] Unmarking episode as watched: ${showImdbId} S${season}E${episode}`);
@@ -629,6 +652,21 @@ class WatchedService {
                     episode
                 );
                 logger.log(`[WatchedService] Trakt remove result for episode: ${syncedToTrakt}`);
+            }
+
+            // Sync to MAL
+            if (MalAuth.isAuthenticated()) {
+                MalSync.unscrobbleEpisode(
+                    showTitle || 'Anime',
+                    episode,
+                    'series',
+                    season,
+                    showImdbId,
+                    releaseDate,
+                    malId,
+                    dayIndex,
+                    tmdbId
+                ).catch(err => logger.error('[WatchedService] MAL unsync failed:', err));
             }
 
             // Simkl Unmark

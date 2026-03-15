@@ -306,7 +306,8 @@ export async function getSkipTimes(
     episode: number,
     malId?: string,
     kitsuId?: string,
-    releaseDate?: string
+    releaseDate?: string,
+    tmdbId?: number
 ): Promise<SkipInterval[]> {
     // 1. Try IntroDB (TV Shows) first
     if (imdbId) {
@@ -320,7 +321,21 @@ export async function getSkipTimes(
     let finalMalId = malId;
     let finalEpisode = episode;
     
-    // If we have IMDb ID and Release Date, try ArmSyncService to resolve exact MAL ID and Episode
+    // Priority 1: TMDB-based Resolution (Highest Accuracy)
+    if (!finalMalId && tmdbId && releaseDate) {
+        try {
+            const tmdbResult = await ArmSyncService.resolveByTmdb(tmdbId, releaseDate);
+            if (tmdbResult) {
+                finalMalId = tmdbResult.malId.toString();
+                finalEpisode = tmdbResult.episode;
+                logger.log(`[IntroService] TMDB resolved: MAL ${finalMalId} Ep ${finalEpisode}`);
+            }
+        } catch (e) {
+            logger.warn('[IntroService] TMDB resolve failed', e);
+        }
+    }
+
+    // Priority 2: IMDb-based ARM Sync (Fallback)
     if (!finalMalId && imdbId && releaseDate) {
          try {
              const armResult = await ArmSyncService.resolveByDate(imdbId, releaseDate);
