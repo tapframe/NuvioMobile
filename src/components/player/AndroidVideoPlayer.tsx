@@ -189,6 +189,11 @@ const AndroidVideoPlayer: React.FC = () => {
 
   const metadataResult = useMetadata({ id: id || 'placeholder', type: (type as any) });
   const { metadata, cast } = Boolean(id && type) ? (metadataResult as any) : { metadata: null, cast: [] };
+
+  // For content with provider IDs (e.g. kitsu:123), imdbId from route params may be null at
+  // navigation time. useMetadata resolves it asynchronously via ARM + TMDB. Use that resolved
+  // value as a fallback so Trakt scrobbling and watched status use a real IMDb ID.
+  const resolvedImdbId: string | undefined = imdbId || (metadataResult as any).imdbId || undefined;
   const hasLogo = metadata && metadata.logo;
   const openingAnimation = useOpeningAnimation(backdrop, metadata);
 
@@ -212,12 +217,12 @@ const AndroidVideoPlayer: React.FC = () => {
     type: type === 'series' ? 'series' : 'movie',
     title: episodeTitle || title,
     year: year || 0,
-    imdbId: imdbId || '',
+    imdbId: resolvedImdbId || '',
     season: season,
     episode: episode,
     showTitle: title,
     showYear: year,
-    showImdbId: imdbId,
+    showImdbId: resolvedImdbId,
     episodeId: episodeId
   });
 
@@ -244,7 +249,7 @@ const AndroidVideoPlayer: React.FC = () => {
     traktAutosync,
     controlsHook.seekToTime,
     currentStreamProvider,
-    imdbId,
+    resolvedImdbId,
     season,
     episode,
     releaseDate,
@@ -267,7 +272,7 @@ const AndroidVideoPlayer: React.FC = () => {
   const nextEpisodeHook = useNextEpisode(type, season, episode, groupedEpisodes, (metadataResult as any)?.groupedEpisodes, episodeId);
 
   const { segments: skipIntervals, outroSegment } = useSkipSegments({
-    imdbId: imdbId || (id?.startsWith('tt') ? id : undefined),
+    imdbId: resolvedImdbId || (id?.startsWith('tt') ? id : undefined),
     type,
     season,
     episode,
@@ -731,7 +736,7 @@ const AndroidVideoPlayer: React.FC = () => {
         id,
         type: 'series',
         episodeId: ep.stremioId || `${id}:${ep.season_number}:${ep.episode_number}`,
-        imdbId: imdbId ?? undefined,
+        imdbId: resolvedImdbId ?? undefined,
         backdrop: backdrop || undefined,
         availableStreams: {},
         groupedEpisodes: groupedEpisodes,
@@ -741,7 +746,7 @@ const AndroidVideoPlayer: React.FC = () => {
 
   // Subtitle addon fetching
   const fetchAvailableSubtitles = useCallback(async () => {
-    const targetImdbId = imdbId;
+    const targetImdbId = resolvedImdbId;
     
     setIsLoadingSubtitleList(true);
     try {
@@ -820,7 +825,7 @@ const AndroidVideoPlayer: React.FC = () => {
     } finally {
       setIsLoadingSubtitleList(false);
     }
-  }, [imdbId, type, season, episode, id]);
+  }, [resolvedImdbId, type, season, episode, id]);
 
   const loadWyzieSubtitle = useCallback(async (subtitle: WyzieSubtitle) => {
     if (!subtitle.url) return;
@@ -1119,7 +1124,7 @@ const AndroidVideoPlayer: React.FC = () => {
           canEnterPictureInPicture={canShowPipButton}
           onEnterPictureInPicture={handleEnterPictureInPicture}
           isBuffering={playerState.isBuffering}
-          imdbId={imdbId}
+          imdbId={resolvedImdbId}
         />
 
         <SpeedActivatedOverlay
@@ -1145,7 +1150,7 @@ const AndroidVideoPlayer: React.FC = () => {
 
         {/* Parental Guide Overlay - Shows after controls first hide */}
         <ParentalGuideOverlay
-          imdbId={imdbId || (id?.startsWith('tt') ? id : undefined)}
+          imdbId={resolvedImdbId || (id?.startsWith('tt') ? id : undefined)}
           type={type as 'movie' | 'series'}
           season={season}
           episode={episode}
@@ -1154,7 +1159,7 @@ const AndroidVideoPlayer: React.FC = () => {
 
         {/* Skip Intro Button - Shows during intro section of TV episodes */}
         <SkipIntroButton
-          imdbId={imdbId || (id?.startsWith('tt') ? id : undefined)}
+          imdbId={resolvedImdbId || (id?.startsWith('tt') ? id : undefined)}
           type={type || 'movie'}
           season={season}
           episode={episode}
@@ -1301,7 +1306,7 @@ const AndroidVideoPlayer: React.FC = () => {
         visible={modals.showSubmitIntroModal}
         onClose={() => modals.setShowSubmitIntroModal(false)}
         currentTime={playerState.currentTime}
-        imdbId={imdbId}
+        imdbId={resolvedImdbId}
         season={season}
         episode={episode}
       />
