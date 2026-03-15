@@ -68,6 +68,7 @@ export const useStreamsScreen = () => {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
+  const [alertSubtitle, setAlertSubtitle] = useState('');
   const [alertActions, setAlertActions] = useState<AlertAction[]>([]);
 
   // Loading and provider state
@@ -174,12 +175,13 @@ export const useStreamsScreen = () => {
 
   // Open alert helper
   const openAlert = useCallback(
-    (title: string, message: string, actions?: AlertAction[]) => {
+    (title: string, message: string, actions?: AlertAction[], subtitle?: string) => {
       if (!isMounted.current) return;
 
       try {
         setAlertTitle(title);
         setAlertMessage(message);
+        setAlertSubtitle(subtitle ?? '');
         setAlertActions(actions && actions.length > 0 ? actions : [{ label: 'OK', onPress: () => { } }]);
         setAlertVisible(true);
       } catch (error) {
@@ -465,7 +467,7 @@ export const useStreamsScreen = () => {
 
         // Block magnet links
         if (typeof stream.url === 'string' && stream.url.startsWith('magnet:')) {
-          openAlert('Not supported', 'Torrent streaming is not supported yet.');
+          openAlert('Not supported', 'Torrent streaming is not supported yet.', undefined, 'You need a Debrid provider.');
           return;
         }
 
@@ -1145,6 +1147,7 @@ export const useStreamsScreen = () => {
     alertVisible,
     alertTitle,
     alertMessage,
+    alertSubtitle,
     alertActions,
     openAlert,
     closeAlert,
