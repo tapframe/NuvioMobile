@@ -13,9 +13,13 @@ import com.facebook.react.common.ReleaseLevel
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import com.facebook.react.defaults.DefaultReactNativeHost
 
+import com.facebook.react.modules.network.OkHttpClientProvider
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 import com.nuvio.app.mpv.MpvPackage
+import com.nuvio.app.network.DoHOkHttpFactory
+import com.nuvio.app.network.DoHState
+import com.nuvio.app.network.NetworkPrivacyPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -25,7 +29,8 @@ class MainApplication : Application(), ReactApplication {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
-              add(com.nuvio.app.mpv.MpvPackage())
+              add(MpvPackage())
+              add(NetworkPrivacyPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
@@ -41,6 +46,9 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // Initialize DNS-over-HTTPS from persisted storage immediately on startup
+    DoHState.initializeFromStorage(this)
+    OkHttpClientProvider.setOkHttpClientFactory(DoHOkHttpFactory(applicationContext))
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
       ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
     } catch (e: IllegalArgumentException) {

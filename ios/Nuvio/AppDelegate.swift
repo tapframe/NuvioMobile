@@ -6,6 +6,7 @@ import GoogleCast
 // @generated end react-native-google-cast-import
 import React
 import ReactAppDependencyProvider
+import Network
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -93,4 +94,153 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
     RNBackgroundDownloader.setCompletionHandlerWithIdentifier(identifier, completionHandler: completionHandler)
   }
 
+}
+
+private struct IOSDoHConfig {
+  static let modeOff = "off"
+  static let modeAuto = "auto"
+  static let modeStrict = "strict"
+
+  static let providerCloudflare = "cloudflare"
+  static let providerGoogle = "google"
+  static let providerQuad9 = "quad9"
+  static let providerCustom = "custom"
+
+  let enabled: Bool
+  let mode: String
+  let provider: String
+  let customUrl: String
+
+  static func normalized(from raw: [String: Any]) -> IOSDoHConfig {
+    let requestedEnabled = (raw["enabled"] as? Bool) ?? false
+    let requestedMode = ((raw["mode"] as? String) ?? modeOff).lowercased()
+    let requestedProvider = ((raw["provider"] as? String) ?? providerCloudflare).lowercased()
+    let requestedCustomUrl = ((raw["customUrl"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+    let normalizedMode: String
+    switch requestedMode {
+    case modeAuto, modeStrict:
+      normalizedMode = requestedMode
+    default:
+      normalizedMode = modeOff
+    }
+
+    let normalizedProvider: String
+    switch requestedProvider {
+    case providerCloudflare, providerGoogle, providerQuad9, providerCustom:
+      normalizedProvider = requestedProvider
+    default:
+      normalizedProvider = providerCloudflare
+    }
+
+    let enabled = requestedEnabled && normalizedMode != modeOff
+
+    return IOSDoHConfig(
+      enabled: enabled,
+      mode: enabled ? normalizedMode : modeOff,
+      provider: normalizedProvider,
+      customUrl: normalizedProvider == providerCustom ? requestedCustomUrl : ""
+    )
+  }
+
+  var resolverURL: URL? {
+    switch provider {
+    case IOSDoHConfig.providerCloudflare:
+      return URL(string: "https://cloudflare-dns.com/dns-query")
+    case IOSDoHConfig.providerGoogle:
+      return URL(string: "https://dns.google/dns-query")
+    case IOSDoHConfig.providerQuad9:
+      return URL(string: "https://dns.quad9.net/dns-query")
+    case IOSDoHConfig.providerCustom:
+      guard let candidate = URL(string: customUrl), candidate.scheme?.lowercased() == "https" else {
+        return nil
+      }
+      return candidate
+    default:
+      return nil
+    }
+  }
+
+  var asDictionary: [String: Any] {
+    [
+      "enabled": enabled,
+      "mode": mode,
+      "provider": provider,
+      "customUrl": customUrl,
+    ]
+  }
+}
+
+private final class IOSDoHState {
+  static let shared = IOSDoHState()
+
+  private let lock = NSLock()
+  private var config = IOSDoHConfig.normalized(from: [:])
+
+  func apply(_ nextConfig: IOSDoHConfig) {
+    lock.lock()
+    config = nextConfig
+    lock.unlock()
+    applyToNetworkStack(nextConfig)
+  }
+
+  func current() -> IOSDoHConfig {
+    lock.lock()
+    defer { lock.unlock() }
+    return config
+  }
+
+  private func applyToNetworkStack(_ config: IOSDoHConfig) {
+    if #available(iOS 14.0, *) {
+      let privacyContext = NWParameters.PrivacyContext.default
+      if !config.enabled || config.mode == IOSDoHConfig.modeOff {
+        privacyContext.requireEncryptedNameResolution(false, fallbackResolver: nil)
+        return
+      }
+
+      // Keep AUTO mode resilient: if custom URL is invalid, fall back to system DNS.
+      if config.mode == IOSDoHConfig.modeAuto, config.resolverURL == nil {
+        privacyContext.requireEncryptedNameResolution(false, fallbackResolver: nil)
+        return
+      }
+
+      let fallbackURL: URL? = config.mode == IOSDoHConfig.modeAuto ? config.resolverURL : nil
+      privacyContext.requireEncryptedNameResolution(true, fallbackResolver: fallbackURL)
+    }
+  }
+}
+
+@objc(NetworkPrivacyModule)
+class NetworkPrivacyModule: NSObject, RCTBridgeModule {
+  static func moduleName() -> String! {
+    "NetworkPrivacyModule"
+  }
+
+  static func requiresMainQueueSetup() -> Bool {
+    false
+  }
+
+  @objc(applyDohConfig:resolver:rejecter:)
+  func applyDohConfig(
+    _ configMap: NSDictionary,
+    resolver resolve: RCTPromiseResolveBlock,
+    rejecter reject: RCTPromiseRejectBlock
+  ) {
+    guard let rawConfig = configMap as? [String: Any] else {
+      reject("DOH_INVALID_PAYLOAD", "Invalid DoH configuration payload", nil)
+      return
+    }
+
+    let normalized = IOSDoHConfig.normalized(from: rawConfig)
+    IOSDoHState.shared.apply(normalized)
+    resolve(nil)
+  }
+
+  @objc(getDohConfig:rejecter:)
+  func getDohConfig(
+    _ resolve: RCTPromiseResolveBlock,
+    rejecter reject: RCTPromiseRejectBlock
+  ) {
+    resolve(IOSDoHState.shared.current().asDictionary)
+  }
 }
