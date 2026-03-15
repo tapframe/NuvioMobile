@@ -523,24 +523,58 @@ export class TMDBService {
   }
 
   /**
-   * Extract TMDB ID from Stremio ID
-   * Stremio IDs for series are typically in the format: tt1234567:1:1 (imdbId:season:episode)
-   * or just tt1234567 for the series itself
+   * Extract TMDB ID from Stremio ID.
+   * Handles standard IMDb IDs (tt1234567) as well as anime provider IDs:
+   * - kitsu:12345   → looks up via ARM (arm.haglund.dev)
+   * - mal:12345     → looks up via ARM
+   * - anilist:12345 → looks up via ARM
    */
   async extractTMDBIdFromStremioId(stremioId: string): Promise<number | null> {
     try {
-      // Extract the base ID (remove season/episode info if present)
-      const baseId = stremioId.split(':')[0];
+      // Strip season/episode suffix — e.g. "kitsu:7936:5" → "kitsu:7936"
+      const parts = stremioId.split(':');
+      const prefix = parts[0];
+      const numericId = parts[1];
 
-      // Only try to convert if it's an IMDb ID (starts with 'tt')
-      if (!baseId.startsWith('tt')) {
+      // Standard IMDb ID
+      if (prefix.startsWith('tt') || /^\d{7,}$/.test(prefix)) {
+        const baseId = prefix.startsWith('tt') ? prefix : `tt${prefix}`;
+        return await this.findTMDBIdByIMDB(baseId);
+      }
+
+      // Anime provider IDs — resolve via ARM (https://arm.haglund.dev/api/v2)
+      const ARM_SOURCES: Record<string, string> = {
+        kitsu:   'kitsu',
+        mal:     'myanimelist',
+        anilist: 'anilist',
+      };
+
+      const armSource = ARM_SOURCES[prefix];
+      if (armSource && numericId && /^\d+$/.test(numericId)) {
+        const cacheKey = this.generateCacheKey('arm_tmdb', { source: armSource, id: numericId });
+        const cached = this.getCachedData<number>(cacheKey);
+        if (cached !== null) return cached;
+
+        logger.log(`[TMDB] Resolving TMDB ID for ${prefix}:${numericId} via ARM`);
+        const response = await axios.get('https://arm.haglund.dev/api/v2/ids', {
+          params: { source: armSource, id: numericId },
+          timeout: 8000,
+        });
+
+        const tmdbId: number | undefined = response.data?.themoviedb;
+        if (tmdbId) {
+          this.setCachedData(cacheKey, tmdbId);
+          logger.log(`[TMDB] ARM resolved ${prefix}:${numericId} → TMDB ${tmdbId}`);
+          return tmdbId;
+        }
+
+        logger.warn(`[TMDB] ARM did not return a TMDB ID for ${prefix}:${numericId}`);
         return null;
       }
 
-      // Use the existing findTMDBIdByIMDB function to get the TMDB ID
-      const tmdbId = await this.findTMDBIdByIMDB(baseId);
-      return tmdbId;
+      return null;
     } catch (error) {
+      logger.warn('[TMDB] extractTMDBIdFromStremioId failed:', error);
       return null;
     }
   }

@@ -1155,17 +1155,19 @@ export class TraktService {
   }
 
 
-  public async isMovieWatchedAccurate(imdbId: string): Promise<boolean> {
+  public async isMovieWatchedAccurate(imdbId: string, fallbackImdbId?: string): Promise<boolean> {
     try {
-      const imdb = imdbId.startsWith('tt')
-        ? imdbId
-        : `tt${imdbId}`;
+      const normalise = (id: string) => id.startsWith('tt') ? id : `tt${id}`;
+      const imdb = normalise(imdbId);
+      const fallback = fallbackImdbId && fallbackImdbId !== imdbId && fallbackImdbId.trim()
+        ? normalise(fallbackImdbId)
+        : null;
 
       const movies = await this.apiRequest<any[]>('/sync/watched/movies');
       const moviesArray = Array.isArray(movies) ? movies : [];
 
       return moviesArray.some(
-        (m: any) => m.movie?.ids?.imdb === imdb
+        (m: any) => m.movie?.ids?.imdb === imdb || (fallback && m.movie?.ids?.imdb === fallback)
       );
     } catch (err) {
       logger.warn('[TraktService] Movie watched check failed', err);
@@ -1176,14 +1178,20 @@ export class TraktService {
   public async isEpisodeWatchedAccurate(
     showImdbId: string,
     season: number,
-    episode: number
+    episode: number,
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
       if (season === 0) return false;
 
-      const imdb = showImdbId.startsWith('tt')
-        ? showImdbId
-        : `tt${showImdbId}`;
+      const normalise = (id: string) => id.startsWith('tt') ? id : `tt${id}`;
+      const isRealImdbId = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+
+      // Use fallback if primary isn't a real IMDb ID
+      const resolvedId = isRealImdbId(showImdbId) ? showImdbId
+        : (fallbackImdbId && isRealImdbId(fallbackImdbId) ? fallbackImdbId : showImdbId);
+
+      const imdb = normalise(resolvedId);
 
       const watchedShows = await this.apiRequest<any[]>(
         '/sync/watched/shows'
@@ -1521,16 +1529,25 @@ export class TraktService {
     imdbId: string,
     season: number,
     episode: number,
-    watchedAt: Date = new Date()
+    watchedAt: Date = new Date(),
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
-      const traktId = await this.getTraktIdFromImdbId(imdbId, 'show');
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = isImdbFormat(imdbId) ? imdbId
+        : (fallbackImdbId && isImdbFormat(fallbackImdbId) ? fallbackImdbId : imdbId);
+
+      if (resolvedId !== imdbId) {
+        logger.log(`[TraktService] addToWatchedEpisodes: falling back from "${imdbId}" to "${resolvedId}"`);
+      }
+
+      const traktId = await this.getTraktIdFromImdbId(resolvedId, 'show');
       if (!traktId) {
-        logger.warn(`[TraktService] Could not find Trakt ID for show: ${imdbId}`);
+        logger.warn(`[TraktService] Could not find Trakt ID for show: ${resolvedId}`);
         return false;
       }
 
-      logger.log(`[TraktService] Marking S${season}E${episode} as watched for show ${imdbId} (trakt: ${traktId})`);
+      logger.log(`[TraktService] Marking S${season}E${episode} as watched for show ${resolvedId} (trakt: ${traktId})`);
 
       // Use shows array with seasons/episodes structure per Trakt API docs
       await this.apiRequest('/sync/history', 'POST', {
@@ -1570,16 +1587,22 @@ export class TraktService {
   public async markSeasonAsWatched(
     imdbId: string,
     season: number,
-    watchedAt: Date = new Date()
+    watchedAt: Date = new Date(),
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
-      const traktId = await this.getTraktIdFromImdbId(imdbId, 'show');
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = isImdbFormat(imdbId) ? imdbId
+        : (fallbackImdbId && isImdbFormat(fallbackImdbId) ? fallbackImdbId : imdbId);
+      if (resolvedId !== imdbId) logger.log(`[TraktService] markSeasonAsWatched: falling back from "${imdbId}" to "${resolvedId}"`);
+
+      const traktId = await this.getTraktIdFromImdbId(resolvedId, 'show');
       if (!traktId) {
-        logger.warn(`[TraktService] Could not find Trakt ID for show: ${imdbId}`);
+        logger.warn(`[TraktService] Could not find Trakt ID for show: ${resolvedId}`);
         return false;
       }
 
-      logger.log(`[TraktService] Marking entire season ${season} as watched for show ${imdbId} (trakt: ${traktId})`);
+      logger.log(`[TraktService] Marking entire season ${season} as watched for show ${resolvedId} (trakt: ${traktId})`);
 
       // Mark entire season - Trakt will mark all episodes in the season
       await this.apiRequest('/sync/history', 'POST', {
@@ -1614,7 +1637,8 @@ export class TraktService {
   public async markEpisodesAsWatched(
     imdbId: string,
     episodes: Array<{ season: number; episode: number }>,
-    watchedAt: Date = new Date()
+    watchedAt: Date = new Date(),
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
       if (episodes.length === 0) {
@@ -1622,13 +1646,18 @@ export class TraktService {
         return false;
       }
 
-      const traktId = await this.getTraktIdFromImdbId(imdbId, 'show');
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = isImdbFormat(imdbId) ? imdbId
+        : (fallbackImdbId && isImdbFormat(fallbackImdbId) ? fallbackImdbId : imdbId);
+      if (resolvedId !== imdbId) logger.log(`[TraktService] markEpisodesAsWatched: falling back from "${imdbId}" to "${resolvedId}"`);
+
+      const traktId = await this.getTraktIdFromImdbId(resolvedId, 'show');
       if (!traktId) {
-        logger.warn(`[TraktService] Could not find Trakt ID for show: ${imdbId}`);
+        logger.warn(`[TraktService] Could not find Trakt ID for show: ${resolvedId}`);
         return false;
       }
 
-      logger.log(`[TraktService] Marking ${episodes.length} episodes as watched for show ${imdbId}`);
+      logger.log(`[TraktService] Marking ${episodes.length} episodes as watched for show ${resolvedId}`);
 
       // Group episodes by season for the API call
       const seasonMap = new Map<number, Array<{ number: number; watched_at: string }>>();
@@ -1709,12 +1738,18 @@ export class TraktService {
    */
   public async removeSeasonFromHistory(
     imdbId: string,
-    season: number
+    season: number,
+    fallbackImdbId?: string
   ): Promise<boolean> {
     try {
       logger.log(`[TraktService] Removing season ${season} from history for show: ${imdbId}`);
 
-      const fullImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = (!isImdbFormat(imdbId) && fallbackImdbId && isImdbFormat(fallbackImdbId))
+        ? fallbackImdbId
+        : imdbId;
+
+      const fullImdbId = resolvedId.startsWith('tt') ? resolvedId : `tt${resolvedId}`;
 
       const payload: TraktHistoryRemovePayload = {
         shows: [
@@ -1734,6 +1769,19 @@ export class TraktService {
       logger.log(`[TraktService] Sending removeSeasonFromHistory payload:`, JSON.stringify(payload, null, 2));
 
       const result = await this.removeFromHistory(payload);
+
+      if ((result === null || result.deleted.episodes === 0) && fallbackImdbId && fallbackImdbId !== resolvedId && isImdbFormat(fallbackImdbId)) {
+        logger.log(`[TraktService] removeSeasonFromHistory: retrying with fallback ID "${fallbackImdbId}"`);
+        const fb = fallbackImdbId.startsWith('tt') ? fallbackImdbId : `tt${fallbackImdbId}`;
+        const fallbackResult = await this.removeFromHistory({
+          shows: [{ ids: { imdb: fb }, seasons: [{ number: season }] }]
+        });
+        if (fallbackResult) {
+          logger.log(`[TraktService] Season removal success via fallback: ${fallbackResult.deleted.episodes} episodes deleted`);
+          return fallbackResult.deleted.episodes > 0;
+        }
+        return false;
+      }
 
       if (result) {
         const success = result.deleted.episodes > 0;
@@ -1902,7 +1950,11 @@ export class TraktService {
   }
 
   /**
-   * Validate content data before making API calls
+   * Validate content data before making API calls.
+   *
+   * IMDb ID validation is intentionally lenient: a non-IMDb provider ID (e.g. "kitsu:123")
+   * is allowed through with a warning. Trakt can still scrobble via title + season/episode.
+   * A truly empty ID is still blocked.
    */
   private validateContentData(contentData: TraktContentData): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
@@ -1915,8 +1967,11 @@ export class TraktService {
       errors.push('Missing or empty title');
     }
 
+    // Block only truly empty IDs — non-IMDb provider IDs are allowed (warn, don't fail)
     if (!contentData.imdbId || contentData.imdbId.trim() === '') {
       errors.push('Missing or empty IMDb ID');
+    } else if (!/^tt\d+$/.test(contentData.imdbId) && !/^\d{7,}$/.test(contentData.imdbId)) {
+      logger.warn(`[TraktService] imdbId "${contentData.imdbId}" is not a standard IMDb ID — Trakt will match by title/season/episode`);
     }
 
     if (contentData.type === 'episode') {
@@ -1929,8 +1984,11 @@ export class TraktService {
       if (!contentData.showTitle || contentData.showTitle.trim() === '') {
         errors.push('Missing or empty show title');
       }
-      if (!contentData.showYear || contentData.showYear < 1900) {
-        errors.push('Invalid show year');
+      // showYear is intentionally not required — Trakt can match episodes by
+      // show title + season + episode number alone. Anime and many non-Western
+      // shows often have year=0 or missing; blocking scrobble for them is wrong.
+      if (contentData.showYear !== undefined && contentData.showYear > 0 && contentData.showYear < 1900) {
+        logger.warn(`[TraktService] showYear ${contentData.showYear} looks invalid, omitting from payload`);
       }
     }
 
@@ -1991,18 +2049,24 @@ export class TraktService {
           return null;
         }
 
-        // Ensure IMDb ID includes the 'tt' prefix for Trakt scrobble payloads
-        const imdbIdWithPrefix = contentData.imdbId.startsWith('tt')
-          ? contentData.imdbId
-          : `tt${contentData.imdbId}`;
+        const isRealImdbId = /^tt\d+$/.test(contentData.imdbId) || /^\d{7,}$/.test(contentData.imdbId);
 
         // Build movie payload - only include year if valid
-        const movieData: { title: string; year?: number; ids: { imdb: string } } = {
+        const movieData: { title: string; year?: number; ids: { imdb?: string } } = {
           title: contentData.title.trim(),
-          ids: {
-            imdb: imdbIdWithPrefix
-          }
+          ids: {}
         };
+
+        // Only add IMDb ID to payload when it's a real IMDb format — sending a provider ID
+        // (e.g. "kitsu:123") causes Trakt to fail the lookup. Without it, Trakt matches by title.
+        if (isRealImdbId) {
+          const imdbIdWithPrefix = contentData.imdbId.startsWith('tt')
+            ? contentData.imdbId
+            : `tt${contentData.imdbId}`;
+          (movieData.ids as any).imdb = imdbIdWithPrefix;
+        } else {
+          logger.warn(`[TraktService] Movie imdbId "${contentData.imdbId}" is not IMDb format — omitting from scrobble payload, Trakt will match by title`);
+        }
 
         // Only add year if it's valid (prevents year: 0 or invalid years)
         if (isValidYear(contentData.year)) {
@@ -2067,12 +2131,17 @@ export class TraktService {
           progress: clampedProgress
         };
 
-        // Add show IMDB ID if available
+        // Add show IMDB ID if available and valid IMDb format
         if (contentData.showImdbId && contentData.showImdbId.trim() !== '') {
-          const showImdbWithPrefix = contentData.showImdbId.startsWith('tt')
-            ? contentData.showImdbId
-            : `tt${contentData.showImdbId}`;
-          payload.show.ids.imdb = showImdbWithPrefix;
+          const isRealShowImdbId = /^tt\d+$/.test(contentData.showImdbId) || /^\d{7,}$/.test(contentData.showImdbId);
+          if (isRealShowImdbId) {
+            const showImdbWithPrefix = contentData.showImdbId.startsWith('tt')
+              ? contentData.showImdbId
+              : `tt${contentData.showImdbId}`;
+            payload.show.ids.imdb = showImdbWithPrefix;
+          } else {
+            logger.warn(`[TraktService] showImdbId "${contentData.showImdbId}" is not IMDb format — omitting from scrobble payload, Trakt will match by title`);
+          }
         }
 
         // Add episode IMDB ID if available (for specific episode IDs)
@@ -2679,21 +2748,43 @@ export class TraktService {
   }
 
   /**
-   * Remove a movie from watched history by IMDB ID
+   * Remove a movie from watched history by IMDB ID.
+   * If the primary imdbId is not a valid IMDb ID (e.g. a provider ID like "kitsu:123"),
+   * falls back to fallbackImdbId (typically the resolved IMDb ID from metadata).
    */
-  public async removeMovieFromHistory(imdbId: string): Promise<boolean> {
+  public async removeMovieFromHistory(imdbId: string, fallbackImdbId?: string): Promise<boolean> {
     try {
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+
+      // Resolve which ID to use: prefer a proper IMDb-format ID
+      let resolvedId = imdbId;
+      if (!isImdbFormat(imdbId) && fallbackImdbId && isImdbFormat(fallbackImdbId) && fallbackImdbId !== imdbId) {
+        logger.log(`[TraktService] removeMovieFromHistory: "${imdbId}" is not IMDb format, falling back to "${fallbackImdbId}"`);
+        resolvedId = fallbackImdbId;
+      }
+
       const payload: TraktHistoryRemovePayload = {
         movies: [
           {
             ids: {
-              imdb: imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`
+              imdb: resolvedId.startsWith('tt') ? resolvedId : `tt${resolvedId}`
             }
           }
         ]
       };
 
       const result = await this.removeFromHistory(payload);
+
+      // If primary attempt deleted nothing and we haven't tried the fallback yet, try it
+      if ((result === null || result.deleted.movies === 0) && fallbackImdbId && fallbackImdbId !== imdbId && fallbackImdbId !== resolvedId && isImdbFormat(fallbackImdbId)) {
+        logger.log(`[TraktService] removeMovieFromHistory: primary attempt found nothing, retrying with fallback ID "${fallbackImdbId}"`);
+        const fallbackPayload: TraktHistoryRemovePayload = {
+          movies: [{ ids: { imdb: fallbackImdbId.startsWith('tt') ? fallbackImdbId : `tt${fallbackImdbId}` } }]
+        };
+        const fallbackResult = await this.removeFromHistory(fallbackPayload);
+        return fallbackResult !== null && fallbackResult.deleted.movies > 0;
+      }
+
       return result !== null && result.deleted.movies > 0;
     } catch (error) {
       logger.error('[TraktService] Failed to remove movie from history:', error);
@@ -2704,14 +2795,24 @@ export class TraktService {
   /**
    * Remove an episode from watched history by IMDB IDs
    */
-  public async removeEpisodeFromHistory(showImdbId: string, season: number, episode: number): Promise<boolean> {
+  public async removeEpisodeFromHistory(showImdbId: string, season: number, episode: number, fallbackImdbId?: string): Promise<boolean> {
     try {
       logger.log(`🔍 [TraktService] removeEpisodeFromHistory called for ${showImdbId} S${season}E${episode}`);
+
+      const isImdbFormat = (id: string) => /^tt\d+$/.test(id) || /^\d{7,}$/.test(id);
+      const resolvedId = (!isImdbFormat(showImdbId) && fallbackImdbId && isImdbFormat(fallbackImdbId))
+        ? fallbackImdbId
+        : showImdbId;
+
+      if (resolvedId !== showImdbId) {
+        logger.log(`[TraktService] removeEpisodeFromHistory: "${showImdbId}" is not IMDb format, falling back to "${resolvedId}"`);
+      }
+
       const payload: TraktHistoryRemovePayload = {
         shows: [
           {
             ids: {
-              imdb: showImdbId.startsWith('tt') ? showImdbId : `tt${showImdbId}`
+              imdb: resolvedId.startsWith('tt') ? resolvedId : `tt${resolvedId}`
             },
             seasons: [
               {
@@ -2730,6 +2831,23 @@ export class TraktService {
       logger.log(`📤 [TraktService] Sending removeEpisodeFromHistory payload:`, JSON.stringify(payload, null, 2));
 
       const result = await this.removeFromHistory(payload);
+
+      // If nothing was deleted and we haven't tried the fallback yet, retry with it
+      if ((result === null || result.deleted.episodes === 0) && fallbackImdbId && fallbackImdbId !== resolvedId && isImdbFormat(fallbackImdbId)) {
+        logger.log(`[TraktService] removeEpisodeFromHistory: retrying with fallback ID "${fallbackImdbId}"`);
+        const fallbackPayload: TraktHistoryRemovePayload = {
+          shows: [{
+            ids: { imdb: fallbackImdbId.startsWith('tt') ? fallbackImdbId : `tt${fallbackImdbId}` },
+            seasons: [{ number: season, episodes: [{ number: episode }] }]
+          }]
+        };
+        const fallbackResult = await this.removeFromHistory(fallbackPayload);
+        if (fallbackResult) {
+          logger.log(`✅ [TraktService] Episode removal success via fallback: ${fallbackResult.deleted.episodes} episodes deleted`);
+          return fallbackResult.deleted.episodes > 0;
+        }
+        return false;
+      }
 
       if (result) {
         const success = result.deleted.episodes > 0;

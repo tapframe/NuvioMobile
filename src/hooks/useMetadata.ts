@@ -939,6 +939,22 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
               if (finalTmdbId) setTmdbId(finalTmdbId);
             }
 
+            // If the addon returned an imdb_id in its metadata (e.g. Kitsu addon), set it now.
+            // This ensures imdbId state is populated for Trakt scrobbling even without TMDB enrichment.
+            if (!imdbId && (finalMetadata as any).imdb_id) {
+              const resolvedImdb = (finalMetadata as any).imdb_id as string;
+              setImdbId(resolvedImdb);
+              // Also resolve tmdbId from the imdb_id if we still don't have it
+              if (!finalTmdbId) {
+                const foundTmdbId = await tmdbSvc.findTMDBIdByIMDB(resolvedImdb);
+                if (foundTmdbId) {
+                  finalTmdbId = foundTmdbId;
+                  setTmdbId(foundTmdbId);
+                  setMetadata(prev => prev ? { ...prev, tmdbId: foundTmdbId } : null);
+                }
+              }
+            }
+
             if (finalTmdbId) {
               const lang = settings.useTmdbLocalizedMetadata ? (settings.tmdbLanguagePreference || 'en') : 'en';
               if (normalizedType === 'movie') {
@@ -2230,20 +2246,48 @@ export const useMetadata = ({ id, type, addonId }: UseMetadataProps): UseMetadat
   // Fetch TMDB ID if needed and then recommendations
   useEffect(() => {
     const fetchTmdbIdAndRecommendations = async () => {
-      if (!settings.enrichMetadataWithTMDB) {
+      if (!metadata) return;
+
+      const isAnimeId = id.startsWith('kitsu:') || id.startsWith('mal:') || id.startsWith('anilist:');
+
+      // For anime IDs we always try to resolve tmdbId and imdbId regardless of enrichment setting,
+      // because they're needed for Trakt scrobbling even when TMDB enrichment is disabled.
+      if (!settings.enrichMetadataWithTMDB && !isAnimeId) {
         if (__DEV__) console.log('[useMetadata] enrichment disabled; skip TMDB id extraction (extract path)');
         return;
       }
-      if (metadata && !tmdbId) {
+
+      if (!tmdbId) {
         try {
-          const tmdbService = TMDBService.getInstance();
-          const fetchedTmdbId = await tmdbService.extractTMDBIdFromStremioId(id);
+          const tmdbSvc = TMDBService.getInstance();
+          const fetchedTmdbId = await tmdbSvc.extractTMDBIdFromStremioId(id);
           if (fetchedTmdbId) {
             if (__DEV__) console.log('[useMetadata] extracted TMDB id from content id', { id, fetchedTmdbId });
             setTmdbId(fetchedTmdbId);
+
+            // For anime IDs, also resolve the IMDb ID from TMDB external IDs so Trakt can scrobble
+            if (isAnimeId && !imdbId) {
+              try {
+                const externalIds = await tmdbSvc.getShowExternalIds(fetchedTmdbId);
+                if (externalIds?.imdb_id) {
+                  if (__DEV__) console.log('[useMetadata] resolved imdbId for anime via TMDB', { id, imdbId: externalIds.imdb_id });
+                  setImdbId(externalIds.imdb_id);
+                }
+              } catch (e) {
+                if (__DEV__) console.warn('[useMetadata] could not resolve imdbId from TMDB for anime ID', { id });
+              }
+            }
+
+            if (!settings.enrichMetadataWithTMDB) {
+              // Enrichment is disabled but we still resolved tmdbId for Trakt scrobbling.
+              // Set it on the metadata object so the player can read it via metadata.tmdbId.
+              setMetadata(prev => prev ? { ...prev, tmdbId: fetchedTmdbId } : null);
+              return;
+            }
+
             // Fetch certification only if granular setting is enabled
             if (settings.tmdbEnrichCertification) {
-              const certification = await tmdbService.getCertification(normalizedType, fetchedTmdbId);
+              const certification = await tmdbSvc.getCertification(normalizedType, fetchedTmdbId);
               if (certification) {
                 if (__DEV__) console.log('[useMetadata] fetched certification via TMDB id (extract path)', { type, fetchedTmdbId, certification });
                 setMetadata(prev => prev ? {

@@ -316,12 +316,15 @@ class WatchedService {
             let syncedToTrakt = false;
 
             // Sync to Trakt
+            // showId is the Stremio content ID — pass it as fallback so Trakt can resolve
+            // anime/provider IDs (e.g. kitsu:123) that aren't valid IMDb IDs
             if (isTraktAuth) {
                 syncedToTrakt = await this.traktService.addToWatchedEpisodes(
                     showImdbId,
                     season,
                     episode,
-                    watchedAt
+                    watchedAt,
+                    showId !== showImdbId ? showId : undefined
                 );
                 logger.log(`[WatchedService] Trakt sync result for episode: ${syncedToTrakt}`);
             }
@@ -445,7 +448,8 @@ class WatchedService {
                 syncedToTrakt = await this.traktService.markEpisodesAsWatched(
                     showImdbId,
                     episodes,
-                    watchedAt
+                    watchedAt,
+                    showId !== showImdbId ? showId : undefined
                 );
                 logger.log(`[WatchedService] Trakt batch sync result: ${syncedToTrakt}`);
             }
@@ -523,7 +527,8 @@ class WatchedService {
                 syncedToTrakt = await this.traktService.markSeasonAsWatched(
                     showImdbId,
                     season,
-                    watchedAt
+                    watchedAt,
+                    showId !== showImdbId ? showId : undefined
                 );
                 logger.log(`[WatchedService] Trakt season sync result: ${syncedToTrakt}`);
             }
@@ -570,32 +575,40 @@ class WatchedService {
     }
 
     /**
-     * Unmark a movie as watched (remove from history)
+     * Unmark a movie as watched (remove from history).
+     * @param imdbId - The primary content ID (may be a provider ID like "kitsu:123")
+     * @param fallbackImdbId - The resolved IMDb ID from metadata (used when imdbId isn't IMDb format)
      */
     public async unmarkMovieAsWatched(
-        imdbId: string
+        imdbId: string,
+        fallbackImdbId?: string
     ): Promise<{ success: boolean; syncedToTrakt: boolean }> {
         try {
-            logger.log(`[WatchedService] Unmarking movie as watched: ${imdbId}`);
+            logger.log(`[WatchedService] Unmarking movie as watched: ${imdbId}${fallbackImdbId && fallbackImdbId !== imdbId ? ` (fallback: ${fallbackImdbId})` : ''}`);
 
             const isTraktAuth = await this.traktService.isAuthenticated();
             let syncedToTrakt = false;
 
             if (isTraktAuth) {
-                syncedToTrakt = await this.traktService.removeMovieFromHistory(imdbId);
+                syncedToTrakt = await this.traktService.removeMovieFromHistory(imdbId, fallbackImdbId);
                 logger.log(`[WatchedService] Trakt remove result for movie: ${syncedToTrakt}`);
             }
 
-            // Simkl Unmark
+            // Simkl Unmark — try both IDs
             const isSimklAuth = await this.simklService.isAuthenticated();
             if (isSimklAuth) {
-                await this.simklService.removeFromHistory({ movies: [{ ids: { imdb: imdbId } }] });
+                const simklId = (fallbackImdbId && fallbackImdbId !== imdbId) ? fallbackImdbId : imdbId;
+                await this.simklService.removeFromHistory({ movies: [{ ids: { imdb: simklId } }] });
                 logger.log(`[WatchedService] Simkl remove request sent for movie`);
             }
 
-            // Remove local progress
+            // Remove local progress — clear both IDs to be safe
             await storageService.removeWatchProgress(imdbId, 'movie');
             await mmkvStorage.removeItem(`watched:movie:${imdbId}`);
+            if (fallbackImdbId && fallbackImdbId !== imdbId) {
+                await storageService.removeWatchProgress(fallbackImdbId, 'movie');
+                await mmkvStorage.removeItem(`watched:movie:${fallbackImdbId}`);
+            }
             await this.removeLocalWatchedItems([
                 { content_id: imdbId, season: null, episode: null },
             ]);
@@ -622,21 +635,25 @@ class WatchedService {
             const isTraktAuth = await this.traktService.isAuthenticated();
             let syncedToTrakt = false;
 
+            const fallback = showId !== showImdbId ? showId : undefined;
+
             if (isTraktAuth) {
                 syncedToTrakt = await this.traktService.removeEpisodeFromHistory(
                     showImdbId,
                     season,
-                    episode
+                    episode,
+                    fallback
                 );
                 logger.log(`[WatchedService] Trakt remove result for episode: ${syncedToTrakt}`);
             }
 
-            // Simkl Unmark
+            // Simkl Unmark — use best available ID
             const isSimklAuth = await this.simklService.isAuthenticated();
             if (isSimklAuth) {
+                const simklId = showImdbId || showId;
                 await this.simklService.removeFromHistory({
                     shows: [{
-                        ids: { imdb: showImdbId },
+                        ids: { imdb: simklId },
                         seasons: [{
                             number: season,
                             episodes: [{ number: episode }]
@@ -679,26 +696,27 @@ class WatchedService {
             const isTraktAuth = await this.traktService.isAuthenticated();
             let syncedToTrakt = false;
 
+            const fallback = showId !== showImdbId ? showId : undefined;
+
             if (isTraktAuth) {
                 // Remove entire season from Trakt
                 syncedToTrakt = await this.traktService.removeSeasonFromHistory(
                     showImdbId,
-                    season
+                    season,
+                    fallback
                 );
                 logger.log(`[WatchedService] Trakt season removal result: ${syncedToTrakt}`);
             }
 
-            // Sync to Simkl
+            // Sync to Simkl — use best available ID
             const isSimklAuth = await this.simklService.isAuthenticated();
             if (isSimklAuth) {
+                const simklId = showImdbId || showId;
                 const episodes = episodeNumbers.map(num => ({ number: num }));
                 await this.simklService.removeFromHistory({
                     shows: [{
-                        ids: { imdb: showImdbId },
-                        seasons: [{
-                            number: season,
-                            episodes: episodes
-                        }]
+                        ids: { imdb: simklId },
+                        seasons: [{ number: season, episodes: episodes }]
                     }]
                 });
                 logger.log(`[WatchedService] Simkl season removal request sent`);
@@ -728,18 +746,26 @@ class WatchedService {
     /**
      * Check if a movie is marked as watched (locally)
      */
-    public async isMovieWatched(imdbId: string): Promise<boolean> {
+    public async isMovieWatched(imdbId: string, fallbackImdbId?: string): Promise<boolean> {
         try {
             const isAuthed = await this.traktService.isAuthenticated();
 
             if (isAuthed) {
                 const traktWatched =
-                    await this.traktService.isMovieWatchedAccurate(imdbId);
+                    await this.traktService.isMovieWatchedAccurate(imdbId, fallbackImdbId);
                 if (traktWatched) return true;
             }
 
             const local = await mmkvStorage.getItem(`watched:movie:${imdbId}`);
-            return local === 'true';
+            if (local === 'true') return true;
+
+            // Also check under fallback ID locally
+            if (fallbackImdbId && fallbackImdbId !== imdbId) {
+                const localFallback = await mmkvStorage.getItem(`watched:movie:${fallbackImdbId}`);
+                if (localFallback === 'true') return true;
+            }
+
+            return false;
         } catch {
             return false;
         }
@@ -752,7 +778,8 @@ class WatchedService {
     public async isEpisodeWatched(
         showId: string,
         season: number,
-        episode: number
+        episode: number,
+        fallbackImdbId?: string
     ): Promise<boolean> {
         try {
             const isAuthed = await this.traktService.isAuthenticated();
@@ -762,7 +789,8 @@ class WatchedService {
                     await this.traktService.isEpisodeWatchedAccurate(
                         showId,
                         season,
-                        episode
+                        episode,
+                        fallbackImdbId
                     );
                 if (traktWatched) return true;
             }

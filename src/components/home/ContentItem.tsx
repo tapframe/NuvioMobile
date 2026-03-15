@@ -206,7 +206,7 @@ const ContentItem = ({ item, onPress, shouldLoadImage: shouldLoadImageProp, defe
             }
           } else {
             if (item.type === 'movie') {
-              watchedService.unmarkMovieAsWatched(item.id);
+              watchedService.unmarkMovieAsWatched(item.id, item.imdb_id ?? undefined);
             } else {
               // Unmarking a series from the top level is tricky as we don't know the exact episodes.
               // For safety and consistency with old behavior, we just clear the legacy flag.

@@ -1536,8 +1536,29 @@ class CatalogService {
       const addonOrderRef: Record<string, number> = {};
       searchableAddons.forEach((addon, i) => { addonOrderRef[addon.id] = i; });
 
-      // Global dedupe across emitted results
-      const globalSeen = new Set<string>();
+      // Human-readable labels for known content types
+      const CATALOG_TYPE_LABELS: Record<string, string> = {
+        'movie': 'Movies',
+        'series': 'TV Shows',
+        'anime.series': 'Anime Series',
+        'anime.movie': 'Anime Movies',
+        'other': 'Other',
+        'tv': 'TV',
+        'channel': 'Channels',
+      };
+      const GENERIC_CATALOG_NAMES = new Set(['search', 'Search']);
+
+      // Collect all sections from all addons first, then sort and dedup before emitting.
+      // This avoids race conditions where concurrent addon workers steal each other's IDs
+      // from a shared globalSeen set before they get a chance to emit.
+      type PendingSection = {
+        addonId: string;
+        addonName: string;
+        sectionName: string;
+        catalogIndex: number;
+        results: StreamingContent[];
+      };
+      const allPendingSections: PendingSection[] = [];
 
       await Promise.all(
         searchableAddons.map(async (addon) => {
@@ -1552,47 +1573,24 @@ class CatalogService {
             const searchableCatalogs = (addon.catalogs || []).filter(catalog => this.canSearchCatalog(catalog));
             logger.log(`Searching ${addon.name} (${addon.id}) with ${searchableCatalogs.length} searchable catalogs`);
 
-            // Fetch all catalogs for this addon in parallel
             const settled = await Promise.allSettled(
               searchableCatalogs.map(c => this.searchAddonCatalog(manifest, c.type, c.id, trimmedQuery))
             );
             if (controller.cancelled) return;
 
-            // If addon has multiple search catalogs, emit each as its own section.
-            // If only one, emit as a single addon section (original behaviour).
             const hasMultipleCatalogs = searchableCatalogs.length > 1;
-
-            const catalogResultsList: { catalog: any; results: StreamingContent[] }[] = [];
-            for (let i = 0; i < searchableCatalogs.length; i++) {
-              const s = settled[i];
-              if (s.status === 'fulfilled' && Array.isArray(s.value) && s.value.length > 0) {
-                catalogResultsList.push({ catalog: searchableCatalogs[i], results: s.value });
-              } else if (s.status === 'rejected') {
-                logger.warn(`Search failed for catalog ${searchableCatalogs[i].id} in ${addon.name}:`, s.reason);
-              }
-            }
-
-            if (catalogResultsList.length === 0) {
-              logger.log(`No results from ${addon.name}`);
-              return;
-            }
+            const addonRank = addonOrderRef[addon.id] ?? Number.MAX_SAFE_INTEGER;
 
             if (hasMultipleCatalogs) {
-              // Human-readable labels for known content types used as fallback section names
-              const CATALOG_TYPE_LABELS: Record<string, string> = {
-                'movie': 'Movies',
-                'series': 'TV Shows',
-                'anime.series': 'Anime Series',
-                'anime.movie': 'Anime Movies',
-                'other': 'Other',
-                'tv': 'TV',
-                'channel': 'Channels',
-              };
+              for (let ci = 0; ci < searchableCatalogs.length; ci++) {
+                const s = settled[ci];
+                const catalog = searchableCatalogs[ci];
+                if (s.status === 'rejected' || !(s as PromiseFulfilledResult<StreamingContent[]>).value?.length) {
+                  if (s.status === 'rejected') logger.warn(`Search failed for ${catalog.id} in ${addon.name}:`, s.reason);
+                  continue;
+                }
 
-              // Emit each catalog as its own section, in manifest order
-              for (let ci = 0; ci < catalogResultsList.length; ci++) {
-                const { catalog, results } = catalogResultsList[ci];
-                if (controller.cancelled) return;
+                const results = (s as PromiseFulfilledResult<StreamingContent[]>).value;
 
                 // Within-catalog dedup: prefer dot-type over generic for same ID
                 const bestById = new Map<string, StreamingContent>();
@@ -1604,74 +1602,63 @@ class CatalogService {
                 }
 
                 // Stamp catalog type onto results
-                const stamped = Array.from(bestById.values()).map(item => {
-                  if (catalog.type && item.type !== catalog.type) {
-                    return { ...item, type: catalog.type };
-                  }
-                  return item;
-                });
+                const stamped = Array.from(bestById.values()).map(item =>
+                  catalog.type && item.type !== catalog.type ? { ...item, type: catalog.type } : item
+                );
 
-                // Dedupe against global seen
-                const unique = stamped.filter(item => {
-                  const key = `${item.type}:${item.id}`;
-                  if (globalSeen.has(key)) return false;
-                  globalSeen.add(key);
-                  return true;
-                });
+                // Build section name — use type label if catalog name is generic
+                const typeLabel = CATALOG_TYPE_LABELS[catalog.type]
+                  || catalog.type.replace(/[._]/g, ' ').replace(/\w/g, (c: string) => c.toUpperCase());
+                const catalogLabel = (!catalog.name || GENERIC_CATALOG_NAMES.has(catalog.name) || catalog.name === addon.name)
+                  ? typeLabel
+                  : catalog.name;
+                const sectionName = `${addon.name} - ${catalogLabel}`;
+                const catalogIndex = addonRank * 1000 + ci;
 
-                if (unique.length > 0 && !controller.cancelled) {
-                  // Build section name:
-                  // - If catalog.name is generic ("Search") or same as addon name, use type label instead
-                  // - Otherwise use catalog.name as-is
-                  const GENERIC_NAMES = new Set(['search', 'Search']);
-                  const typeLabel = CATALOG_TYPE_LABELS[catalog.type]
-                    || catalog.type.replace(/[._]/g, ' ').replace(/\w/g, (c: string) => c.toUpperCase());
-                  const catalogLabel = (!catalog.name || GENERIC_NAMES.has(catalog.name) || catalog.name === addon.name)
-                    ? typeLabel
-                    : catalog.name;
-                  const sectionName = `${addon.name} - ${catalogLabel}`;
-
-                  // catalogIndex encodes addon rank + position within addon for deterministic ordering
-                  const addonRank = addonOrderRef[addon.id] ?? Number.MAX_SAFE_INTEGER;
-                  const catalogIndex = addonRank * 1000 + ci;
-
-                  logger.log(`Emitting ${unique.length} results from ${sectionName}`);
-                  onAddonResults({ addonId: `${addon.id}||${catalog.id}`, addonName: addon.name, sectionName, catalogIndex, results: unique });
-                }
+                allPendingSections.push({ addonId: `${addon.id}||${catalog.id}`, addonName: addon.name, sectionName, catalogIndex, results: stamped });
               }
             } else {
-              // Single catalog — one section per addon
-              const allResults = catalogResultsList.flatMap(c => c.results);
+              const s = settled[0];
+              const catalog = searchableCatalogs[0];
+              if (!s || s.status === 'rejected' || !(s as PromiseFulfilledResult<StreamingContent[]>).value?.length) {
+                if (s?.status === 'rejected') logger.warn(`Search failed for ${addon.name}:`, s.reason);
+                return;
+              }
 
-              const bestByIdWithinAddon = new Map<string, StreamingContent>();
-              for (const item of allResults) {
-                const existing = bestByIdWithinAddon.get(item.id);
+              const results = (s as PromiseFulfilledResult<StreamingContent[]>).value;
+              const bestById = new Map<string, StreamingContent>();
+              for (const item of results) {
+                const existing = bestById.get(item.id);
                 if (!existing || (!existing.type.includes('.') && item.type.includes('.'))) {
-                  bestByIdWithinAddon.set(item.id, item);
+                  bestById.set(item.id, item);
                 }
               }
-              const deduped = Array.from(bestByIdWithinAddon.values());
+              const stamped = Array.from(bestById.values()).map(item =>
+                catalog.type && item.type !== catalog.type ? { ...item, type: catalog.type } : item
+              );
 
-              const localSeen = new Set<string>();
-              const unique = deduped.filter(item => {
-                const key = `${item.type}:${item.id}`;
-                if (localSeen.has(key) || globalSeen.has(key)) return false;
-                localSeen.add(key);
-                globalSeen.add(key);
-                return true;
-              });
-
-              if (unique.length > 0 && !controller.cancelled) {
-                const addonRank = addonOrderRef[addon.id] ?? Number.MAX_SAFE_INTEGER;
-                logger.log(`Emitting ${unique.length} results from ${addon.name}`);
-                onAddonResults({ addonId: addon.id, addonName: addon.name, sectionName: addon.name, catalogIndex: addonRank * 1000, results: unique });
-              }
+              allPendingSections.push({ addonId: addon.id, addonName: addon.name, sectionName: addon.name, catalogIndex: addonRank * 1000, results: stamped });
             }
           } catch (e) {
             logger.error(`Error searching addon ${addon.name} (${addon.id}):`, e);
           }
         })
       );
+
+      if (controller.cancelled) return;
+
+      // Sort by catalogIndex (addon manifest order + position within addon) then emit.
+      // No cross-section dedup — each section is shown separately so duplicates across
+      // sections are intentional (e.g. same movie in Cinemeta and People Search).
+      allPendingSections.sort((a, b) => a.catalogIndex - b.catalogIndex);
+
+      for (const section of allPendingSections) {
+        if (controller.cancelled) return;
+        if (section.results.length > 0) {
+          logger.log(`Emitting ${section.results.length} results from ${section.sectionName}`);
+          onAddonResults({ addonId: section.addonId, addonName: section.addonName, sectionName: section.sectionName, catalogIndex: section.catalogIndex, results: section.results });
+        }
+      }
     })();
 
     return {

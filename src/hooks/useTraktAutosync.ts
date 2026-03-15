@@ -53,9 +53,10 @@ export function useTraktAutosync(options: TraktAutosyncOptions) {
 
   // Generate a unique session key for this content instance
   useEffect(() => {
+    const resolvedId = (options.imdbId && options.imdbId.trim()) ? options.imdbId : (options.id || '');
     const contentKey = options.type === 'movie'
-      ? `movie:${options.imdbId}`
-      : `episode:${options.showImdbId || options.imdbId}:${options.season}:${options.episode}`;
+      ? `movie:${resolvedId}`
+      : `episode:${options.showImdbId || resolvedId}:${options.season}:${options.episode}`;
     sessionKey.current = `${contentKey}:${Date.now()}`;
 
     // Reset all session state for new content
@@ -109,9 +110,20 @@ export function useTraktAutosync(options: TraktAutosyncOptions) {
       return null;
     }
 
-    if (!options.imdbId || options.imdbId.trim() === '') {
-      logger.error('[TraktAutosync] Cannot build content data: missing or empty imdbId');
+    // Resolve the best available ID: prefer a proper IMDb ID, fall back to the Stremio content ID.
+    // This allows scrobbling for content with special IDs (e.g. "kitsu:123", "tmdb:456") where
+    // the IMDb ID hasn't been resolved yet — Trakt will match by title + season/episode instead.
+    const imdbIdRaw = options.imdbId && options.imdbId.trim() ? options.imdbId.trim() : '';
+    const stremioIdRaw = options.id && options.id.trim() ? options.id.trim() : '';
+    const resolvedImdbId = imdbIdRaw || stremioIdRaw;
+
+    if (!resolvedImdbId) {
+      logger.error('[TraktAutosync] Cannot build content data: missing or empty imdbId and id');
       return null;
+    }
+
+    if (!imdbIdRaw && stremioIdRaw) {
+      logger.warn(`[TraktAutosync] imdbId is empty, falling back to stremio id "${stremioIdRaw}" — Trakt will match by title`);
     }
 
     const numericYear = parseYear(options.year);
@@ -125,7 +137,7 @@ export function useTraktAutosync(options: TraktAutosyncOptions) {
     if (options.type === 'movie') {
       return {
         type: 'movie',
-        imdbId: options.imdbId.trim(),
+        imdbId: resolvedImdbId,
         title: options.title.trim(),
         year: numericYear // Can be undefined now
       };
@@ -140,26 +152,34 @@ export function useTraktAutosync(options: TraktAutosyncOptions) {
         return null;
       }
 
+      const resolvedShowImdbId = (options.showImdbId && options.showImdbId.trim())
+        ? options.showImdbId.trim()
+        : resolvedImdbId;
+
       return {
         type: 'episode',
-        imdbId: options.imdbId.trim(),
+        imdbId: resolvedImdbId,
         title: options.title.trim(),
         year: numericYear,
         season: options.season,
         episode: options.episode,
         showTitle: (options.showTitle || options.title).trim(),
         showYear: numericShowYear || numericYear,
-        showImdbId: (options.showImdbId || options.imdbId).trim()
+        showImdbId: resolvedShowImdbId
       };
     }
   }, [options]);
 
   const buildSimklContentData = useCallback((): SimklContentData => {
+    // Use the same fallback logic: prefer imdbId, fall back to stremio id
+    const resolvedId = (options.imdbId && options.imdbId.trim())
+      ? options.imdbId.trim()
+      : (options.id && options.id.trim()) ? options.id.trim() : '';
     return {
       type: options.type === 'series' ? 'episode' : 'movie',
       title: options.title,
       ids: {
-        imdb: options.imdbId
+        imdb: resolvedId
       },
       season: options.season,
       episode: options.episode
